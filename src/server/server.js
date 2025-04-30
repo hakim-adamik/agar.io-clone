@@ -65,6 +65,10 @@ const addPlayer = (socket) => {
         } else {
             console.log('[INFO] Player ' + clientPlayerData.name + ' connected!');
             sockets[socket.id] = socket;
+
+            const sanitizedName = clientPlayerData.name.replace(/(<([^>]+)>)/ig, '');
+            clientPlayerData.name = sanitizedName;
+
             currentPlayer.clientProvidedData(clientPlayerData);
             map.players.pushNew(currentPlayer);
             io.emit('playerJoin', { name: currentPlayer.name });
@@ -106,7 +110,7 @@ const addPlayer = (socket) => {
         }
 
         socket.broadcast.emit('serverSendPlayerChat', {
-            sender: _sender,
+            sender: currentPlayer.name,
             message: _message.substring(0, 35)
         });
 
