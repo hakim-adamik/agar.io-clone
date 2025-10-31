@@ -6,17 +6,17 @@ module.exports = {
     fireFood: 20,
     limitSplit: 16,
     defaultPlayerMass: 10,
-	virus: {
+    virus: {
         fill: "#33ff33",
         stroke: "#19D119",
         strokeWidth: 20,
         defaultMass: {
             from: 100,
-            to: 150
+            to: 150,
         },
         splitMass: 180,
         uniformDisposition: false,
-	},
+    },
     gameWidth: 5000,
     gameHeight: 5000,
     adminPass: "DEFAULT",
@@ -25,13 +25,13 @@ module.exports = {
     maxVirus: 50,
     slowBase: 4.5,
     logChat: 0,
-    networkUpdateFactor: 40,
+    networkUpdateFactor: 60,
     maxHeartbeatInterval: 5000,
     foodUniformDisposition: true,
     newPlayerInitialPosition: "farthest",
     massLossRate: 1,
     minMassLoss: 50,
     sqlinfo: {
-      fileName: "db.sqlite3",
-    }
+        fileName: "db.sqlite3",
+    },
 };
