@@ -14,11 +14,11 @@ module.exports = {
     // Canvas
     screen: {
         width: window.innerWidth,
-        height: window.innerHeight
+        height: window.innerHeight,
     },
     game: {
         width: 0,
-        height: 0
+        height: 0,
     },
     gameStart: false,
     disconnected: false,
@@ -26,6 +26,7 @@ module.exports = {
     continuity: false,
     startPingTime: 0,
     toggleMassState: 0,
-    backgroundColor: '#f2fbff',
-    lineColor: '#000000',
+    backgroundColor: "#f2fbff",
+    lineColor: "#000000",
+    showFpsCounter: true,
 };
