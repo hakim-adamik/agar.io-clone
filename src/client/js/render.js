@@ -135,11 +135,25 @@ let gridCache = {
 const drawGrid = (global, player, screen, graph) => {
     const gridSize = screen.height / 18;
 
+    // Ensure player position is valid (handle undefined/null/NaN)
+    const playerX = player.x !== undefined && !isNaN(player.x) ? player.x : 0;
+    const playerY = player.y !== undefined && !isNaN(player.y) ? player.y : 0;
+
     // Check if we need to redraw the grid (only if camera moved significantly or screen size changed)
+    // Handle null values on first draw - always redraw if cache metadata is missing
+    const playerXMoved =
+        gridCache.playerX === null ||
+        gridCache.playerX === undefined ||
+        Math.abs(gridCache.playerX - playerX) > gridSize;
+    const playerYMoved =
+        gridCache.playerY === null ||
+        gridCache.playerY === undefined ||
+        Math.abs(gridCache.playerY - playerY) > gridSize;
+
     const shouldRedraw =
         !gridCache.canvas ||
-        Math.abs(gridCache.playerX - player.x) > gridSize ||
-        Math.abs(gridCache.playerY - player.y) > gridSize ||
+        playerXMoved ||
+        playerYMoved ||
         gridCache.screenWidth !== screen.width ||
         gridCache.screenHeight !== screen.height ||
         gridCache.gridSize !== gridSize;
@@ -164,8 +178,9 @@ const drawGrid = (global, player, screen, graph) => {
         cacheCtx.beginPath();
 
         // Calculate visible grid lines more efficiently
-        const startX = Math.floor(-player.x / gridSize) * gridSize;
-        const startY = Math.floor(-player.y / gridSize) * gridSize;
+        // (playerX and playerY are already validated above)
+        const startX = Math.floor(-playerX / gridSize) * gridSize;
+        const startY = Math.floor(-playerY / gridSize) * gridSize;
 
         for (let x = startX; x < screen.width; x += gridSize) {
             cacheCtx.moveTo(x, 0);
@@ -180,17 +195,19 @@ const drawGrid = (global, player, screen, graph) => {
         cacheCtx.stroke();
         cacheCtx.globalAlpha = 1;
 
-        // Update cache metadata
-        gridCache.playerX = player.x;
-        gridCache.playerY = player.y;
+        // Update cache metadata (use validated positions)
+        gridCache.playerX = playerX;
+        gridCache.playerY = playerY;
         gridCache.screenWidth = screen.width;
         gridCache.screenHeight = screen.height;
         gridCache.gridSize = gridSize;
     }
 
-    // Draw cached grid
-    graph.globalAlpha = 1;
-    graph.drawImage(gridCache.canvas, 0, 0);
+    // Draw cached grid (only if it exists and has been initialized)
+    if (gridCache.canvas) {
+        graph.globalAlpha = 1;
+        graph.drawImage(gridCache.canvas, 0, 0);
+    }
 };
 
 const drawBorder = (borders, graph) => {
