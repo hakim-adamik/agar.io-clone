@@ -122,6 +122,8 @@ global.target = target;
 window.canvas = new Canvas();
 window.chat = new ChatClient();
 
+var settings = window.chat; // Settings functions are in the chat client
+
 var visibleBorderSetting = document.getElementById("visBord");
 visibleBorderSetting.onchange = settings.toggleBorder;
 
@@ -133,6 +135,9 @@ continuitySetting.onchange = settings.toggleContinuity;
 
 var roundFoodSetting = document.getElementById("roundFood");
 roundFoodSetting.onchange = settings.toggleRoundFood;
+
+var showFpsSetting = document.getElementById("showFps");
+showFpsSetting.onchange = settings.toggleFpsDisplay;
 
 var c = window.canvas.cv;
 var graph = c.getContext("2d");
@@ -259,6 +264,17 @@ function setupSocket(socket) {
     socket.on(
         "serverTellPlayerMove",
         function (playerData, userData, foodsList, massList, virusList) {
+            // Track position update timing
+            var updateTime = getTime();
+            if (lastPositionUpdateTime > 0) {
+                var timeSinceLastUpdate = updateTime - lastPositionUpdateTime;
+                positionUpdateTimes.push(timeSinceLastUpdate);
+                if (positionUpdateTimes.length > 30) {
+                    positionUpdateTimes.shift(); // Keep only last 30 updates
+                }
+            }
+            lastPositionUpdateTime = updateTime;
+
             if (global.playerType == "player") {
                 player.x = playerData.x;
                 player.y = playerData.y;
@@ -329,9 +345,152 @@ window.cancelAnimFrame = (function (handle) {
     return window.cancelAnimationFrame || window.mozCancelAnimationFrame;
 })();
 
+// FPS and UPS (Updates Per Second) tracking variables
+var fpsCounter = document.getElementById("fpsCounter");
+var frameCount = 0;
+var lastFpsUpdate = 0;
+var fpsUpdateInterval = 1000; // Update FPS display every second
+var frameTimes = [];
+var lastFrameTime = 0;
+var fpsTrackingStarted = false;
+
+// Position update tracking (UPS - Updates Per Second)
+var positionUpdateTimes = [];
+var lastPositionUpdateTime = 0;
+
+// Initialize FPS counter visibility from localStorage
+(function () {
+    global.fpsCounter = fpsCounter;
+    try {
+        var saved = localStorage.getItem("showFpsCounter");
+        if (saved !== null) {
+            global.showFpsCounter = saved === "true";
+        }
+        // Update checkbox state to match saved preference
+        var showFpsCheckbox = document.getElementById("showFps");
+        if (showFpsCheckbox) {
+            showFpsCheckbox.checked = global.showFpsCounter;
+        }
+    } catch (e) {
+        // Ignore localStorage errors
+    }
+})();
+
+// Use performance.now() if available, fallback to Date.now()
+var getTime = (function () {
+    if (window.performance && window.performance.now) {
+        return function () {
+            return window.performance.now();
+        };
+    } else {
+        return function () {
+            return Date.now();
+        };
+    }
+})();
+
 function animloop() {
+    var currentTime = getTime();
+
+    // Initialize timing on first frame
+    if (!fpsTrackingStarted) {
+        lastFrameTime = currentTime;
+        lastFpsUpdate = currentTime;
+        fpsTrackingStarted = true;
+    }
+
+    var deltaTime = currentTime - lastFrameTime;
+    lastFrameTime = currentTime;
+
+    // Track frame times for accurate FPS calculation (only if game is running)
+    if (global.gameStart) {
+        frameTimes.push(deltaTime);
+        if (frameTimes.length > 60) {
+            frameTimes.shift(); // Keep only last 60 frames
+        }
+
+        frameCount++;
+    }
+
     global.animLoopHandle = window.requestAnimFrame(animloop);
     gameLoop();
+
+    // Show/hide FPS counter based on game state and user preference
+    if (fpsCounter) {
+        if (global.gameStart && global.showFpsCounter) {
+            fpsCounter.style.display = "block";
+            // Update FPS display periodically
+            if (currentTime - lastFpsUpdate >= fpsUpdateInterval) {
+                updateFpsDisplay();
+                lastFpsUpdate = currentTime;
+            }
+        } else {
+            fpsCounter.style.display = "none";
+            // Reset frame and update tracking when game stops
+            if (frameTimes.length > 0) {
+                frameTimes = [];
+                frameCount = 0;
+            }
+            if (positionUpdateTimes.length > 0) {
+                positionUpdateTimes = [];
+                lastPositionUpdateTime = 0;
+            }
+        }
+    }
+}
+
+function updateFpsDisplay() {
+    if (!fpsCounter) return;
+
+    var displayText = "";
+    var overallClass = "";
+
+    // Calculate rendering FPS (framerate)
+    if (frameTimes.length > 0) {
+        var avgFrameTime =
+            frameTimes.reduce((sum, time) => sum + time, 0) / frameTimes.length;
+        var fps = Math.round(1000 / avgFrameTime);
+        displayText += "FPS: " + fps;
+
+        // Determine color based on FPS
+        if (fps < 30) {
+            overallClass = "low";
+        } else if (fps < 50) {
+            overallClass = "medium";
+        } else {
+            overallClass = "high";
+        }
+    }
+
+    // Calculate position update rate (UPS - Updates Per Second)
+    if (positionUpdateTimes.length > 0) {
+        var avgUpdateTime =
+            positionUpdateTimes.reduce((sum, time) => sum + time, 0) /
+            positionUpdateTimes.length;
+        var ups = Math.round(1000 / avgUpdateTime);
+
+        if (displayText.length > 0) {
+            displayText += " | ";
+        }
+        displayText += "UPS: " + ups;
+
+        // If UPS is very low, override color to indicate problem
+        if (ups < 20) {
+            overallClass = "low";
+        } else if (ups < 35 && overallClass !== "low") {
+            overallClass = "medium";
+        }
+    }
+
+    // Update display
+    if (displayText.length === 0) {
+        fpsCounter.textContent = "FPS: -- | UPS: --";
+    } else {
+        fpsCounter.textContent = displayText;
+    }
+
+    // Apply color coding
+    fpsCounter.className = overallClass;
 }
 
 // Helper function to check if entity is visible in viewport
