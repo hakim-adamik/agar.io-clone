@@ -218,13 +218,6 @@ class ChatClient {
         if (darkModeCheckbox) {
             darkModeCheckbox.checked = (global.backgroundColor === DARK);
         }
-
-        // Save preference to localStorage
-        try {
-            localStorage.setItem("darkMode", global.backgroundColor === DARK ? "true" : "false");
-        } catch (e) {
-            // Ignore localStorage errors
-        }
     }
 
     toggleBorder() {
