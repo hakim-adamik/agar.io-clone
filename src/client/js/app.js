@@ -139,6 +139,9 @@ roundFoodSetting.onchange = settings.toggleRoundFood;
 var showFpsSetting = document.getElementById("showFps");
 showFpsSetting.onchange = settings.toggleFpsDisplay;
 
+var darkModeSetting = document.getElementById("darkMode");
+darkModeSetting.onchange = settings.toggleDarkMode;
+
 var c = window.canvas.cv;
 var graph = c.getContext("2d");
 
@@ -370,6 +373,35 @@ var lastPositionUpdateTime = 0;
         var showFpsCheckbox = document.getElementById("showFps");
         if (showFpsCheckbox) {
             showFpsCheckbox.checked = global.showFpsCounter;
+        }
+    } catch (e) {
+        // Ignore localStorage errors
+    }
+})();
+
+// Initialize dark mode preference from localStorage
+(function () {
+    try {
+        var savedDarkMode = localStorage.getItem("darkMode");
+        if (savedDarkMode !== null) {
+            var DARK = "#181818";
+            var LINEDARK = "#ffffff";
+            var LIGHT = "#f2fbff";
+            var LINELIGHT = "#000000";
+
+            if (savedDarkMode === "true") {
+                global.backgroundColor = DARK;
+                global.lineColor = LINEDARK;
+            } else {
+                global.backgroundColor = LIGHT;
+                global.lineColor = LINELIGHT;
+            }
+
+            // Update checkbox state to match saved preference
+            var darkModeCheckbox = document.getElementById("darkMode");
+            if (darkModeCheckbox) {
+                darkModeCheckbox.checked = (savedDarkMode === "true");
+            }
         }
     } catch (e) {
         // Ignore localStorage errors
