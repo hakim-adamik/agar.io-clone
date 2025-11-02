@@ -14,10 +14,11 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 - **Eating Mechanics:** Cell-to-cell consumption, food particles, mass ejection
 - **Split Mechanics:** Cell splitting with merge timer (15 seconds)
 - **Virus System:** Working virus entities that split larger cells
-- **Chat System:** In-game chat with command support (e.g., `-ping`)
+- **Chat System:** In-game chat with command support (e.g., `-ping`, `-dark`)
 - **Spectator Mode:** Ability to watch games without participating
 - **Leaderboard:** Real-time top players display
 - **Mobile Support:** Touch controls and responsive design
+- **Dark Mode:** Toggle via checkbox or chat command, changes background and grid colors
 - **Performance Optimizations:** Recent improvements including viewport culling, grid caching, socket throttling
 
 ### 🚧 Known Issues & TODOs
@@ -32,7 +33,11 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
    - Enhance anti-cheat measures
 
 ### 📊 Recent Changes
-- **Performance Update (Latest):**
+- **Latest Updates (November 2024):**
+  - **Grid Display Fix:** Grid now fixed in world space instead of moving with player
+  - **Dark Mode:** Added functional checkbox and chat command (`-dark`) support
+  - **Documentation:** Added comprehensive technical architecture and LLM context docs
+- **Performance Update:**
   - Implemented viewport culling (50-80% reduction in draw calls)
   - Added grid caching (eliminates 50-100 line draws per frame)
   - Socket emission throttling (60% network overhead reduction)

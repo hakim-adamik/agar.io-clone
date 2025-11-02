@@ -162,11 +162,12 @@ agar.io-clone/
 #### 4.1.2 Rendering Engine (`src/client/js/render.js`)
 - **Purpose:** Visual representation of game state
 - **Features:**
-  - Grid rendering with caching optimization
+  - Grid rendering with caching optimization (fixed in world space)
   - Entity drawing (cells, food, viruses)
   - Text rendering (names, mass)
   - Border correction for cells at boundaries
   - Performance-optimized drawing routines
+  - Dark mode support (background and grid color switching)
 
 #### 4.1.3 Canvas Management (`src/client/js/canvas.js`)
 - **Purpose:** Canvas setup and coordinate transformation
@@ -274,9 +275,10 @@ Key parameters:
 
 ### 7.1 Client Optimizations
 - **Viewport Culling:** Only render visible entities
-- **Grid Caching:** Reuse grid drawing between frames
+- **Grid Caching:** Reuse grid drawing between frames (with world-space fixed positioning)
 - **Socket Throttling:** Limit update frequency
 - **Dynamic LOD:** Reduce polygon complexity for borders
+- **Dark Mode:** Optimized color switching without performance impact
 
 ### 7.2 Server Optimizations
 - **Spatial Indexing:** Efficient collision detection
