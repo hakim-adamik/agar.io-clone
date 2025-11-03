@@ -48,184 +48,148 @@ html, body {
     animation: float 25s infinite ease-in-out;
 }
 
-/* Large cells */
-.cell-large-1 {
-    width: 150px;
-    height: 150px;
-    background: radial-gradient(circle, #3b82f6, #1e40af);
-    top: 20%;
-    left: 15%;
-    animation-delay: 0s;
+/* Cell size categories - consolidate common properties */
+.cell-large-1, .cell-large-2, .cell-large-3 {
     animation-duration: 30s;
 }
 
+.cell-med-1, .cell-med-2, .cell-med-3, .cell-med-4 {
+    animation-duration: 25s;
+}
+
+/* Large cells */
+.cell-large-1 {
+    width: 150px; height: 150px;
+    background: radial-gradient(circle, #3b82f6, #1e40af);
+    top: 20%; left: 15%;
+    animation-delay: 0s;
+}
+
 .cell-large-2 {
-    width: 130px;
-    height: 130px;
+    width: 130px; height: 130px;
     background: radial-gradient(circle, #84cc16, #65a30d);
-    bottom: 25%;
-    right: 20%;
-    animation-delay: 5s;
-    animation-duration: 28s;
+    bottom: 25%; right: 20%;
+    animation-delay: 5s; animation-duration: 28s;
 }
 
 .cell-large-3 {
-    width: 140px;
-    height: 140px;
+    width: 140px; height: 140px;
     background: radial-gradient(circle, #ef4444, #dc2626);
-    top: 50%;
-    left: 45%;
-    animation-delay: 10s;
-    animation-duration: 32s;
+    top: 50%; left: 45%;
+    animation-delay: 10s; animation-duration: 32s;
 }
 
 /* Medium cells */
 .cell-med-1 {
-    width: 90px;
-    height: 90px;
+    width: 90px; height: 90px;
     background: radial-gradient(circle, #fbbf24, #f59e0b);
-    top: 10%;
-    right: 30%;
+    top: 10%; right: 30%;
     animation-delay: 2s;
 }
 
 .cell-med-2 {
-    width: 85px;
-    height: 85px;
+    width: 85px; height: 85px;
     background: radial-gradient(circle, #8b5cf6, #7c3aed);
-    bottom: 15%;
-    left: 25%;
+    bottom: 15%; left: 25%;
     animation-delay: 7s;
 }
 
 .cell-med-3 {
-    width: 95px;
-    height: 95px;
+    width: 95px; height: 95px;
     background: radial-gradient(circle, #10b981, #059669);
-    top: 70%;
-    right: 40%;
+    top: 70%; right: 40%;
     animation-delay: 12s;
 }
 
 .cell-med-4 {
-    width: 80px;
-    height: 80px;
+    width: 80px; height: 80px;
     background: radial-gradient(circle, #ec4899, #db2777);
-    top: 35%;
-    left: 10%;
+    top: 35%; left: 10%;
     animation-delay: 15s;
 }
 
 /* Small cells */
 .cell-small-1 {
-    width: 50px;
-    height: 50px;
+    width: 50px; height: 50px;
     background: radial-gradient(circle, #06b6d4, #0891b2);
-    top: 5%;
-    left: 50%;
-    animation-delay: 1s;
-    animation-duration: 20s;
+    top: 5%; left: 50%;
+    animation-delay: 1s; animation-duration: 20s;
 }
 
 .cell-small-2 {
-    width: 55px;
-    height: 55px;
+    width: 55px; height: 55px;
     background: radial-gradient(circle, #f97316, #ea580c);
-    bottom: 10%;
-    right: 10%;
-    animation-delay: 4s;
-    animation-duration: 22s;
+    bottom: 10%; right: 10%;
+    animation-delay: 4s; animation-duration: 22s;
 }
 
 .cell-small-3 {
-    width: 45px;
-    height: 45px;
+    width: 45px; height: 45px;
     background: radial-gradient(circle, #a855f7, #9333ea);
-    top: 60%;
-    left: 60%;
-    animation-delay: 8s;
-    animation-duration: 18s;
+    top: 60%; left: 60%;
+    animation-delay: 8s; animation-duration: 18s;
 }
 
 .cell-small-4 {
-    width: 60px;
-    height: 60px;
+    width: 60px; height: 60px;
     background: radial-gradient(circle, #14b8a6, #0d9488);
-    top: 25%;
-    right: 15%;
-    animation-delay: 11s;
-    animation-duration: 24s;
+    top: 25%; right: 15%;
+    animation-delay: 11s; animation-duration: 24s;
 }
 
 .cell-small-5 {
-    width: 48px;
-    height: 48px;
+    width: 48px; height: 48px;
     background: radial-gradient(circle, #f43f5e, #e11d48);
-    bottom: 35%;
-    left: 35%;
-    animation-delay: 14s;
-    animation-duration: 21s;
+    bottom: 35%; left: 35%;
+    animation-delay: 14s; animation-duration: 21s;
 }
 
 /* Tiny food particles */
 .cell-tiny-1 {
-    width: 20px;
-    height: 20px;
+    width: 20px; height: 20px;
     background: #fbbf24;
-    top: 15%;
-    left: 70%;
+    top: 15%; left: 70%;
     animation-duration: 15s;
 }
 
 .cell-tiny-2 {
-    width: 18px;
-    height: 18px;
+    width: 18px; height: 18px;
     background: #60a5fa;
-    bottom: 20%;
-    right: 35%;
+    bottom: 20%; right: 35%;
     animation-duration: 16s;
 }
 
 .cell-tiny-3 {
-    width: 22px;
-    height: 22px;
+    width: 22px; height: 22px;
     background: #f87171;
-    top: 45%;
-    right: 60%;
+    top: 45%; right: 60%;
     animation-duration: 14s;
 }
 
 .cell-tiny-4 {
-    width: 15px;
-    height: 15px;
+    width: 15px; height: 15px;
     background: #a78bfa;
-    bottom: 45%;
-    left: 80%;
+    bottom: 45%; left: 80%;
     animation-duration: 17s;
 }
 
 .cell-tiny-5 {
-    width: 25px;
-    height: 25px;
+    width: 25px; height: 25px;
     background: #34d399;
-    top: 80%;
-    left: 15%;
+    top: 80%; left: 15%;
     animation-duration: 13s;
 }
 
 .cell-tiny-6 {
-    width: 19px;
-    height: 19px;
+    width: 19px; height: 19px;
     background: #fde047;
-    top: 30%;
-    right: 45%;
+    top: 30%; right: 45%;
     animation-duration: 18s;
 }
 
 .virus-cell {
     position: absolute;
-    width: 70px;
-    height: 70px;
+    width: 70px; height: 70px;
     background: radial-gradient(circle, #22c55e, #16a34a);
     border-radius: 50%;
     opacity: 0.5;
@@ -235,29 +199,15 @@ html, body {
 .virus-cell::before {
     content: '';
     position: absolute;
-    top: -5px;
-    left: -5px;
-    right: -5px;
-    bottom: -5px;
+    inset: -5px;
     background: inherit;
     border-radius: 50%;
     filter: blur(8px);
 }
 
-.virus-1 {
-    top: 40%;
-    right: 25%;
-}
-
-.virus-2 {
-    bottom: 30%;
-    left: 50%;
-}
-
-.virus-3 {
-    top: 65%;
-    right: 70%;
-}
+.virus-1 { top: 40%; right: 25%; }
+.virus-2 { bottom: 30%; left: 50%; }
+.virus-3 { top: 65%; right: 70%; }
 
 @keyframes float {
     0% {
@@ -542,9 +492,10 @@ html, body {
 }
 
 .modal-content h2 {
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
     font-size: 2rem;
     text-align: center;
+    padding-top: 0.5rem;
 }
 
 .tutorial-content {
@@ -552,7 +503,7 @@ html, body {
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
     margin-bottom: 1.5rem;
-    max-height: 65vh;
+    padding-top: 0.5rem;
     overflow-y: hidden;
 }
 
@@ -622,38 +573,13 @@ html, body {
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
-    .top-nav {
-        padding: 1rem 1.5rem;
-    }
-
-    .game-title {
-        font-size: 2.5rem;
-    }
-
-
-
-    .play-btn {
-        padding: 1rem 2.5rem;
-        font-size: 1.2rem;
-    }
-
-    .bottom-nav {
-        gap: 0.5rem;
-        padding: 1rem 0.5rem;
-    }
-
-    .nav-item {
-        padding: 0.5rem;
-    }
-
-    .nav-item span {
-        font-size: 0.6rem;
-    }
-
-    .modal-content {
-        padding: 1.5rem;
-        width: 95%;
-    }
+    .top-nav { padding: 1rem 1.5rem; }
+    .game-title { font-size: 2.5rem; }
+    .play-btn { padding: 1rem 2.5rem; font-size: 1.2rem; }
+    .bottom-nav { gap: 0.5rem; padding: 1rem 0.5rem; }
+    .nav-item { padding: 0.5rem; }
+    .nav-item span { font-size: 0.6rem; }
+    .modal-content { padding: 1.5rem; width: 95%; }
 
     .tutorial-content {
         grid-template-columns: repeat(2, 1fr);
@@ -661,54 +587,22 @@ html, body {
         gap: 0.8rem;
     }
 
-    .tutorial-step {
-        padding: 0.8rem;
-    }
-
-    .tutorial-step i {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .tutorial-step h3 {
-        font-size: 0.9rem;
-    }
-
-    .tutorial-step p {
-        font-size: 0.75rem;
-    }
+    .tutorial-step { padding: 0.8rem; }
+    .tutorial-step i { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .tutorial-step h3 { font-size: 0.9rem; }
+    .tutorial-step p { font-size: 0.75rem; }
 }
 
 /* Small mobile */
 @media (max-width: 380px) {
-    .game-title {
-        font-size: 2rem;
-    }
-
-    .nav-item span {
-        display: none;
-    }
-
-    .how-to-play-btn {
-        padding: 0.5rem 1.5rem;
-        font-size: 0.8rem;
-    }
-
-    .play-btn {
-        padding: 0.75rem 2rem;
-        font-size: 1rem;
-    }
+    .game-title { font-size: 2rem; }
+    .nav-item span { display: none; }
+    .how-to-play-btn { padding: 0.5rem 1.5rem; font-size: 0.8rem; }
+    .play-btn { padding: 0.75rem 2rem; font-size: 1rem; }
 }
 
 /* Landscape orientation */
 @media (max-height: 600px) and (orientation: landscape) {
-    .game-branding {
-        margin-bottom: 1rem;
-    }
-
-    .game-title {
-        font-size: 2rem;
-    }
-
-
+    .game-branding { margin-bottom: 1rem; }
+    .game-title { font-size: 2rem; }
 }
