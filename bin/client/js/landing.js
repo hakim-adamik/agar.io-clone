@@ -149,6 +149,17 @@ document.addEventListener('DOMContentLoaded', function() {
     elements.howToPlayBtn?.addEventListener('click', () => showModal('tutorialModal'));
     elements.startFromTutorial?.addEventListener('click', redirectToGame);
 
+    // Add close button functionality to existing modals
+    document.querySelectorAll('.modal').forEach(modal => {
+        const closeBtn = modal.querySelector('.close-modal');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => closeModal(modal));
+        }
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal(modal);
+        });
+    });
+
     // Navigation items
     elements.navItems.forEach(item => {
         item.addEventListener('click', function() {
