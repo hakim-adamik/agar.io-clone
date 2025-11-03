@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Modal content templates
     const modalTemplates = {
         social: {
-            title: '<i class="fab fa-discord"></i> Social Media',
+            title: '<i class="fab fa-discord"></i> Social',
             content: `
                 <div class="social-links" style="display: grid; gap: 1rem; margin-top: 1.5rem; padding-top: 0.5rem;">
                     ${createSocialLink('discord', 'fab fa-discord', '#7289da', 'Join our Discord Server')}
