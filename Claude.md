@@ -16,10 +16,12 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 - **Virus System:** Working virus entities that split larger cells
 - **Chat System:** In-game chat with command support (e.g., `-ping`, `-dark`)
 - **Spectator Mode:** Ability to watch games without participating
-- **Leaderboard:** Real-time top players display
+- **Leaderboard:** Real-time top players display with "Coming Soon" badge for future enhancements
 - **Mobile Support:** Touch controls and responsive design
 - **Dark Mode:** Toggle via checkbox or chat command, changes background and grid colors
 - **Performance Optimizations:** Recent improvements including viewport culling, grid caching, socket throttling
+- **Seamless Game Experience:** Unified landing page and game in single index.html with instant play capability
+- **Auto Guest Names:** Automatically generates guest names (e.g., Guest_8209) for immediate gameplay
 
 ### 🚧 Known Issues & TODOs
 1. **Code Organization:**
@@ -34,6 +36,11 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 
 ### 📊 Recent Changes
 - **Latest Updates (November 2024):**
+  - **Seamless Play Experience:** Merged landing page and game into unified index.html
+  - **Auto Guest Names:** Players can instantly join without entering a name
+  - **UI Improvements:** Professional landing page with animated background and modal system
+  - **Coming Soon Badge:** Added subtle indicator for future Leaderboard features
+  - **CSS Architecture:** Scoped game styles to prevent conflicts with landing page
   - **Grid Display Fix:** Grid now fixed in world space instead of moving with player
   - **Dark Mode:** Added functional checkbox and chat command (`-dark`) support
   - **Documentation:** Added comprehensive technical architecture and LLM context docs
@@ -121,9 +128,11 @@ npm test
    - Implement rendering: `src/client/js/render.js`
 
 4. **UI/UX changes:**
-   - HTML structure: `src/client/index.html`
-   - Styles: `src/client/css/`
-   - Client logic: `src/client/js/app.js`
+   - **Main HTML:** `src/client/index.html` (unified landing + game)
+   - **Landing Page Logic:** `src/client/js/landing.js`
+   - **Landing Styles:** `src/client/css/landing.css`
+   - **Game Styles:** `src/client/css/main.css` (scoped to #gameView)
+   - **Client Logic:** `src/client/js/app.js` (includes seamless game start)
 
 ---
 
