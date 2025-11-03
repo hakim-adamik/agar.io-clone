@@ -46,6 +46,40 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 
 ---
 
+## Bot Players System
+
+A separate **bots** repository is available that provides AI-controlled bot players for testing and gameplay:
+
+### Bot Features
+- **Multiple AI Behaviors:** Aggressive, Defensive, Wanderer, and Smart adaptive strategies
+- **Autonomous Gameplay:** Bots can move, eat, split, and eject mass
+- **Configurable:** Spawn multiple bots with custom parameters
+- **Easy Setup:** Simple command-line interface
+
+### Running Bots
+```bash
+# From the bots repository
+cd /Users/fabricedautriat/Documents/GitHub/bots
+
+# Spawn default 3 bots
+npm start
+
+# Spawn specific number of bots
+node bot-players.js --bots 20
+
+# Use predefined configurations
+npm run bots:few    # 5 bots
+npm run bots:many   # 20 bots
+npm run bots:stress # 50 bots with fast spawning
+```
+
+### Bot Limitations
+- **No explicit player limit in game code** - The server accepts connections until resources are exhausted
+- **Spawn position algorithm:** The "farthest" spawn mode may have issues with many simultaneous players
+- **Practical limits:** System resources and network bandwidth may limit concurrent players
+
+---
+
 ## Quick Start for Development
 
 ### Prerequisites
