@@ -22,6 +22,7 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 - **Performance Optimizations:** Recent improvements including viewport culling, grid caching, socket throttling
 - **Seamless Game Experience:** Unified landing page and game in single index.html with instant play capability
 - **Auto Guest Names:** Automatically generates guest names (e.g., Guest_8209) for immediate gameplay
+- **Centralized Default Settings:** Configurable defaults in `game-config.js` (dark mode, mass display, borders, continuity enabled by default)
 
 ### 🚧 Known Issues & TODOs
 1. **Code Organization:**
@@ -122,12 +123,23 @@ npm test
    - Configuration: `config.js`
    - Key parameters: `defaultPlayerMass`, `foodMass`, `slowBase`, `massLossRate`
 
-3. **Adding new entities:**
+3. **Default Game Settings:**
+   - **Configuration:** `src/client/js/game-config.js`
+   - **Current Defaults:**
+     - Dark mode: `true` (black background)
+     - Show mass: `true` (display cell mass values)
+     - Show border: `true` (game area boundaries)
+     - Continuity: `true` (auto-move when mouse leaves screen)
+     - Show FPS: `false` (cleaner UI)
+     - Round food: `true` (circular food particles)
+   - **Future:** Will support user profile overrides
+
+4. **Adding new entities:**
    - Create in: `src/server/map/`
    - Add to map manager: `src/server/map/map.js`
    - Implement rendering: `src/client/js/render.js`
 
-4. **UI/UX changes:**
+5. **UI/UX changes:**
    - **Main HTML:** `src/client/index.html` (unified landing + game)
    - **Landing Page Logic:** `src/client/js/landing.js`
    - **Landing Styles:** `src/client/css/landing.css`
