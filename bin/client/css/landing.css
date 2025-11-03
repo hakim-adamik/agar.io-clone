@@ -391,24 +391,26 @@ html, body {
 
 /* Bottom Navigation */
 .bottom-nav {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 2rem;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     padding: 1.5rem;
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(10px);
     border-top: 1px solid var(--border-color);
     position: relative;
     z-index: 10;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 .nav-item {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
+    padding: 0.75rem 0.5rem;
     cursor: pointer;
     transition: var(--transition);
     position: relative;
@@ -583,8 +585,8 @@ html, body {
     .top-nav { padding: 1rem 1.5rem; }
     .game-title { font-size: 2.5rem; }
     .play-btn { padding: 1rem 2.5rem; font-size: 1.2rem; }
-    .bottom-nav { gap: 0.5rem; padding: 1rem 0.5rem; }
-    .nav-item { padding: 0.5rem; }
+    .bottom-nav { padding: 1rem 0.5rem; }
+    .nav-item { padding: 0.5rem 0.25rem; }
     .nav-item span { font-size: 0.6rem; }
     .modal-content { padding: 1.5rem; width: 95%; }
 
