@@ -26,7 +26,22 @@ let leaderboardChanged = false;
 
 const Vector = SAT.Vector;
 
-app.use(express.static(__dirname + '/../client'));
+// Serve static files from built directory if available (Vercel/production), otherwise from source
+const path = require('path');
+const fs = require('fs');
+
+// Try multiple possible paths for built files
+const possiblePaths = [
+  path.join(__dirname, '../../bin/client'),      // Normal build output
+  path.join(__dirname, '../client'),              // Source files
+  path.join(process.cwd(), 'bin/client'),        // From project root
+  path.join(process.cwd(), 'src/client')         // Source from project root
+];
+
+let staticPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[1]; // Default to source if none found
+console.log(`[DEBUG] Serving static files from: ${staticPath}`);
+
+app.use(express.static(staticPath));
 
 io.on('connection', function (socket) {
     let type = socket.handshake.query.type;
