@@ -83,12 +83,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     `<img src="${avatarUrl}" alt="${displayName}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` :
                                     `<i class="fas fa-user-check"></i>`
                                 }
-                                <div style="position: absolute; bottom: -2px; right: -2px; width: 24px; height: 24px; background: #4CAF50; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white;">
+                                <div style="position: absolute; bottom: -2px; right: -2px; width: 24px; height: 24px; background: #4a90e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white;">
                                     <i class="fas fa-${provider === 'google' ? 'google' : provider === 'discord' ? 'discord' : provider === 'twitter' ? 'twitter' : 'envelope'}" style="font-size: 10px; color: white;"></i>
                                 </div>
                             </div>
                             <div>
-                                <h3 style="margin-bottom: 0.25rem; color: #4CAF50;">${displayName}</h3>
+                                <h3 style="margin-bottom: 0.25rem; color: #4a90e2;">${displayName}</h3>
                                 <p style="color: var(--text-secondary); font-size: 0.9rem;">Logged in via ${provider.charAt(0).toUpperCase() + provider.slice(1)}</p>
                                 <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
                                     <span style="font-size: 0.8rem; color: var(--primary-green);">Rank #${stats.rank}</span>
@@ -122,21 +122,37 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     `;
                 } else {
-                    // Guest user content
+                    // Guest user content - Get the current guest name
+                    const playerNameInput = document.getElementById('playerNameInput');
+                    const guestName = playerNameInput && playerNameInput.value ? playerNameInput.value : 'Guest_' + Math.floor(Math.random() * 10000);
+
                     return `
                         <div style="padding: 1.5rem; background: rgba(74, 144, 226, 0.1); border-radius: 10px; margin: 1.5rem 0; display: flex; align-items: center; gap: 1.5rem;">
-                            <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white;">
-                                <i class="fas fa-user"></i>
+                            <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #6c757d, #495057); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white;">
+                                <i class="fas fa-user-secret"></i>
                             </div>
                             <div>
-                                <h3 style="margin-bottom: 0.25rem;">Guest Player</h3>
-                                <p style="color: var(--text-secondary); font-size: 0.9rem;">Not logged in</p>
+                                <h3 style="margin-bottom: 0.25rem;">${guestName}</h3>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">Guest Player</p>
                             </div>
                         </div>
-                        <div style="text-align: center; padding: 2rem; margin: 2rem 0;">
-                            <i class="fas fa-lock" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: block;"></i>
-                            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 1rem;">Sign in to compete on the leaderboard and earn exclusive rewards!</p>
-                            <button class="modal-button auth-trigger-btn" style="padding: 0.75rem 2rem; font-size: 1rem;">Sign In / Register</button>
+
+                        <div style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(80, 227, 194, 0.1)); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 10px; padding: 1.5rem; margin: 2rem 0;">
+                            <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                                <i class="fas fa-lightbulb" style="font-size: 1.8rem; color: #50e3c2; flex-shrink: 0; margin-top: 0.2rem;"></i>
+                                <div>
+                                    <h4 style="color: #fff; margin-bottom: 0.5rem; font-size: 1.1rem;">Pro Tip: Unlock Exclusive Rewards</h4>
+                                    <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">Sign in to save your stats and climb the global leaderboard!</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 2rem;">
+                            <button class="modal-button auth-trigger-btn" style="padding: 1rem 2.5rem; font-size: 1.1rem; background: linear-gradient(135deg, #4a90e2, #50e3c2); border: none; font-weight: 600;">
+                                <i class="fas fa-sign-in-alt" style="margin-right: 0.5rem;"></i>
+                                Sign In / Sign Up
+                            </button>
+                            <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 1rem;">Join thousands of players worldwide!</p>
                         </div>
                     `;
                 }
@@ -223,7 +239,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listeners
     elements.playBtn?.addEventListener('click', redirectToGame);
     elements.howToPlayBtn?.addEventListener('click', () => showModal('tutorialModal'));
-    elements.startFromTutorial?.addEventListener('click', redirectToGame);
+    elements.startFromTutorial?.addEventListener('click', () => {
+        // Close the tutorial modal first
+        if (elements.tutorialModal) {
+            closeModal(elements.tutorialModal);
+        }
+        // Then redirect to game
+        redirectToGame();
+    });
 
     // Add close button functionality to existing modals
     document.querySelectorAll('.modal').forEach(modal => {
@@ -245,20 +268,9 @@ document.addEventListener('DOMContentLoaded', function() {
             elements.navItems.forEach(nav => nav.classList.remove('active'));
             this.classList.add('active');
 
-            // Special handling for profile - check if user is authenticated
-            if (section === 'profile') {
-                const isAuthenticated = window.PrivyAuth && window.PrivyAuth.isAuthenticated();
-
-                if (!isAuthenticated) {
-                    // If not authenticated, show auth modal
-                    this.classList.remove('active');
-                    if (window.showAuthModal) {
-                        window.showAuthModal();
-                    }
-                    return;
-                }
-                // If authenticated, fall through to show the profile modal with stats
-            }
+            // For profile section, always show the profile modal
+            // The modal content will be different based on auth status
+            // (No special handling needed - let it fall through to show modal)
 
             // Show modal content
             const template = modalTemplates[section];
@@ -303,13 +315,23 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
                 const authBtn = document.querySelector('.auth-trigger-btn');
                 if (authBtn) {
-                    authBtn.addEventListener('click', () => {
+                    authBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('[Landing] Sign In button clicked, closing modal and triggering Privy...');
                         // Close the current modal first
                         closeModal(modal);
-                        // Show authentication modal
-                        if (window.showAuthModal) {
-                            window.showAuthModal();
-                        }
+                        // Directly trigger Privy authentication modal
+                        console.log('[Landing] Dispatching auth:show-privy event');
+                        window.dispatchEvent(new CustomEvent('auth:show-privy'));
+
+                        // Also try calling the Privy login function directly as a fallback
+                        setTimeout(() => {
+                            if (window.PrivyAuth && typeof window.PrivyAuth.login === 'function') {
+                                console.log('[Landing] Calling PrivyAuth.login directly as fallback');
+                                window.PrivyAuth.login();
+                            }
+                        }, 100);
                     });
                 }
 

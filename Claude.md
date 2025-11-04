@@ -26,6 +26,8 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 -   **Seamless Game Experience:** Unified landing page and game in single index.html with instant play capability
 -   **Auto Guest Names:** Automatically generates guest names (e.g., Guest_8209) for immediate gameplay
 -   **Centralized Default Settings:** Configurable defaults in `game-config.js` (dark mode, mass display, borders, continuity enabled by default)
+-   **Social Authentication:** Privy SDK integration for Google, Discord, Twitter, and Email login
+-   **Guest Profile System:** Clear guest status indication with invitation to sign in for rewards
 
 ### 🚧 Known Issues & TODOs
 
@@ -43,6 +45,9 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 ### 📊 Recent Changes
 
 -   **Latest Updates (November 2024):**
+    -   **Authentication System:** Integrated Privy SDK for social login (Google, Discord, Twitter, Email)
+    -   **Guest Profile Modal:** Improved guest experience with clear status and "Pro Tip" to encourage sign-in
+    -   **Direct Auth Flow:** Removed redundant modals, clicking "Sign In" directly opens Privy authentication
     -   **Seamless Play Experience:** Merged landing page and game into unified index.html
     -   **Auto Guest Names:** Players can instantly join without entering a name
     -   **UI Improvements:** Professional landing page with animated background and modal system
@@ -160,6 +165,11 @@ npm test
     - **Landing Styles:** `src/client/css/landing.css`
     - **Game Styles:** `src/client/css/main.css` (scoped to #gameView)
     - **Client Logic:** `src/client/js/app.js` (includes seamless game start)
+    - **Authentication:**
+        - `src/client/auth/privy-auth.jsx` - Privy React component
+        - `src/client/auth/auth-modal.js` - Authentication modal wrapper
+        - `webpack.react.config.js` - Webpack config for Privy bundle
+        - `rebuild.sh` - Quick rebuild script with Privy app ID
 
 ---
 

@@ -38,12 +38,15 @@ You can check out how to play on our [wiki](https://github.com/owenashurst/agar.
 ---
 
 ## Latest Changes
+- **Authentication System**: Integrated Privy SDK for social login (Google, Discord, Twitter, Email)
+- **Guest Profile System**: Clear guest status with inviting "Pro Tip" to encourage sign-in
+- **Direct Auth Flow**: Streamlined authentication without redundant modals
 - Game logic is handled by the server
 - The client side is for rendering of the canvas and its items only.
 - Mobile optimisation.
 - Implementation of working viruses.
 - Display player name.
-- Now supporting chat. 
+- Now supporting chat.
 - Type`-ping` in the chatbox to check your ping, as well as other commands!
 
 ---

@@ -94,7 +94,10 @@ function PrivyAuthComponent() {
 
     useEffect(() => {
         // Listen for auth modal events
-        const handleShowAuth = () => setShowAuthModal(true);
+        const handleShowAuth = () => {
+            console.log('[Privy] Received auth:show-privy event, calling login directly');
+            login(); // Directly open Privy login instead of showing intermediate modal
+        };
         const handleHideAuth = () => setShowAuthModal(false);
         const handleTriggerLogout = () => {
             console.log('[Privy] Logout triggered. Authenticated:', authenticated);
@@ -138,32 +141,9 @@ function PrivyAuthComponent() {
         );
     }
 
-    // If user is authenticated, don't show any UI - let the vanilla JS profile modal handle it
-    if (authenticated && user) {
-        return <div style={{display: 'none'}} />; // Hidden when authenticated
-    }
-
-    // Show login button
-    return (
-        <div className="privy-login-container">
-            {showAuthModal ? (
-                <div className="privy-auth-modal">
-                    <button onClick={() => setShowAuthModal(false)} className="close-modal">
-                        ×
-                    </button>
-                    <h2>Sign In to Clash of Cells</h2>
-                    <p>Save your progress and compete on the leaderboard!</p>
-                    <button onClick={login} className="privy-login-btn">
-                        Sign In / Sign Up
-                    </button>
-                </div>
-            ) : (
-                <button onClick={login} className="privy-login-trigger">
-                    Sign In / Register
-                </button>
-            )}
-        </div>
-    );
+    // Don't render any visible UI - this component just handles authentication logic
+    // The Privy SDK will show its own modal when login() is called
+    return <div style={{display: 'none'}} />;
 }
 
 // Main App wrapper with PrivyProvider
