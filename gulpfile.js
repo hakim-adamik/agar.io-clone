@@ -54,6 +54,11 @@ function buildPrivyAuth() {
         .pipe(gulp.dest('bin/client/auth/'));
 }
 
+function copyClientJS() {
+    return gulp.src(['src/client/js/game-config.js', 'src/client/js/landing.js'])
+        .pipe(gulp.dest('bin/client/js/'));
+}
+
 function setDev(done) {
     process.env.IS_DEV = 'true';
     done();
@@ -85,9 +90,9 @@ gulp.task('todo', gulp.series('lint', () => {
         .pipe(gulp.dest('./'));
 }));
 
-gulp.task('build', gulp.series('lint', gulp.parallel(copyClientResources, buildClientJS, buildPrivyAuth, buildServer, mocha)));
+gulp.task('build', gulp.series('lint', gulp.parallel(copyClientResources, buildClientJS, buildPrivyAuth, copyClientJS, buildServer, mocha)));
 
-gulp.task('dev', gulp.parallel(copyClientResources, buildClientJS, buildPrivyAuth, buildServer));
+gulp.task('dev', gulp.parallel(copyClientResources, buildClientJS, buildPrivyAuth, copyClientJS, buildServer));
 
 gulp.task('run', gulp.series('build', runServer));
 
