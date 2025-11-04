@@ -1,6 +1,13 @@
-* {
+/* Apply default font only to game elements, not landing page */
+#gameView,
+#gameView * {
     font-family: sans-serif;
     font-size: 14px;
+}
+
+/* Keep font-family global but not font-size */
+* {
+    font-family: sans-serif;
 }
 
 html,

@@ -139,21 +139,18 @@ const drawGrid = (global, player, screen, graph) => {
     const playerX = player.x !== undefined && !isNaN(player.x) ? player.x : 0;
     const playerY = player.y !== undefined && !isNaN(player.y) ? player.y : 0;
 
-    // Check if we need to redraw the grid (only if camera moved significantly or screen size changed)
-    // Handle null values on first draw - always redraw if cache metadata is missing
-    const playerXMoved =
-        gridCache.playerX === null ||
-        gridCache.playerX === undefined ||
-        Math.abs(gridCache.playerX - playerX) > gridSize;
-    const playerYMoved =
-        gridCache.playerY === null ||
-        gridCache.playerY === undefined ||
-        Math.abs(gridCache.playerY - playerY) > gridSize;
+    // Calculate how much the grid should be offset on screen
+    // Following the same transformation as getPosition(): screenPos = worldPos - playerPos + screenCenter
+    // For a grid line at world position 0, its screen position would be: 0 - playerX + screen.width/2
+    // We want to find the offset for the nearest grid line
+    const gridOffsetX = ((-playerX + screen.width / 2) % gridSize + gridSize) % gridSize;
+    const gridOffsetY = ((-playerY + screen.height / 2) % gridSize + gridSize) % gridSize;
 
+    // Check if we need to redraw the grid (only if offset changed significantly or screen changed)
     const shouldRedraw =
         !gridCache.canvas ||
-        playerXMoved ||
-        playerYMoved ||
+        Math.abs((gridCache.playerX || 0) - playerX) > 1 ||
+        Math.abs((gridCache.playerY || 0) - playerY) > 1 ||
         gridCache.screenWidth !== screen.width ||
         gridCache.screenHeight !== screen.height ||
         gridCache.gridSize !== gridSize;
@@ -177,17 +174,29 @@ const drawGrid = (global, player, screen, graph) => {
         cacheCtx.globalAlpha = 0.15;
         cacheCtx.beginPath();
 
-        // Calculate visible grid lines more efficiently
-        // (playerX and playerY are already validated above)
-        const startX = Math.floor(-playerX / gridSize) * gridSize;
-        const startY = Math.floor(-playerY / gridSize) * gridSize;
+        // Start drawing from the first visible grid line
+        // gridOffsetX/Y represents where the first grid line should appear on screen
 
-        for (let x = startX; x < screen.width; x += gridSize) {
+        // Draw vertical lines
+        for (let x = gridOffsetX; x <= screen.width; x += gridSize) {
+            cacheCtx.moveTo(x, 0);
+            cacheCtx.lineTo(x, screen.height);
+        }
+        // Handle the case where gridOffsetX > 0 (need to draw a line on the left)
+        if (gridOffsetX > 0) {
+            const x = gridOffsetX - gridSize;
             cacheCtx.moveTo(x, 0);
             cacheCtx.lineTo(x, screen.height);
         }
 
-        for (let y = startY; y < screen.height; y += gridSize) {
+        // Draw horizontal lines
+        for (let y = gridOffsetY; y <= screen.height; y += gridSize) {
+            cacheCtx.moveTo(0, y);
+            cacheCtx.lineTo(screen.width, y);
+        }
+        // Handle the case where gridOffsetY > 0 (need to draw a line on the top)
+        if (gridOffsetY > 0) {
+            const y = gridOffsetY - gridSize;
             cacheCtx.moveTo(0, y);
             cacheCtx.lineTo(screen.width, y);
         }
@@ -195,7 +204,7 @@ const drawGrid = (global, player, screen, graph) => {
         cacheCtx.stroke();
         cacheCtx.globalAlpha = 1;
 
-        // Update cache metadata (use validated positions)
+        // Update cache metadata
         gridCache.playerX = playerX;
         gridCache.playerY = playerY;
         gridCache.screenWidth = screen.width;
@@ -203,7 +212,7 @@ const drawGrid = (global, player, screen, graph) => {
         gridCache.gridSize = gridSize;
     }
 
-    // Draw cached grid (only if it exists and has been initialized)
+    // Draw cached grid
     if (gridCache.canvas) {
         graph.globalAlpha = 1;
         graph.drawImage(gridCache.canvas, 0, 0);
