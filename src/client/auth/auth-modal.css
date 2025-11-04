@@ -101,6 +101,17 @@
     gap: 16px;
 }
 
+.auth-oauth-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.auth-oauth-options .auth-btn {
+    width: 100%;
+}
+
 .auth-method-email {
     display: flex;
     flex-direction: column;
@@ -133,6 +144,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
+    width: 100%;
 }
 
 .auth-btn:disabled {
