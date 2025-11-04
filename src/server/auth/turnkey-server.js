@@ -185,7 +185,22 @@ class TurnkeyServerAuth {
   async authenticateGoogle(credential) {
     // Decode the JWT token from Google
     // In production, verify the token signature properly
-    const payload = JSON.parse(Buffer.from(credential.split('.')[1], 'base64').toString());
+    let payload;
+    try {
+      // Check if credential is a valid JWT (has 3 parts separated by dots)
+      const parts = credential.split('.');
+      if (parts.length !== 3) {
+        throw new Error('Invalid JWT format');
+      }
+
+      // Decode the payload (middle part)
+      const payloadString = Buffer.from(parts[1], 'base64').toString();
+      payload = JSON.parse(payloadString);
+    } catch (error) {
+      console.error('Failed to decode Google credential:', error);
+      throw new Error('Invalid Google credential');
+    }
+
     const userId = payload.sub;
     const email = payload.email;
     const name = payload.name;

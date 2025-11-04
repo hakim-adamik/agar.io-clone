@@ -29,9 +29,15 @@ let leaderboardChanged = false;
 
 const Vector = SAT.Vector;
 
+// Middleware
+app.use(express.json());
 app.use(express.static(__dirname + '/../client'));
 
-// API endpoint for client configuration
+// Authentication routes
+const authRoutes = require('./auth/routes');
+app.use('/api', authRoutes);
+
+// API endpoint for client configuration (keeping for backward compatibility)
 app.get('/api/config', (req, res) => {
     res.json({
         turnkey: {
