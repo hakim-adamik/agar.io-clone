@@ -29,18 +29,56 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 -   **Social Authentication:** Privy SDK integration for Google, Discord, Twitter, and Email login
 -   **Guest Profile System:** Clear guest status indication with invitation to sign in for rewards
 
-### 🚧 Known Issues & TODOs
+### 🚧 Next Steps & Roadmap
 
-1. **Code Organization:**
+#### 🔐 Authentication & User System (Priority: High)
 
-    - `src/client/js/app.js:96` - Break out GameControls into separate class
-    - `src/client/js/chat-client.js:24` - Refactor GameControls into separate modules
+**1. Database Integration**
+- [ ] Choose database system (SQLite for dev, PostgreSQL for production, or MongoDB for flexibility)
+- [ ] Create user schema with Privy integration
+- [ ] Create stats tracking schema (games_played, high_score, total_mass_eaten, etc.)
+- [ ] Link Socket.IO sessions to authenticated users
+- [ ] Implement real-time stats tracking during gameplay
 
-2. **Potential Improvements:**
-    - Consider WebGL rendering for better performance
-    - Implement replay system
-    - Add tournament/room system for scalability
-    - Enhance anti-cheat measures
+**2. Leaderboard Persistence**
+- [ ] Global leaderboard with all-time high scores
+- [ ] Daily/Weekly/Monthly rankings
+- [ ] Store match history and show recent games in profile
+
+#### 💰 Privy Wallet Integration (Priority: Medium)
+- [ ] Enable embedded wallets in Privy config
+- [ ] Display wallet address in profile
+- [ ] Plan Web3 features (NFT achievements, tokenized rewards, cosmetics store)
+
+#### 🎮 Enhanced Profile System (Priority: Medium)
+- [ ] Replace mock data with real database queries
+- [ ] Add profile customization (bio, region, preferred settings)
+- [ ] Implement friends system and following features
+- [ ] Create private rooms with password protection
+
+#### 🏆 Achievement System (Priority: Low)
+- [ ] Gameplay achievements (first kill, mass thresholds, survival time)
+- [ ] Social achievements (playing with friends, follower milestones)
+- [ ] Special badges and rewards
+
+#### 🔧 Technical Improvements
+**Backend Architecture:**
+- [ ] RESTful API layer for user data
+- [ ] Redis caching for sessions and leaderboard
+- [ ] Queue system for async stats processing
+
+**Code Organization:**
+- [ ] Break out GameControls into separate class (`src/client/js/app.js:96`)
+- [ ] Refactor GameControls into separate modules (`src/client/js/chat-client.js:24`)
+
+**Performance:**
+- [ ] Consider WebGL rendering for better performance
+- [ ] Implement replay system
+
+**Security:**
+- [ ] Rate limiting for API endpoints
+- [ ] Input validation for user data
+- [ ] Enhanced anti-cheat measures
 
 ### 📊 Recent Changes
 
