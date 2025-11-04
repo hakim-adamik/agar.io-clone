@@ -55,22 +55,60 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         profile: {
             title: 'Player Profile',
-            content: `
-                <div style="padding: 1.5rem; background: rgba(74, 144, 226, 0.1); border-radius: 10px; margin: 1.5rem 0; display: flex; align-items: center; gap: 1.5rem;">
-                    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white;">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div>
-                        <h3 style="margin-bottom: 0.25rem;">Guest Player</h3>
-                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Not logged in</p>
-                    </div>
-                </div>
-                <div style="text-align: center; padding: 2rem; margin: 2rem 0;">
-                    <i class="fas fa-lock" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: block;"></i>
-                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 1rem;">Sign in to compete on the leaderboard and earn exclusive rewards!</p>
-                    <button class="modal-button" style="padding: 0.75rem 2rem; font-size: 1rem;">Sign In / Register</button>
-                </div>
-            `
+            getContent: function() {
+                // Check if user is authenticated
+                const isAuthenticated = window.TurnkeyAuth?.isAuthenticated?.();
+                const user = window.TurnkeyAuth?.getUser?.();
+
+                if (isAuthenticated && user) {
+                    // Show authenticated user profile
+                    const displayName = user.displayName || user.email?.split('@')[0] || 'Player';
+                    const email = user.email || '';
+                    const provider = user.provider || 'Email';
+
+                    return `
+                        <div style="padding: 1.5rem; background: rgba(74, 144, 226, 0.1); border-radius: 10px; margin: 1.5rem 0; display: flex; align-items: center; gap: 1.5rem;">
+                            <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white;">
+                                ${user.picture ?
+                                    `<img src="${user.picture}" alt="${displayName}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` :
+                                    `<i class="fas fa-user"></i>`
+                                }
+                            </div>
+                            <div>
+                                <h3 style="margin-bottom: 0.25rem;">${displayName}</h3>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">Signed in via ${provider}</p>
+                                ${email ? `<p style="color: var(--text-secondary); font-size: 0.85rem;">${email}</p>` : ''}
+                            </div>
+                        </div>
+                        <div style="text-align: center; padding: 2rem; margin: 2rem 0;">
+                            <i class="fas fa-check-circle" style="font-size: 3rem; color: var(--primary-green); margin-bottom: 1rem; display: block;"></i>
+                            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 1rem;">You're all set! Jump into the game to compete on the leaderboard.</p>
+                            <button class="modal-button" onclick="window.TurnkeyAuth.logout(); this.closest('.modal').classList.remove('show');" style="padding: 0.75rem 2rem; font-size: 1rem; background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5);">Sign Out</button>
+                        </div>
+                    `;
+                } else {
+                    // Show guest profile with sign-in prompt
+                    return `
+                        <div style="padding: 1.5rem; background: rgba(74, 144, 226, 0.1); border-radius: 10px; margin: 1.5rem 0; display: flex; align-items: center; gap: 1.5rem;">
+                            <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin-bottom: 0.25rem;">Guest Player</h3>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">Not logged in</p>
+                            </div>
+                        </div>
+                        <div style="text-align: center; padding: 2rem; margin: 2rem 0;">
+                            <i class="fas fa-lock" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: block;"></i>
+                            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 1rem;">Sign in to compete on the leaderboard and earn exclusive rewards!</p>
+                            <button class="modal-button" onclick="this.closest('.modal').classList.remove('show'); window.dispatchEvent(new CustomEvent('auth:show-modal'));" style="padding: 0.75rem 2rem; font-size: 1rem;">Sign In / Register</button>
+                        </div>
+                    `;
+                }
+            },
+            get content() {
+                return this.getContent();
+            }
         }
     };
 
@@ -179,13 +217,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const template = modalTemplates[section];
             if (!template) return;
 
-            // Special handling for profile - show auth modal instead
+            // Special handling for profile - show auth modal if not authenticated
             if (section === 'profile') {
-                // Remove active state
-                elements.navItems.forEach(nav => nav.classList.remove('active'));
-                // Show auth modal
-                window.dispatchEvent(new CustomEvent('auth:show-modal'));
-                return;
+                const isAuthenticated = window.TurnkeyAuth?.isAuthenticated?.();
+                if (!isAuthenticated) {
+                    // Remove active state
+                    elements.navItems.forEach(nav => nav.classList.remove('active'));
+                    // Show auth modal
+                    window.dispatchEvent(new CustomEvent('auth:show-modal'));
+                    return;
+                }
+                // Continue to show profile modal if authenticated
             }
 
             let modal = document.getElementById('sectionModal');
@@ -217,6 +259,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
             showModal('sectionModal');
         });
+    });
+
+    // Listen for authentication state changes
+    window.addEventListener('auth:login', (event) => {
+        // Update UI when user logs in
+        console.log('User logged in:', event.detail);
+        // If profile modal is open, refresh its content
+        const modal = document.getElementById('sectionModal');
+        if (modal && modal.classList.contains('show')) {
+            const modalContent = document.getElementById('modalContent');
+            const activeNav = document.querySelector('.nav-item.active');
+            if (activeNav && activeNav.dataset.section === 'profile') {
+                modalContent.innerHTML = `
+                    <h2>${modalTemplates.profile.title}</h2>
+                    ${modalTemplates.profile.content}
+                `;
+            }
+        }
+    });
+
+    window.addEventListener('auth:logout', () => {
+        // Update UI when user logs out
+        console.log('User logged out');
+        // Close any open profile modal
+        const modal = document.getElementById('sectionModal');
+        if (modal && modal.classList.contains('show')) {
+            const activeNav = document.querySelector('.nav-item.active');
+            if (activeNav && activeNav.dataset.section === 'profile') {
+                modal.classList.remove('show');
+                elements.navItems.forEach(nav => nav.classList.remove('active'));
+            }
+        }
+    });
+
+    window.addEventListener('auth:update-ui', () => {
+        // Generic UI update event
+        console.log('Auth UI update requested');
     });
 
     // Initialize parallax effect

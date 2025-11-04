@@ -207,21 +207,22 @@ class TurnkeyServerAuth {
     const picture = payload.picture;
     const sessionToken = this.generateSessionToken();
 
-    // Create sub-org for Google user
+    // Create sub-org for Google user (skip for now until Turnkey SDK is fully implemented)
     let walletAddress = null;
-    if (this.sdk && email) {
-      try {
-        const subOrg = await this.getOrCreateUserSubOrg(email, userId);
-        const wallets = await this.sdk.getWallets({
-          organizationId: subOrg.organizationId
-        });
-        if (wallets && wallets.length > 0) {
-          walletAddress = wallets[0].addresses?.[0];
-        }
-      } catch (error) {
-        console.error('Google auth sub-org error:', error);
-      }
-    }
+    // TODO: Uncomment when Turnkey SDK is properly installed
+    // if (this.sdk && email) {
+    //   try {
+    //     const subOrg = await this.getOrCreateUserSubOrg(email, userId);
+    //     const wallets = await this.sdk.getWallets({
+    //       organizationId: subOrg.organizationId
+    //     });
+    //     if (wallets && wallets.length > 0) {
+    //       walletAddress = wallets[0].addresses?.[0];
+    //     }
+    //   } catch (error) {
+    //     console.error('Google auth sub-org error:', error);
+    //   }
+    // }
     const session = {
       token: sessionToken,
       user: {
@@ -229,7 +230,8 @@ class TurnkeyServerAuth {
         email: email,
         displayName: name || email.split('@')[0],
         picture: picture,
-        authenticationType: 'google'
+        authenticationType: 'google',
+        provider: 'Google'  // Add provider field for UI display
       },
       walletAddress: walletAddress,
       createdAt: Date.now(),

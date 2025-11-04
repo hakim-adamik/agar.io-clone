@@ -90,7 +90,7 @@ class TurnkeyAuthClient {
 
                     if (response.ok) {
                         const data = await response.json();
-                        this.updateAuthState(data);
+                        this.updateAuthState(data, true);  // Pass flag to indicate this is a session restore
                         return true;
                     }
                 }
@@ -292,7 +292,7 @@ class TurnkeyAuthClient {
         window.dispatchEvent(new CustomEvent('auth:logout'));
     }
 
-    updateAuthState(authData) {
+    updateAuthState(authData, isSessionRestore = false) {
         this.authState = {
             isAuthenticated: true,
             isGuest: false,
@@ -302,12 +302,26 @@ class TurnkeyAuthClient {
         };
 
         // Dispatch authentication event
-        window.dispatchEvent(new CustomEvent('auth:login', {
-            detail: {
-                user: authData.user,
-                isAuthenticated: true
-            }
-        }));
+        // Use a small delay for session restore to ensure DOM is ready
+        if (isSessionRestore) {
+            setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('auth:login', {
+                    detail: {
+                        user: authData.user,
+                        isAuthenticated: true,
+                        isSessionRestore: true
+                    }
+                }));
+            }, 100);
+        } else {
+            window.dispatchEvent(new CustomEvent('auth:login', {
+                detail: {
+                    user: authData.user,
+                    isAuthenticated: true,
+                    isSessionRestore: false
+                }
+            }));
+        }
     }
 
     saveSession(authData) {

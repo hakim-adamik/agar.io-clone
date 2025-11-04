@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Debug</title>
+</head>
+<body>
+    <h1>Authentication Debug</h1>
+
+    <h2>LocalStorage Contents:</h2>
+    <pre id="storage"></pre>
+
+    <h2>TurnkeyAuth State:</h2>
+    <pre id="authState"></pre>
+
+    <button onclick="clearStorage()">Clear LocalStorage</button>
+    <button onclick="location.href='/'">Go to Main Site</button>
+
+    <script>
+        function displayStorage() {
+            const storage = document.getElementById('storage');
+            const session = localStorage.getItem('turnkey_session');
+            if (session) {
+                try {
+                    const parsed = JSON.parse(session);
+                    storage.textContent = JSON.stringify(parsed, null, 2);
+                } catch(e) {
+                    storage.textContent = 'Error parsing: ' + session;
+                }
+            } else {
+                storage.textContent = 'No session in localStorage';
+            }
+        }
+
+        function clearStorage() {
+            localStorage.removeItem('turnkey_session');
+            alert('Session cleared!');
+            displayStorage();
+        }
+
+        // Display on load
+        displayStorage();
+
+        // Check auth state after scripts load
+        setTimeout(() => {
+            const authState = document.getElementById('authState');
+            if (window.TurnkeyAuth) {
+                authState.textContent = JSON.stringify({
+                    isAuthenticated: window.TurnkeyAuth.isAuthenticated(),
+                    user: window.TurnkeyAuth.getUser(),
+                    authState: window.TurnkeyAuth.authState
+                }, null, 2);
+            } else {
+                authState.textContent = 'TurnkeyAuth not loaded';
+            }
+        }, 1000);
+    </script>
+
+    <!-- Load auth scripts -->
+    <script src="/auth/turnkey-client.js"></script>
+</body>
+</html>

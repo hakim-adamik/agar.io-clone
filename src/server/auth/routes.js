@@ -93,7 +93,8 @@ router.post('/auth/validate', (req, res) => {
   }
   res.json({
     user: session.user,
-    walletAddress: session.walletAddress
+    walletAddress: session.walletAddress,
+    token: token  // Return the same token so client can continue using it
   });
 });
 
