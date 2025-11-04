@@ -4,13 +4,21 @@ const fs = require('fs');
 const config = require('../../config');
 
 const sqlInfo = config.sqlinfo;
-const dbPath = path.join(__dirname, 'db', sqlInfo.fileName);
 
-// Ensure the database folder exists
-const dbFolder = path.dirname(dbPath);
-if (!fs.existsSync(dbFolder)) {
-  fs.mkdirSync(dbFolder, { recursive: true });
-  console.log(`Created the database folder: ${dbFolder}`);
+// Use /tmp directory on Vercel (serverless functions have read-only filesystem except /tmp)
+// For local development, use the project directory
+const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
+const dbPath = isVercel
+  ? path.join('/tmp', sqlInfo.fileName)
+  : path.join(__dirname, 'db', sqlInfo.fileName);
+
+// Ensure the database folder exists (only needed for local development)
+if (!isVercel) {
+  const dbFolder = path.dirname(dbPath);
+  if (!fs.existsSync(dbFolder)) {
+    fs.mkdirSync(dbFolder, { recursive: true });
+    console.log(`Created the database folder: ${dbFolder}`);
+  }
 }
 
 // Create the database connection
