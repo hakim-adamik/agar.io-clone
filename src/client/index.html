@@ -1,231 +1,290 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <!-- Meta Properties -->
-    <meta charset="UTF-8">
-    <title>Clash of Cells</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <head>
+        <!-- Meta Properties -->
+        <meta charset="UTF-8" />
+        <title>Clash of Cells</title>
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no"
+        />
 
-    <!-- CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/landing.css">
+        <!-- CSS -->
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        />
+        <link rel="stylesheet" href="css/main.css" />
+        <link rel="stylesheet" href="css/landing.css" />
 
-    <!-- Audio -->
-    <audio id="split_cell" src="audio/split.mp3"></audio>
-    <audio id="spawn_cell" src="audio/spawn.mp3"></audio>
-</head>
-<body>
-    <!-- Landing Page View -->
-    <div id="landingView" class="view-container">
-        <!-- Animated background cells -->
-        <div class="background-animation">
-            <!-- Large cells -->
-            <div class="floating-cell cell-large-1"></div>
-            <div class="floating-cell cell-large-2"></div>
-            <div class="floating-cell cell-large-3"></div>
-            <!-- Medium cells -->
-            <div class="floating-cell cell-med-1"></div>
-            <div class="floating-cell cell-med-2"></div>
-            <div class="floating-cell cell-med-3"></div>
-            <div class="floating-cell cell-med-4"></div>
-            <!-- Small cells -->
-            <div class="floating-cell cell-small-1"></div>
-            <div class="floating-cell cell-small-2"></div>
-            <div class="floating-cell cell-small-3"></div>
-            <div class="floating-cell cell-small-4"></div>
-            <div class="floating-cell cell-small-5"></div>
-            <!-- Tiny food particles -->
-            <div class="floating-cell cell-tiny-1"></div>
-            <div class="floating-cell cell-tiny-2"></div>
-            <div class="floating-cell cell-tiny-3"></div>
-            <div class="floating-cell cell-tiny-4"></div>
-            <div class="floating-cell cell-tiny-5"></div>
-            <div class="floating-cell cell-tiny-6"></div>
-            <!-- Virus cells -->
-            <div class="virus-cell virus-1"></div>
-            <div class="virus-cell virus-2"></div>
-            <div class="virus-cell virus-3"></div>
+        <!-- Audio -->
+        <audio id="split_cell" src="audio/split.mp3"></audio>
+        <audio id="spawn_cell" src="audio/spawn.mp3"></audio>
+    </head>
+    <body>
+        <!-- Landing Page View -->
+        <div id="landingView" class="view-container">
+            <!-- Animated background cells -->
+            <div class="background-animation">
+                <!-- Large cells -->
+                <div class="floating-cell cell-large-1"></div>
+                <div class="floating-cell cell-large-2"></div>
+                <div class="floating-cell cell-large-3"></div>
+                <!-- Medium cells -->
+                <div class="floating-cell cell-med-1"></div>
+                <div class="floating-cell cell-med-2"></div>
+                <div class="floating-cell cell-med-3"></div>
+                <div class="floating-cell cell-med-4"></div>
+                <!-- Small cells -->
+                <div class="floating-cell cell-small-1"></div>
+                <div class="floating-cell cell-small-2"></div>
+                <div class="floating-cell cell-small-3"></div>
+                <div class="floating-cell cell-small-4"></div>
+                <div class="floating-cell cell-small-5"></div>
+                <!-- Tiny food particles -->
+                <div class="floating-cell cell-tiny-1"></div>
+                <div class="floating-cell cell-tiny-2"></div>
+                <div class="floating-cell cell-tiny-3"></div>
+                <div class="floating-cell cell-tiny-4"></div>
+                <div class="floating-cell cell-tiny-5"></div>
+                <div class="floating-cell cell-tiny-6"></div>
+                <!-- Virus cells -->
+                <div class="virus-cell virus-1"></div>
+                <div class="virus-cell virus-2"></div>
+                <div class="virus-cell virus-3"></div>
+            </div>
+
+            <div class="landing-container">
+                <!-- Top Navigation -->
+                <nav class="top-nav"></nav>
+
+                <!-- Main content area -->
+                <main class="main-content">
+                    <!-- Game Logo/Title -->
+                    <div class="game-branding">
+                        <div class="game-subtitle">FREE FOR ALL</div>
+                        <h1 class="game-title">CLASH OF CELLS</h1>
+                    </div>
+
+                    <!-- Central Action Buttons -->
+                    <div class="action-area">
+                        <div class="action-buttons">
+                            <button class="how-to-play-btn" id="howToPlayBtn">
+                                <i class="fas fa-gamepad"></i>
+                                <span>HOW TO PLAY</span>
+                            </button>
+                            <button class="play-btn" id="playBtn">
+                                <span>Play</span>
+                            </button>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- Bottom Navigation -->
+                <nav class="bottom-nav">
+                    <div class="nav-item" data-section="social">
+                        <i class="fab fa-discord"></i>
+                        <span>SOCIAL</span>
+                    </div>
+                    <div class="nav-item" data-section="support">
+                        <i class="fas fa-headset"></i>
+                        <span>SUPPORT</span>
+                    </div>
+                    <div class="nav-item coming-soon" data-section="leaders">
+                        <i class="fas fa-trophy"></i>
+                        <span>LEADERS</span>
+                        <span class="coming-soon-badge">Coming Soon</span>
+                    </div>
+                    <div class="nav-item" data-section="profile">
+                        <i class="fas fa-user-circle"></i>
+                        <span>PROFILE</span>
+                    </div>
+                </nav>
+            </div>
         </div>
 
-        <div class="landing-container">
-            <!-- Top Navigation -->
-            <nav class="top-nav"></nav>
-
-            <!-- Main content area -->
-            <main class="main-content">
-                <!-- Game Logo/Title -->
-                <div class="game-branding">
-                    <div class="game-subtitle">FREE FOR ALL</div>
-                    <h1 class="game-title">CLASH OF CELLS</h1>
+        <!-- Game View -->
+        <div id="gameView" class="view-container" style="display: none">
+            <div id="gameAreaWrapper">
+                <div id="fpsCounter">FPS: -- | UPS: --</div>
+                <div id="status"><span class="title">Leaderboard</span></div>
+                <div class="chatbox" id="chatbox">
+                    <ul id="chatList" class="chat-list"></ul>
+                    <input
+                        id="chatInput"
+                        type="text"
+                        class="chat-input"
+                        placeholder="Chat here..."
+                        maxlength="35"
+                    />
                 </div>
+                <div id="mobile">
+                    <input
+                        type="image"
+                        id="split"
+                        class="split"
+                        src="img/split.png"
+                        alt="splitBtn"
+                    />
+                    <input
+                        type="image"
+                        id="feed"
+                        class="feed"
+                        src="img/feed.png"
+                        alt="feedBtn"
+                    />
+                </div>
+                <canvas tabindex="1" id="cvs"></canvas>
+            </div>
 
-                <!-- Central Action Buttons -->
-                <div class="action-area">
-                    <div class="action-buttons">
-                        <button class="how-to-play-btn" id="howToPlayBtn">
-                            <i class="fas fa-gamepad"></i>
-                            <span>HOW TO PLAY</span>
-                        </button>
-                        <button class="play-btn" id="playBtn">
-                            <span>Play</span>
-                        </button>
+            <!-- Settings Button (floating during gameplay) -->
+            <button id="gameSettingsBtn" class="game-settings-btn">
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+
+        <!-- Hidden elements for game initialization -->
+        <div style="display: none">
+            <input type="text" id="playerNameInput" value="" />
+            <div id="startMenuWrapper" style="max-height: 0px"></div>
+            <div id="startMenu">
+                <button id="startButton">Play</button>
+                <button id="spectateButton">Spectate</button>
+                <button id="settingsButton">Settings</button>
+                <div id="settings">
+                    <label
+                        ><input id="visBord" type="checkbox" />Show
+                        border</label
+                    >
+                    <label
+                        ><input id="showMass" type="checkbox" />Show mass</label
+                    >
+                    <label
+                        ><input id="continuity" type="checkbox" />Continue
+                        moving when mouse is off-screen</label
+                    >
+                    <label
+                        ><input id="roundFood" type="checkbox" checked />Rounded
+                        food</label
+                    >
+                    <label
+                        ><input id="darkMode" type="checkbox" />Toggle Dark
+                        Mode</label
+                    >
+                    <label
+                        ><input id="showFps" type="checkbox" checked />Show
+                        FPS/UPS Counter</label
+                    >
+                </div>
+            </div>
+        </div>
+
+        <!-- Modals -->
+        <!-- How to Play Modal -->
+        <div class="modal" id="tutorialModal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>How to Play</h2>
+                <div class="tutorial-content">
+                    <div class="tutorial-step">
+                        <i class="fas fa-mouse-pointer"></i>
+                        <h3>Movement</h3>
+                        <p>
+                            Move your mouse on the screen to control your
+                            character's direction.
+                        </p>
+                    </div>
+                    <div class="tutorial-step">
+                        <i class="fas fa-cookie-bite"></i>
+                        <h3>Grow</h3>
+                        <p>
+                            Eat food and smaller players to increase your mass
+                            and size.
+                        </p>
+                    </div>
+                    <div class="tutorial-step">
+                        <i class="fas fa-divide"></i>
+                        <h3>Split</h3>
+                        <p>
+                            Press SPACE to split into multiple cells and capture
+                            other players.
+                        </p>
+                    </div>
+                    <div class="tutorial-step">
+                        <i class="fas fa-hand-holding-heart"></i>
+                        <h3>Feed</h3>
+                        <p>
+                            Press W to eject mass and feed teammates or bait
+                            enemies.
+                        </p>
+                    </div>
+                    <div class="tutorial-step">
+                        <i class="fas fa-running"></i>
+                        <h3>Escape</h3>
+                        <p>
+                            Exit strategically before being eaten to secure your
+                            gains.
+                        </p>
+                    </div>
+                    <div class="tutorial-step">
+                        <i class="fas fa-crown"></i>
+                        <h3>Objective</h3>
+                        <p>Dominate the leaderboard by earning more points!</p>
                     </div>
                 </div>
-            </main>
-
-            <!-- Bottom Navigation -->
-            <nav class="bottom-nav">
-                <div class="nav-item" data-section="social">
-                    <i class="fab fa-discord"></i>
-                    <span>SOCIAL</span>
-                </div>
-                <div class="nav-item" data-section="support">
-                    <i class="fas fa-headset"></i>
-                    <span>SUPPORT</span>
-                </div>
-                <div class="nav-item coming-soon" data-section="leaders">
-                    <i class="fas fa-trophy"></i>
-                    <span>LEADERS</span>
-                    <span class="coming-soon-badge">Coming Soon</span>
-                </div>
-                <div class="nav-item" data-section="profile">
-                    <i class="fas fa-user-circle"></i>
-                    <span>PROFILE</span>
-                </div>
-            </nav>
-        </div>
-    </div>
-
-    <!-- Game View -->
-    <div id="gameView" class="view-container" style="display: none;">
-        <div id="gameAreaWrapper">
-            <div id="fpsCounter">FPS: -- | UPS: --</div>
-            <div id="status"><span class="title">Leaderboard</span></div>
-            <div class="chatbox" id="chatbox">
-                <ul id="chatList" class="chat-list"></ul>
-                <input id="chatInput" type="text" class="chat-input" placeholder="Chat here..." maxlength="35">
-            </div>
-            <div id="mobile">
-                <input type="image" id="split" class="split" src="img/split.png" alt="splitBtn">
-                <input type="image" id="feed" class="feed" src="img/feed.png" alt="feedBtn">
-            </div>
-            <canvas tabindex="1" id="cvs"></canvas>
-        </div>
-
-        <!-- Settings Button (floating during gameplay) -->
-        <button id="gameSettingsBtn" class="game-settings-btn">
-            <i class="fas fa-cog"></i>
-        </button>
-    </div>
-
-    <!-- Hidden elements for game initialization -->
-    <div style="display: none;">
-        <input type="text" id="playerNameInput" value="">
-        <div id="startMenuWrapper" style="max-height: 0px;"></div>
-        <div id="startMenu">
-            <button id="startButton">Play</button>
-            <button id="spectateButton">Spectate</button>
-            <button id="settingsButton">Settings</button>
-            <div id="settings">
-                <label><input id="visBord" type="checkbox">Show border</label>
-                <label><input id="showMass" type="checkbox">Show mass</label>
-                <label><input id="continuity" type="checkbox">Continue moving when mouse is off-screen</label>
-                <label><input id="roundFood" type="checkbox" checked>Rounded food</label>
-                <label><input id="darkMode" type="checkbox">Toggle Dark Mode</label>
-                <label><input id="showFps" type="checkbox" checked>Show FPS/UPS Counter</label>
+                <button class="modal-button" id="startFromTutorial">
+                    Got it! Let's Play
+                </button>
             </div>
         </div>
-    </div>
 
-    <!-- Modals -->
-    <!-- How to Play Modal -->
-    <div class="modal" id="tutorialModal">
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <h2>How to Play</h2>
-            <div class="tutorial-content">
-                <div class="tutorial-step">
-                    <i class="fas fa-mouse-pointer"></i>
-                    <h3>Movement</h3>
-                    <p>Move your mouse on the screen to control your character's direction.</p>
+        <!-- Settings Modal (for during gameplay) -->
+        <div class="modal" id="settingsModal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2><i class="fas fa-cog"></i> Game Settings</h2>
+                <div class="settings-content">
+                    <label class="setting-item">
+                        <input type="checkbox" id="visBordGame" />
+                        <span>Show Border</span>
+                    </label>
+                    <label class="setting-item">
+                        <input type="checkbox" id="showMassGame" />
+                        <span>Show Mass</span>
+                    </label>
+                    <label class="setting-item">
+                        <input type="checkbox" id="continuityGame" />
+                        <span>Continue Moving Off-Screen</span>
+                    </label>
+                    <label class="setting-item">
+                        <input type="checkbox" id="roundFoodGame" checked />
+                        <span>Rounded Food</span>
+                    </label>
+                    <label class="setting-item">
+                        <input type="checkbox" id="darkModeGame" />
+                        <span>Dark Mode</span>
+                    </label>
+                    <label class="setting-item">
+                        <input type="checkbox" id="showFpsGame" checked />
+                        <span>Show FPS/UPS Counter</span>
+                    </label>
                 </div>
-                <div class="tutorial-step">
-                    <i class="fas fa-cookie-bite"></i>
-                    <h3>Grow</h3>
-                    <p>Eat food and smaller players to increase your mass and size.</p>
-                </div>
-                <div class="tutorial-step">
-                    <i class="fas fa-divide"></i>
-                    <h3>Split</h3>
-                    <p>Press SPACE to split into multiple cells and capture other players.</p>
-                </div>
-                <div class="tutorial-step">
-                    <i class="fas fa-hand-holding-heart"></i>
-                    <h3>Feed</h3>
-                    <p>Press W to eject mass and feed teammates or bait enemies.</p>
-                </div>
-                <div class="tutorial-step">
-                    <i class="fas fa-running"></i>
-                    <h3>Escape</h3>
-                    <p>Exit strategically before being eaten to secure your gains.</p>
-                </div>
-                <div class="tutorial-step">
-                    <i class="fas fa-crown"></i>
-                    <h3>Objective</h3>
-                    <p>Dominate the leaderboard by earning more points!</p>
-                </div>
+                <button class="modal-button close-settings">Close</button>
             </div>
-            <button class="modal-button" id="startFromTutorial">Got it! Let's Play</button>
         </div>
-    </div>
 
-    <!-- Settings Modal (for during gameplay) -->
-    <div class="modal" id="settingsModal">
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <h2><i class="fas fa-cog"></i> Game Settings</h2>
-            <div class="settings-content">
-                <label class="setting-item">
-                    <input type="checkbox" id="visBordGame">
-                    <span>Show Border</span>
-                </label>
-                <label class="setting-item">
-                    <input type="checkbox" id="showMassGame">
-                    <span>Show Mass</span>
-                </label>
-                <label class="setting-item">
-                    <input type="checkbox" id="continuityGame">
-                    <span>Continue Moving Off-Screen</span>
-                </label>
-                <label class="setting-item">
-                    <input type="checkbox" id="roundFoodGame" checked>
-                    <span>Rounded Food</span>
-                </label>
-                <label class="setting-item">
-                    <input type="checkbox" id="darkModeGame">
-                    <span>Dark Mode</span>
-                </label>
-                <label class="setting-item">
-                    <input type="checkbox" id="showFpsGame" checked>
-                    <span>Show FPS/UPS Counter</span>
-                </label>
+        <!-- Other Section Modal -->
+        <div class="modal" id="sectionModal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <div id="modalContent"></div>
             </div>
-            <button class="modal-button close-settings">Close</button>
         </div>
-    </div>
 
-    <!-- Other Section Modal -->
-    <div class="modal" id="sectionModal">
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <div id="modalContent"></div>
-        </div>
-    </div>
-
-    <!-- JS -->
-    <script src="//code.jquery.com/jquery-2.2.0.min.js"></script>
-    <script src="js/landing.js"></script>
-    <script src="js/app.js"></script>
-</body>
+        <!-- JS -->
+        <script src="//code.jquery.com/jquery-2.2.0.min.js"></script>
+        <script src="js/game-config.js"></script>
+        <script src="js/landing.js"></script>
+        <script src="js/app.js"></script>
+    </body>
 </html>
