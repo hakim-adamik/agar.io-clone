@@ -22,13 +22,96 @@ function generateGuestName() {
 }
 
 // Global function for seamless game start from landing page
-window.startSeamlessGame = function() {
+window.startSeamlessGame = function () {
     var playerNameInput = document.getElementById("playerNameInput");
     if (!playerNameInput.value) {
         playerNameInput.value = generateGuestName();
     }
+
+    // Apply default game settings from config
+    applyDefaultGameSettings();
+
     startGame("player");
 };
+
+// Apply default game settings based on configuration
+function applyDefaultGameSettings() {
+    // Ensure chat/settings is initialized first
+    if (!window.chat) {
+        window.chat = new ChatClient();
+    }
+    var settings = window.chat;
+
+    var config = window.gameConfig || {};
+    var defaults = config.getSettings ? config.getSettings() : {};
+
+    // Apply each default setting if defined
+    if (defaults.darkMode !== undefined) {
+        var shouldEnable = defaults.darkMode;
+        var isEnabled = global.backgroundColor === "#181818";
+        if (shouldEnable !== isEnabled) {
+            settings.toggleDarkMode();
+        }
+    }
+
+    if (defaults.showMass !== undefined) {
+        var shouldShow = defaults.showMass;
+        var isShowing = global.toggleMassState === 1;
+        if (shouldShow !== isShowing) {
+            settings.toggleMass();
+        }
+    }
+
+    if (defaults.showBorder !== undefined) {
+        var shouldShow = defaults.showBorder;
+        if (shouldShow !== global.borderDraw) {
+            settings.toggleBorder();
+        }
+    }
+
+    if (defaults.continuity !== undefined) {
+        var shouldEnable = defaults.continuity;
+        if (shouldEnable !== global.continuity) {
+            settings.toggleContinuity();
+        }
+    }
+
+    if (defaults.showFps !== undefined) {
+        var shouldShow = defaults.showFps;
+        if (shouldShow !== global.showFpsCounter) {
+            settings.toggleFpsDisplay();
+        }
+    }
+
+    // Sync checkbox states
+    syncSettingsCheckboxes();
+}
+
+// Sync all settings checkboxes with current global state
+function syncSettingsCheckboxes() {
+    var checkboxSync = [
+        {
+            ids: ["darkMode", "darkModeGame"],
+            value: global.backgroundColor === "#181818",
+        },
+        {
+            ids: ["showMass", "showMassGame"],
+            value: global.toggleMassState === 1,
+        },
+        { ids: ["visBord", "visBordGame"], value: global.borderDraw },
+        { ids: ["continuity", "continuityGame"], value: global.continuity },
+        { ids: ["showFps", "showFpsGame"], value: global.showFpsCounter },
+    ];
+
+    checkboxSync.forEach(function (sync) {
+        sync.ids.forEach(function (id) {
+            var element = document.getElementById(id);
+            if (element) {
+                element.checked = sync.value;
+            }
+        });
+    });
+}
 
 function startGame(type) {
     // Auto-generate guest name if empty
@@ -52,7 +135,7 @@ function startGame(type) {
         // Completely hide the landing view
         landingView.style.display = "none";
         gameView.style.display = "block";
-        setTimeout(function() {
+        setTimeout(function () {
             document.getElementById("gameAreaWrapper").style.opacity = 1;
         }, 50);
     } else {
@@ -306,7 +389,7 @@ window.onload = function () {
     // Game settings button (during gameplay)
     var gameSettingsBtn = document.getElementById("gameSettingsBtn");
     if (gameSettingsBtn) {
-        gameSettingsBtn.onclick = function() {
+        gameSettingsBtn.onclick = function () {
             showModal("settingsModal");
         };
     }
@@ -314,7 +397,7 @@ window.onload = function () {
     // Settings modal close button
     var closeSettingsBtn = document.querySelector(".close-settings");
     if (closeSettingsBtn) {
-        closeSettingsBtn.onclick = function() {
+        closeSettingsBtn.onclick = function () {
             closeModal(document.getElementById("settingsModal"));
         };
     }
@@ -397,7 +480,7 @@ darkModeSetting.onchange = settings.toggleDarkMode;
 // Sync game settings modal checkboxes
 var visBordGame = document.getElementById("visBordGame");
 if (visBordGame) {
-    visBordGame.onchange = function() {
+    visBordGame.onchange = function () {
         visibleBorderSetting.checked = this.checked;
         settings.toggleBorder();
     };
@@ -405,7 +488,7 @@ if (visBordGame) {
 
 var showMassGame = document.getElementById("showMassGame");
 if (showMassGame) {
-    showMassGame.onchange = function() {
+    showMassGame.onchange = function () {
         showMassSetting.checked = this.checked;
         settings.toggleMass();
     };
@@ -413,7 +496,7 @@ if (showMassGame) {
 
 var continuityGame = document.getElementById("continuityGame");
 if (continuityGame) {
-    continuityGame.onchange = function() {
+    continuityGame.onchange = function () {
         continuitySetting.checked = this.checked;
         settings.toggleContinuity();
     };
@@ -421,7 +504,7 @@ if (continuityGame) {
 
 var roundFoodGame = document.getElementById("roundFoodGame");
 if (roundFoodGame) {
-    roundFoodGame.onchange = function() {
+    roundFoodGame.onchange = function () {
         roundFoodSetting.checked = this.checked;
         settings.toggleRoundFood();
     };
@@ -429,7 +512,7 @@ if (roundFoodGame) {
 
 var darkModeGame = document.getElementById("darkModeGame");
 if (darkModeGame) {
-    darkModeGame.onchange = function() {
+    darkModeGame.onchange = function () {
         darkModeSetting.checked = this.checked;
         settings.toggleDarkMode();
     };
@@ -437,7 +520,7 @@ if (darkModeGame) {
 
 var showFpsGame = document.getElementById("showFpsGame");
 if (showFpsGame) {
-    showFpsGame.onchange = function() {
+    showFpsGame.onchange = function () {
         showFpsSetting.checked = this.checked;
         settings.toggleFpsDisplay();
     };
@@ -679,7 +762,6 @@ var lastPositionUpdateTime = 0;
         // Ignore localStorage errors
     }
 })();
-
 
 // Use performance.now() if available, fallback to Date.now()
 var getTime = (function () {
