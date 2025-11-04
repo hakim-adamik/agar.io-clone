@@ -55,22 +55,92 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         profile: {
             title: 'Player Profile',
-            content: `
-                <div style="padding: 1.5rem; background: rgba(74, 144, 226, 0.1); border-radius: 10px; margin: 1.5rem 0; display: flex; align-items: center; gap: 1.5rem;">
-                    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white;">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div>
-                        <h3 style="margin-bottom: 0.25rem;">Guest Player</h3>
-                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Not logged in</p>
-                    </div>
-                </div>
-                <div style="text-align: center; padding: 2rem; margin: 2rem 0;">
-                    <i class="fas fa-lock" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: block;"></i>
-                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 1rem;">Sign in to compete on the leaderboard and earn exclusive rewards!</p>
-                    <button class="modal-button auth-trigger-btn" style="padding: 0.75rem 2rem; font-size: 1rem;">Sign In / Register</button>
-                </div>
-            `
+            dynamic: true, // This will be generated dynamically
+            getContent: function() {
+                // Check if user is authenticated
+                const isAuthenticated = window.PrivyAuth && window.PrivyAuth.isAuthenticated();
+                const user = isAuthenticated ? window.PrivyAuth.getUser() : null;
+
+                if (isAuthenticated && user) {
+                    // Authenticated user content with avatar, name, and mocked stats
+                    const displayName = user.name || 'Player';
+                    const provider = user.provider || 'email';
+                    const avatarUrl = user.avatar || null; // Will be available from Google/Discord
+
+                    // Mock player statistics
+                    const stats = {
+                        gamesPlayed: Math.floor(Math.random() * 150) + 50,
+                        highScore: Math.floor(Math.random() * 50000) + 10000,
+                        totalMass: Math.floor(Math.random() * 500000) + 100000,
+                        winRate: (Math.random() * 40 + 40).toFixed(1), // 40-80%
+                        rank: Math.floor(Math.random() * 1000) + 1
+                    };
+
+                    return `
+                        <div style="padding: 1.5rem; background: rgba(74, 144, 226, 0.1); border-radius: 10px; margin: 1.5rem 0; display: flex; align-items: center; gap: 1.5rem;">
+                            <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white; position: relative;">
+                                ${avatarUrl ?
+                                    `<img src="${avatarUrl}" alt="${displayName}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` :
+                                    `<i class="fas fa-user-check"></i>`
+                                }
+                                <div style="position: absolute; bottom: -2px; right: -2px; width: 24px; height: 24px; background: #4CAF50; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white;">
+                                    <i class="fas fa-${provider === 'google' ? 'google' : provider === 'discord' ? 'discord' : provider === 'twitter' ? 'twitter' : 'envelope'}" style="font-size: 10px; color: white;"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 style="margin-bottom: 0.25rem; color: #4CAF50;">${displayName}</h3>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">Logged in via ${provider.charAt(0).toUpperCase() + provider.slice(1)}</p>
+                                <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                                    <span style="font-size: 0.8rem; color: var(--primary-green);">Rank #${stats.rank}</span>
+                                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Win Rate: ${stats.winRate}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0;">
+                            <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-green);">${stats.highScore.toLocaleString()}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">High Score</div>
+                            </div>
+                            <div style="background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #2196F3;">${stats.gamesPlayed}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Games Played</div>
+                            </div>
+                            <div style="background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #FF9800;">${stats.totalMass.toLocaleString()}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Total Mass Eaten</div>
+                            </div>
+                            <div style="background: rgba(156, 39, 176, 0.1); border: 1px solid rgba(156, 39, 176, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #9C27B0;">${stats.winRate}%</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Win Rate</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 2rem;">
+                            <button class="modal-button logout-btn" style="padding: 0.75rem 2rem; font-size: 1rem; background: rgba(244, 67, 54, 0.8); border: none;">
+                                <i class="fas fa-sign-out-alt" style="margin-right: 0.5rem;"></i>
+                                Sign Out
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // Guest user content
+                    return `
+                        <div style="padding: 1.5rem; background: rgba(74, 144, 226, 0.1); border-radius: 10px; margin: 1.5rem 0; display: flex; align-items: center; gap: 1.5rem;">
+                            <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin-bottom: 0.25rem;">Guest Player</h3>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">Not logged in</p>
+                            </div>
+                        </div>
+                        <div style="text-align: center; padding: 2rem; margin: 2rem 0;">
+                            <i class="fas fa-lock" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: block;"></i>
+                            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 1rem;">Sign in to compete on the leaderboard and earn exclusive rewards!</p>
+                            <button class="modal-button auth-trigger-btn" style="padding: 0.75rem 2rem; font-size: 1rem;">Sign In / Register</button>
+                        </div>
+                    `;
+                }
+            }
         }
     };
 
@@ -175,15 +245,19 @@ document.addEventListener('DOMContentLoaded', function() {
             elements.navItems.forEach(nav => nav.classList.remove('active'));
             this.classList.add('active');
 
-            // Special handling for profile - show auth modal directly
+            // Special handling for profile - check if user is authenticated
             if (section === 'profile') {
-                // Deactivate the nav item since we're showing a different modal
-                this.classList.remove('active');
-                // Show authentication modal
-                if (window.showAuthModal) {
-                    window.showAuthModal();
+                const isAuthenticated = window.PrivyAuth && window.PrivyAuth.isAuthenticated();
+
+                if (!isAuthenticated) {
+                    // If not authenticated, show auth modal
+                    this.classList.remove('active');
+                    if (window.showAuthModal) {
+                        window.showAuthModal();
+                    }
+                    return;
                 }
-                return;
+                // If authenticated, fall through to show the profile modal with stats
             }
 
             // Show modal content
@@ -210,6 +284,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <button class="modal-button" onclick="this.closest('.modal').classList.remove('show')">Close</button>
                 `;
+            } else if (template.dynamic && template.getContent) {
+                // Handle dynamic content (like profile)
+                modalContent.innerHTML = `
+                    <h2>${template.title}</h2>
+                    ${template.getContent()}
+                `;
             } else {
                 modalContent.innerHTML = `
                     <h2>${template.title}</h2>
@@ -219,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             showModal('sectionModal');
 
-            // Add event listener for auth trigger button if it exists
+            // Add event listeners for auth and logout buttons if they exist
             setTimeout(() => {
                 const authBtn = document.querySelector('.auth-trigger-btn');
                 if (authBtn) {
@@ -230,6 +310,27 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (window.showAuthModal) {
                             window.showAuthModal();
                         }
+                    });
+                }
+
+                const logoutBtn = document.querySelector('.logout-btn');
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', () => {
+                        // Trigger logout through Privy
+                        if (window.PrivyAuth && typeof window.PrivyAuth.logout === 'function') {
+                            // Use Privy's logout if available
+                            window.dispatchEvent(new CustomEvent('auth:trigger-logout'));
+                        } else {
+                            // Fallback: clear localStorage and update UI
+                            localStorage.removeItem('privy_user');
+                            window.dispatchEvent(new CustomEvent('auth:logout'));
+                        }
+
+                        // Close the modal
+                        closeModal(modal);
+
+                        // Update the nav items to remove active state
+                        elements.navItems.forEach(nav => nav.classList.remove('active'));
                     });
                 }
             }, 100);

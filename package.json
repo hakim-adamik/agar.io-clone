@@ -76,6 +76,7 @@
   "devDependencies": {
     "@types/sat": "^0.0.32",
     "dotenv": "^17.2.3",
-    "plugin-error": "^2.0.1"
+    "plugin-error": "^2.0.1",
+    "webpack-cli": "^6.0.1"
   }
 }

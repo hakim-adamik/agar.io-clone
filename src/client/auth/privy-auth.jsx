@@ -60,7 +60,33 @@ function PrivyAuthComponent() {
         onSuccess: () => {
             console.log('Logout successful');
             localStorage.removeItem('privy_user');
+            // Immediately update global state
+            window.PrivyAuthState.authenticated = false;
+            window.PrivyAuthState.user = null;
             window.dispatchEvent(new CustomEvent('auth:logout'));
+
+            // Force page reload after logout to ensure clean state
+            setTimeout(() => {
+                console.log('[Privy] Reloading page after logout...');
+                window.location.reload();
+            }, 100);
+        },
+        onError: (error) => {
+            console.error('Logout failed:', error);
+            // Even if logout fails on Privy side, clear local state
+            localStorage.removeItem('privy_user');
+            window.PrivyAuthState.authenticated = false;
+            window.PrivyAuthState.user = null;
+            window.dispatchEvent(new CustomEvent('auth:logout'));
+            window.dispatchEvent(new CustomEvent('auth:error', {
+                detail: { error: 'Logout failed, but local session cleared' }
+            }));
+
+            // Force page reload even on error to ensure clean state
+            setTimeout(() => {
+                console.log('[Privy] Reloading page after logout error...');
+                window.location.reload();
+            }, 100);
         }
     });
 
@@ -70,15 +96,37 @@ function PrivyAuthComponent() {
         // Listen for auth modal events
         const handleShowAuth = () => setShowAuthModal(true);
         const handleHideAuth = () => setShowAuthModal(false);
+        const handleTriggerLogout = () => {
+            console.log('[Privy] Logout triggered. Authenticated:', authenticated);
+            if (authenticated) {
+                console.log('[Privy] Calling Privy logout...');
+                logout();
+            } else {
+                console.log('[Privy] User not authenticated, clearing local state only');
+                localStorage.removeItem('privy_user');
+                window.PrivyAuthState.authenticated = false;
+                window.PrivyAuthState.user = null;
+                window.dispatchEvent(new CustomEvent('auth:logout'));
+            }
+        };
 
         window.addEventListener('auth:show-privy', handleShowAuth);
         window.addEventListener('auth:hide-privy', handleHideAuth);
+        window.addEventListener('auth:trigger-logout', handleTriggerLogout);
 
         return () => {
             window.removeEventListener('auth:show-privy', handleShowAuth);
             window.removeEventListener('auth:hide-privy', handleHideAuth);
+            window.removeEventListener('auth:trigger-logout', handleTriggerLogout);
         };
-    }, []);
+    }, [authenticated, logout]);
+
+    // Keep global state synchronized with React state
+    useEffect(() => {
+        window.PrivyAuthState.authenticated = authenticated;
+        window.PrivyAuthState.user = user;
+        console.log('[Privy] Global state updated:', { authenticated, user: !!user });
+    }, [authenticated, user]);
 
     // Wait for Privy to be ready
     if (!ready) {
@@ -90,34 +138,9 @@ function PrivyAuthComponent() {
         );
     }
 
-    // If user is authenticated, show their info
+    // If user is authenticated, don't show any UI - let the vanilla JS profile modal handle it
     if (authenticated && user) {
-        const displayName = user.google?.name ||
-                          user.discord?.username ||
-                          user.twitter?.username ||
-                          user.email?.address?.split('@')[0] ||
-                          'Player';
-
-        return (
-            <div className="privy-user-info">
-                <div className="user-avatar">
-                    {user.google?.profilePictureUrl ? (
-                        <img src={user.google.profilePictureUrl} alt={displayName} />
-                    ) : (
-                        <div className="avatar-placeholder">
-                            {displayName.charAt(0).toUpperCase()}
-                        </div>
-                    )}
-                </div>
-                <div className="user-details">
-                    <h3>{displayName}</h3>
-                    <p className="user-email">{user.email?.address || 'No email'}</p>
-                </div>
-                <button onClick={logout} className="logout-btn">
-                    Sign Out
-                </button>
-            </div>
-        );
+        return <div style={{display: 'none'}} />; // Hidden when authenticated
     }
 
     // Show login button
@@ -185,10 +208,17 @@ window.addEventListener('privy:init', () => {
 });
 
 // Create compatibility layer for vanilla JS
+// Store authentication state globally for synchronization
+window.PrivyAuthState = {
+    authenticated: false,
+    user: null
+};
+
 window.PrivyAuth = {
     isAuthenticated: () => {
-        const user = localStorage.getItem('privy_user');
-        return !!user;
+        // Check both localStorage and global state for accuracy
+        const localUser = localStorage.getItem('privy_user');
+        return !!localUser && window.PrivyAuthState.authenticated;
     },
     getUser: () => {
         const userStr = localStorage.getItem('privy_user');
@@ -213,6 +243,9 @@ window.PrivyAuth = {
     },
     hideLogin: () => {
         window.dispatchEvent(new CustomEvent('auth:hide-privy'));
+    },
+    logout: () => {
+        window.dispatchEvent(new CustomEvent('auth:trigger-logout'));
     }
 };
 
