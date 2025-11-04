@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div style="text-align: center; padding: 2rem; margin: 2rem 0;">
                     <i class="fas fa-lock" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: block;"></i>
                     <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 1rem;">Sign in to compete on the leaderboard and earn exclusive rewards!</p>
-                    <button class="modal-button" style="padding: 0.75rem 2rem; font-size: 1rem;">Sign In / Register</button>
+                    <button class="modal-button auth-trigger-btn" style="padding: 0.75rem 2rem; font-size: 1rem;">Sign In / Register</button>
                 </div>
             `
         }
@@ -175,6 +175,17 @@ document.addEventListener('DOMContentLoaded', function() {
             elements.navItems.forEach(nav => nav.classList.remove('active'));
             this.classList.add('active');
 
+            // Special handling for profile - show auth modal directly
+            if (section === 'profile') {
+                // Deactivate the nav item since we're showing a different modal
+                this.classList.remove('active');
+                // Show authentication modal
+                if (window.showAuthModal) {
+                    window.showAuthModal();
+                }
+                return;
+            }
+
             // Show modal content
             const template = modalTemplates[section];
             if (!template) return;
@@ -207,6 +218,21 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             showModal('sectionModal');
+
+            // Add event listener for auth trigger button if it exists
+            setTimeout(() => {
+                const authBtn = document.querySelector('.auth-trigger-btn');
+                if (authBtn) {
+                    authBtn.addEventListener('click', () => {
+                        // Close the current modal first
+                        closeModal(modal);
+                        // Show authentication modal
+                        if (window.showAuthModal) {
+                            window.showAuthModal();
+                        }
+                    });
+                }
+            }, 100);
         });
     });
 

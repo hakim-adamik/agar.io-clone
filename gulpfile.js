@@ -1,5 +1,8 @@
 /* jshint esversion: 8 */
 
+// Load environment variables from .env file
+require('dotenv').config();
+
 const gulp = require('gulp');
 const babel = require('gulp-babel');
 const eslint = require('gulp-eslint');
@@ -45,6 +48,12 @@ function buildClientJS() {
         .pipe(gulp.dest('bin/client/js/'));
 }
 
+function buildPrivyAuth() {
+    return gulp.src(['src/client/auth/privy-auth.jsx'])
+        .pipe(webpack(require('./webpack.privy.config.js')))
+        .pipe(gulp.dest('bin/client/auth/'));
+}
+
 function setDev(done) {
     process.env.IS_DEV = 'true';
     done();
@@ -76,9 +85,9 @@ gulp.task('todo', gulp.series('lint', () => {
         .pipe(gulp.dest('./'));
 }));
 
-gulp.task('build', gulp.series('lint', gulp.parallel(copyClientResources, buildClientJS, buildServer, mocha)));
+gulp.task('build', gulp.series('lint', gulp.parallel(copyClientResources, buildClientJS, buildPrivyAuth, buildServer, mocha)));
 
-gulp.task('dev', gulp.parallel(copyClientResources, buildClientJS, buildServer));
+gulp.task('dev', gulp.parallel(copyClientResources, buildClientJS, buildPrivyAuth, buildServer));
 
 gulp.task('run', gulp.series('build', runServer));
 
