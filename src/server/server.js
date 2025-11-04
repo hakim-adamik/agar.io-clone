@@ -7,6 +7,9 @@ const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const SAT = require('sat');
 
+// Load environment variables
+require('./lib/envConfig');
+
 const gameLogic = require('./game-logic');
 const loggingRepositry = require('./repositories/logging-repository');
 const chatRepository = require('./repositories/chat-repository');
@@ -27,6 +30,18 @@ let leaderboardChanged = false;
 const Vector = SAT.Vector;
 
 app.use(express.static(__dirname + '/../client'));
+
+// API endpoint for client configuration
+app.get('/api/config', (req, res) => {
+    res.json({
+        turnkey: {
+            organizationId: process.env.TURNKEY_ORGANIZATION_ID || null,
+            googleClientId: process.env.GOOGLE_CLIENT_ID || null,
+            appleClientId: process.env.APPLE_CLIENT_ID || null,
+            discordClientId: process.env.DISCORD_CLIENT_ID || null
+        }
+    });
+});
 
 io.on('connection', function (socket) {
     let type = socket.handshake.query.type;

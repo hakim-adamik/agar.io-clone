@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div style="text-align: center; padding: 2rem; margin: 2rem 0;">
                     <i class="fas fa-lock" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: block;"></i>
-                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 1rem;">Sign in to track your progress and compete on the leaderboard!</p>
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 1rem;">Sign in to compete on the leaderboard and earn exclusive rewards!</p>
                     <button class="modal-button" style="padding: 0.75rem 2rem; font-size: 1rem;">Sign In / Register</button>
                 </div>
             `
@@ -178,6 +178,15 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show modal content
             const template = modalTemplates[section];
             if (!template) return;
+
+            // Special handling for profile - show auth modal instead
+            if (section === 'profile') {
+                // Remove active state
+                elements.navItems.forEach(nav => nav.classList.remove('active'));
+                // Show auth modal
+                window.dispatchEvent(new CustomEvent('auth:show-modal'));
+                return;
+            }
 
             let modal = document.getElementById('sectionModal');
             if (!modal) {

@@ -35,7 +35,14 @@ function buildServer() {
 }
 
 function copyClientResources() {
-    return gulp.src(['src/client/**/*.*', '!src/client/**/*.js'])
+    // Copy all non-JS files, plus specific JS files that don't need bundling
+    return gulp.src([
+        'src/client/**/*.*',
+        '!src/client/**/*.js',
+        'src/client/auth/*.js',        // Auth files are vanilla JS
+        'src/client/js/landing.js',    // Landing page logic
+        'src/client/js/game-config.js' // Game configuration
+    ])
         .pipe(gulp.dest('./bin/client/'));
 }
 

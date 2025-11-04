@@ -3,3 +3,13 @@ npm-debug.log
 .idea
 client/bower_components
 bin
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db

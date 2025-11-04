@@ -179,6 +179,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const template = modalTemplates[section];
             if (!template) return;
 
+            // Special handling for profile - show auth modal instead
+            if (section === 'profile') {
+                // Remove active state
+                elements.navItems.forEach(nav => nav.classList.remove('active'));
+                // Show auth modal
+                window.dispatchEvent(new CustomEvent('auth:show-modal'));
+                return;
+            }
+
             let modal = document.getElementById('sectionModal');
             if (!modal) {
                 modal = createModal('sectionModal', '<div id="modalContent"></div>');
