@@ -56,9 +56,10 @@ document.addEventListener('DOMContentLoaded', function() {
         profile: {
             title: 'Player Profile',
             getContent: function() {
-                // Check if user is authenticated
-                const isAuthenticated = window.TurnkeyAuth?.isAuthenticated?.();
-                const user = window.TurnkeyAuth?.getUser?.();
+                // Auth0 uses async functions, so we can't check synchronously here
+                // For now, always show guest state - Auth0 will handle actual authentication
+                const isAuthenticated = false;
+                const user = null;
 
                 if (isAuthenticated && user) {
                     // Show authenticated user profile

@@ -1,0 +1,359 @@
+/* Dark Theme Overrides for Turnkey Auth Component */
+/* This file applies dark styling to the Turnkey SDK Auth component */
+
+/* Main container styling */
+#turnkey-auth-container {
+    --tk-primary: #4a90e2;
+    --tk-primary-hover: #357abd;
+    --tk-background: #1a1a1a;
+    --tk-surface: #2a2a2a;
+    --tk-surface-hover: #333333;
+    --tk-border: #3a3a3a;
+    --tk-text-primary: #f0f0f0;
+    --tk-text-secondary: #b0b0b0;
+    --tk-error: #ff6b6b;
+    --tk-success: #4ade80;
+}
+
+/* Override Turnkey Auth component styles */
+#turnkey-auth-container .turnkey-auth,
+#turnkey-auth-container .auth-container,
+#turnkey-auth-container [class*="Auth_container"],
+#turnkey-auth-container [class*="auth-container"] {
+    background: transparent !important;
+    color: var(--tk-text-primary) !important;
+}
+
+/* Override auth modal background */
+.auth-modal-content {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%) !important;
+    border: 1px solid var(--tk-border) !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8) !important;
+}
+
+.auth-modal-header {
+    border-bottom-color: var(--tk-border) !important;
+}
+
+.auth-modal-header h2 {
+    color: var(--tk-text-primary) !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.auth-modal-header p {
+    color: var(--tk-text-secondary) !important;
+}
+
+.auth-modal-close {
+    color: var(--tk-text-secondary) !important;
+    transition: all 0.3s ease !important;
+}
+
+.auth-modal-close:hover {
+    background: var(--tk-surface-hover) !important;
+    color: var(--tk-text-primary) !important;
+    transform: scale(1.1);
+}
+
+/* Turnkey SDK button overrides */
+#turnkey-auth-container button,
+#turnkey-auth-container [class*="Button"],
+#turnkey-auth-container [class*="button"] {
+    background: var(--tk-surface) !important;
+    color: var(--tk-text-primary) !important;
+    border: 1px solid var(--tk-border) !important;
+    border-radius: 12px !important;
+    padding: 14px 20px !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+#turnkey-auth-container button:hover:not(:disabled),
+#turnkey-auth-container [class*="Button"]:hover:not(:disabled),
+#turnkey-auth-container [class*="button"]:hover:not(:disabled) {
+    background: var(--tk-surface-hover) !important;
+    border-color: var(--tk-primary) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 20px rgba(74, 144, 226, 0.3) !important;
+}
+
+/* Primary action buttons (Sign In, Continue, etc.) */
+#turnkey-auth-container button[type="submit"],
+#turnkey-auth-container [class*="primary"],
+#turnkey-auth-container [class*="Primary"] {
+    background: linear-gradient(135deg, var(--tk-primary) 0%, #50e3c2 100%) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+#turnkey-auth-container button[type="submit"]:hover:not(:disabled),
+#turnkey-auth-container [class*="primary"]:hover:not(:disabled),
+#turnkey-auth-container [class*="Primary"]:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--tk-primary-hover) 0%, #3dc9a8 100%) !important;
+    box-shadow: 0 10px 30px rgba(74, 144, 226, 0.4) !important;
+}
+
+/* Google OAuth button specific styling */
+#turnkey-auth-container [class*="google"],
+#turnkey-auth-container [class*="Google"],
+#turnkey-auth-container button:has(svg[class*="google"]) {
+    background: var(--tk-surface) !important;
+    border: 2px solid #4285f4 !important;
+    color: var(--tk-text-primary) !important;
+    position: relative !important;
+}
+
+#turnkey-auth-container [class*="google"]:hover,
+#turnkey-auth-container [class*="Google"]:hover,
+#turnkey-auth-container button:has(svg[class*="google"]):hover {
+    background: rgba(66, 133, 244, 0.1) !important;
+    border-color: #357ae8 !important;
+    box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3) !important;
+}
+
+/* Input fields */
+#turnkey-auth-container input,
+#turnkey-auth-container [class*="Input"],
+#turnkey-auth-container [class*="input"] {
+    background: var(--tk-surface) !important;
+    border: 1px solid var(--tk-border) !important;
+    color: var(--tk-text-primary) !important;
+    border-radius: 8px !important;
+    padding: 12px 16px !important;
+    font-size: 15px !important;
+    transition: all 0.3s ease !important;
+}
+
+#turnkey-auth-container input:focus,
+#turnkey-auth-container [class*="Input"]:focus,
+#turnkey-auth-container [class*="input"]:focus {
+    background: var(--tk-surface-hover) !important;
+    border-color: var(--tk-primary) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2) !important;
+}
+
+#turnkey-auth-container input::placeholder,
+#turnkey-auth-container [class*="Input"]::placeholder,
+#turnkey-auth-container [class*="input"]::placeholder {
+    color: var(--tk-text-secondary) !important;
+    opacity: 0.7 !important;
+}
+
+/* Text and labels */
+#turnkey-auth-container label,
+#turnkey-auth-container [class*="Label"],
+#turnkey-auth-container [class*="label"] {
+    color: var(--tk-text-secondary) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+#turnkey-auth-container p,
+#turnkey-auth-container [class*="Text"],
+#turnkey-auth-container [class*="text"] {
+    color: var(--tk-text-secondary) !important;
+}
+
+/* Dividers and separators */
+#turnkey-auth-container [class*="divider"],
+#turnkey-auth-container [class*="Divider"],
+#turnkey-auth-container hr {
+    border-color: var(--tk-border) !important;
+    opacity: 0.5 !important;
+}
+
+/* Loading states */
+#turnkey-auth-container [class*="loading"],
+#turnkey-auth-container [class*="Loading"],
+#turnkey-auth-container [class*="spinner"],
+#turnkey-auth-container [class*="Spinner"] {
+    color: var(--tk-primary) !important;
+}
+
+/* Error messages */
+#turnkey-auth-container [class*="error"],
+#turnkey-auth-container [class*="Error"] {
+    color: var(--tk-error) !important;
+    background: rgba(255, 107, 107, 0.1) !important;
+    border: 1px solid rgba(255, 107, 107, 0.3) !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
+}
+
+/* Success messages */
+#turnkey-auth-container [class*="success"],
+#turnkey-auth-container [class*="Success"] {
+    color: var(--tk-success) !important;
+    background: rgba(74, 222, 128, 0.1) !important;
+    border: 1px solid rgba(74, 222, 128, 0.3) !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
+}
+
+/* Links */
+#turnkey-auth-container a,
+#turnkey-auth-container [class*="Link"],
+#turnkey-auth-container [class*="link"] {
+    color: var(--tk-primary) !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+}
+
+#turnkey-auth-container a:hover,
+#turnkey-auth-container [class*="Link"]:hover,
+#turnkey-auth-container [class*="link"]:hover {
+    color: var(--tk-primary-hover) !important;
+    text-decoration: underline !important;
+}
+
+/* Card/Panel styling */
+#turnkey-auth-container [class*="card"],
+#turnkey-auth-container [class*="Card"],
+#turnkey-auth-container [class*="panel"],
+#turnkey-auth-container [class*="Panel"] {
+    background: var(--tk-surface) !important;
+    border: 1px solid var(--tk-border) !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+}
+
+/* Passkey button styling */
+#turnkey-auth-container [class*="passkey"],
+#turnkey-auth-container [class*="Passkey"] {
+    background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+    border: none !important;
+    color: white !important;
+}
+
+#turnkey-auth-container [class*="passkey"]:hover,
+#turnkey-auth-container [class*="Passkey"]:hover {
+    background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%) !important;
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4) !important;
+}
+
+/* Email button styling */
+#turnkey-auth-container [class*="email"],
+#turnkey-auth-container [class*="Email"] {
+    background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%) !important;
+    border: none !important;
+    color: white !important;
+}
+
+#turnkey-auth-container [class*="email"]:hover,
+#turnkey-auth-container [class*="Email"]:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #0891b2 100%) !important;
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Animations */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+#turnkey-auth-container button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 100%);
+    background-size: 200% 100%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+#turnkey-auth-container button:hover::before {
+    animation: shimmer 1s infinite;
+    opacity: 1;
+}
+
+/* Disable animations for reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    #turnkey-auth-container * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* Icons within buttons */
+#turnkey-auth-container button svg,
+#turnkey-auth-container [class*="icon"],
+#turnkey-auth-container [class*="Icon"] {
+    width: 20px !important;
+    height: 20px !important;
+    margin-right: 8px !important;
+}
+
+/* Specific overrides for "or" text */
+#turnkey-auth-container [class*="or"],
+#turnkey-auth-container [class*="Or"] {
+    color: var(--tk-text-secondary) !important;
+    position: relative !important;
+    text-align: center !important;
+    margin: 20px 0 !important;
+}
+
+#turnkey-auth-container [class*="or"]::before,
+#turnkey-auth-container [class*="or"]::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 50% !important;
+    width: 45% !important;
+    height: 1px !important;
+    background: var(--tk-border) !important;
+}
+
+#turnkey-auth-container [class*="or"]::before {
+    left: 0 !important;
+}
+
+#turnkey-auth-container [class*="or"]::after {
+    right: 0 !important;
+}
+
+/* Focus visible states for accessibility */
+#turnkey-auth-container button:focus-visible,
+#turnkey-auth-container input:focus-visible,
+#turnkey-auth-container a:focus-visible {
+    outline: 2px solid var(--tk-primary) !important;
+    outline-offset: 2px !important;
+}
+
+/* Disabled states */
+#turnkey-auth-container button:disabled,
+#turnkey-auth-container [disabled] {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    filter: grayscale(0.5) !important;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 480px) {
+    #turnkey-auth-container button {
+        padding: 16px 20px !important;
+        font-size: 16px !important;
+    }
+
+    #turnkey-auth-container input {
+        padding: 14px 16px !important;
+        font-size: 16px !important;
+    }
+}

@@ -39,10 +39,11 @@ function copyClientResources() {
     return gulp.src([
         'src/client/**/*.*',
         '!src/client/**/*.js',
+        '!src/client/js/app.js',       // Exclude app.js (it's bundled by webpack)
         'src/client/auth/*.js',        // Auth files are vanilla JS
         'src/client/js/landing.js',    // Landing page logic
         'src/client/js/game-config.js' // Game configuration
-    ])
+    ], { base: 'src/client' })
         .pipe(gulp.dest('./bin/client/'));
 }
 
@@ -50,6 +51,13 @@ function buildClientJS() {
     return gulp.src(['src/client/js/app.js'])
         .pipe(webpack(getWebpackConfig()))
         .pipe(gulp.dest('bin/client/js/'));
+}
+
+function buildReactAuth() {
+    const webpackReactConfig = require('./webpack.react.config.js');
+    return gulp.src(['src/client/auth/turnkey-auth-react.jsx'])
+        .pipe(webpack(webpackReactConfig))
+        .pipe(gulp.dest('bin/client/auth/'));
 }
 
 function setDev(done) {
@@ -83,9 +91,9 @@ gulp.task('todo', gulp.series('lint', () => {
         .pipe(gulp.dest('./'));
 }));
 
-gulp.task('build', gulp.series('lint', gulp.parallel(copyClientResources, buildClientJS, buildServer, mocha)));
+gulp.task('build', gulp.series('lint', gulp.parallel(copyClientResources, buildClientJS, buildReactAuth, buildServer, mocha)));
 
-gulp.task('dev', gulp.parallel(copyClientResources, buildClientJS, buildServer));
+gulp.task('dev', gulp.parallel(copyClientResources, buildClientJS, buildReactAuth, buildServer));
 
 gulp.task('run', gulp.series('build', runServer));
 

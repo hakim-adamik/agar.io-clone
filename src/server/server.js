@@ -33,9 +33,7 @@ const Vector = SAT.Vector;
 app.use(express.json());
 app.use(express.static(__dirname + '/../client'));
 
-// Authentication routes
-const authRoutes = require('./auth/routes');
-app.use('/api', authRoutes);
+// Authentication routes - removed (Auth0 handles auth client-side)
 
 // API endpoint for client configuration (keeping for backward compatibility)
 app.get('/api/config', (req, res) => {

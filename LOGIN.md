@@ -3,84 +3,138 @@
 ## Overview
 This Agar.io clone implements authentication using Turnkey SDK for secure, decentralized user authentication with support for email, passkeys, and OAuth providers (Google, Discord, Apple).
 
+## Current Status (November 2024)
+
+### ✅ Completed
+- Integrated Turnkey React SDK with Auth component
+- Configured Auth Proxy for client-side authentication (no backend required)
+- Set up environment variables for secure key storage
+- Simplified auth modal to only show Turnkey component
+- Updated to React 18's createRoot API
+- Added OAuth configuration to TurnkeyProvider
+
+### 🔧 Current Issue
+**Google OAuth failing with error:**
+```
+Google.mjs:124 Uncaught (in promise) TypeError: Cannot read properties of undefined (reading 'replace')
+```
+
+This error occurs when clicking "Continue with Google" - the OAuth flow attempts to start but crashes due to a missing or undefined value that the Google OAuth component expects.
+
+### Configuration in Use
+- **Organization ID**: `0ffaa29b-867e-4f62-87c8-4c29ed8cf1f9`
+- **Auth Proxy Public Key**: Stored in `.env` file
+- **Auth Proxy URL**: `https://auth.turnkey.com`
+- **Google Client ID**: `268288684655-e9kafi3hpk4c9uajrcf9be9tso9f4bph.apps.googleusercontent.com`
+
 ## Architecture
 
 ```
-USER BROWSER (Client)              OUR SERVER                TURNKEY CLOUD
+USER BROWSER (Client)              AUTH PROXY                TURNKEY CLOUD
      |                                 |                           |
      |--[Clicks "Sign In"]------------>|                           |
      |                                 |                           |
-     |--[Enters Email/OAuth]--------->|                           |
-     |                                 |--[Verify with Turnkey]--->|
+     |--[OAuth/Passkey/Email]-------->|--[Verify with Turnkey]--->|
      |                                 |<--[User Validated]--------|
-     |<--[Session Token]---------------|                           |
+     |<--[Session Created]-------------|                           |
      |                                 |                           |
-     |--[Play Game with Token]------->|                           |
+     |--[Play Game with Session]----->|                           |
 ```
+
+## Known Issues & Next Steps
+
+### 1. Google OAuth Error
+**Problem**: The Google OAuth component in Turnkey SDK is failing with a `.replace()` error, likely due to:
+- Missing OAuth redirect URI configuration
+- Incomplete OAuth setup in Turnkey dashboard
+- Possible version mismatch or bug in the SDK
+
+**Potential Solutions**:
+1. Verify OAuth configuration in Turnkey dashboard
+2. Check if Google OAuth is properly enabled for the organization
+3. Ensure redirect URIs match between Google Console and Turnkey
+4. Consider updating Turnkey SDK to latest version
+5. Add fallback handling for undefined OAuth parameters
+
+### 2. UI/UX Improvements Needed
+- The Turnkey auth modal needs custom styling to match the game's dark theme
+- Current modal appears with default/light styling that doesn't fit the game aesthetic
+
+### 3. Session Persistence
+- Need to implement proper session storage and validation
+- Currently using localStorage but needs server-side validation
 
 ## Setup Instructions
 
-### 1. Create Turnkey Organization
-1. Go to https://app.turnkey.com
-2. Create a new organization
-3. Get your API credentials
-
-### 2. Configure Environment
-Create a `.env` file (copy from `.env.example`):
+### 1. Environment Configuration
+Required `.env` variables:
 ```bash
-TURNKEY_ORGANIZATION_ID=your_org_id
-TURNKEY_API_PUBLIC_KEY=your_public_key
-TURNKEY_API_PRIVATE_KEY=your_private_key
-GOOGLE_CLIENT_ID=your_google_client_id
+# Turnkey Configuration (Required)
+TURNKEY_ORGANIZATION_ID=0ffaa29b-867e-4f62-87c8-4c29ed8cf1f9
+TURNKEY_API_PUBLIC_KEY=<your_api_public_key>
+TURNKEY_API_PRIVATE_KEY=<your_api_private_key>
+TURNKEY_AUTH_PROXY_PUBLIC_KEY=03b5ad95aff14a3cc6f587d12c5bfdfcc75682cc59ab9f7d5f8ead59f351b4a413
+
+# OAuth Configuration
+GOOGLE_CLIENT_ID=268288684655-e9kafi3hpk4c9uajrcf9be9tso9f4bph.apps.googleusercontent.com
 ```
 
-### 3. Install Dependencies
+### 2. Build with Environment Variables
 ```bash
-npm install
+# Build with proper environment variables
+TURNKEY_ORGANIZATION_ID='...' TURNKEY_AUTH_PROXY_PUBLIC_KEY='...' GOOGLE_CLIENT_ID='...' npm run build
 ```
 
-### 4. Run the Application
-```bash
-npm start
-```
+### 3. Required Turnkey Dashboard Setup
+1. Enable OAuth in Wallet Kit section
+2. Add Google as OAuth provider
+3. Configure redirect URIs (must include `http://localhost:3000` for development)
+4. Enable Auth Proxy for client-side authentication
 
-## Authentication Flow
+## Authentication Methods
 
 ### Email Authentication
-1. User enters email address
-2. Turnkey sends verification email
-3. User clicks link in email
-4. Session created and user logged in
+- Status: ✅ Enabled in UI
+- Implementation: Ready (using Turnkey Auth component)
 
 ### Passkey Authentication
-1. User creates/uses device biometric
-2. WebAuthn handles device authentication
-3. Turnkey validates the passkey
-4. Session created and user logged in
+- Status: ✅ Enabled in UI
+- Implementation: Ready (WebAuthn via Turnkey)
 
 ### Google OAuth
-1. User clicks "Sign in with Google"
-2. Google OAuth popup appears
-3. User selects account
-4. Token verified server-side
-5. Session created and user logged in
+- Status: ❌ Failing with error
+- Implementation: Needs debugging
 
-## Features
-- **Secure Sessions**: JWT-based session management
-- **Hidden Wallets**: Each user gets an Ethereum wallet (for future Web3 features)
-- **Multiple Auth Methods**: Email, Passkey, Google OAuth
-- **Guest Mode**: Players can play without authentication
-- **Persistent Login**: Sessions stored in localStorage
+## Files Modified
+- `/src/client/auth/turnkey-auth-react.jsx` - Main React component
+- `/src/client/auth/auth-modal.js` - Simplified to only show Turnkey component
+- `/src/client/auth/auth-modal.css` - Styles for auth modal
+- `/webpack.react.config.js` - Webpack config for React bundle
+- `/.env` - Environment variables (including Auth Proxy key)
 
-## Security Considerations
-- API keys should never be exposed client-side
-- Use HTTPS in production
-- Implement rate limiting for authentication endpoints
-- Use Redis or database for session storage in production
+## Next Steps (Priority Order)
 
-## Future Enhancements
-- Discord OAuth integration
-- Apple Sign In
-- Two-factor authentication
-- Account recovery options
-- User profile management
+1. **Fix Google OAuth Error**
+   - Debug the `.replace()` error in Google.mjs
+   - Check Turnkey dashboard OAuth configuration
+   - Verify redirect URI settings
+
+2. **Style the Auth Modal**
+   - Apply dark theme to match game aesthetic
+   - Override Turnkey default styles
+   - Ensure mobile responsiveness
+
+3. **Test Authentication Flow**
+   - Verify email authentication works
+   - Test passkey creation and login
+   - Ensure session persistence
+
+4. **Server Integration**
+   - Add server-side session validation
+   - Implement user data storage
+   - Link authentication to game profiles
+
+5. **Error Handling**
+   - Add proper error messages for failed auth
+   - Handle network failures gracefully
+   - Provide fallback for unsupported browsers
