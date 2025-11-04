@@ -45,6 +45,11 @@ function buildClientJS() {
         .pipe(gulp.dest('bin/client/js/'));
 }
 
+function copyClientJS() {
+    return gulp.src(['src/client/js/game-config.js', 'src/client/js/landing.js'])
+        .pipe(gulp.dest('bin/client/js/'));
+}
+
 function setDev(done) {
     process.env.IS_DEV = 'true';
     done();
@@ -76,9 +81,9 @@ gulp.task('todo', gulp.series('lint', () => {
         .pipe(gulp.dest('./'));
 }));
 
-gulp.task('build', gulp.series('lint', gulp.parallel(copyClientResources, buildClientJS, buildServer, mocha)));
+gulp.task('build', gulp.series('lint', gulp.parallel(copyClientResources, buildClientJS, copyClientJS, buildServer, mocha)));
 
-gulp.task('dev', gulp.parallel(copyClientResources, buildClientJS, buildServer));
+gulp.task('dev', gulp.parallel(copyClientResources, buildClientJS, copyClientJS, buildServer));
 
 gulp.task('run', gulp.series('build', runServer));
 
