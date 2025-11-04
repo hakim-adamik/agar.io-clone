@@ -212,6 +212,12 @@ class ChatClient {
             global.lineColor = LINELIGHT;
             this.addSystemLine("Dark mode disabled.");
         }
+
+        // Update checkbox to match state
+        var darkModeCheckbox = document.getElementById("darkMode");
+        if (darkModeCheckbox) {
+            darkModeCheckbox.checked = (global.backgroundColor === DARK);
+        }
     }
 
     toggleBorder() {
