@@ -388,13 +388,48 @@ node --inspect bin/server/server.js
 
 ---
 
+## Implementation Notes
+
+### Current State
+- **Authentication:** Privy SDK is fully integrated and working
+- **User Data:** Currently using mocked data - needs database integration
+- **Profile Modal:** Shows random stats - awaiting database backend
+- **Leaderboard:** Only exists during active gameplay - needs persistence
+- **Wallet Features:** Not yet implemented despite Privy support
+
+### Recommended Implementation Order
+
+**Phase 1: Basic Database (Week 1)**
+1. Set up SQLite/PostgreSQL
+2. Create user and stats tables
+3. Link game sessions to users
+4. Replace mock profile data
+
+**Phase 2: Stats Tracking (Week 2)**
+1. Implement real-time stat tracking
+2. Build persistent leaderboard
+3. Add match history
+
+**Phase 3: Wallet Integration (Week 3)**
+1. Enable Privy embedded wallets
+2. Basic wallet display in profile
+3. Plan Web3 features
+
+**Phase 4: Social Features (Week 4+)**
+1. Friends system
+2. Achievement system
+3. Enhanced profile customization
+
+---
+
 ## Version Information
 
 -   **Current Version:** 1.0.0
 -   **Node.js Required:** 14.x or higher
--   **Last Major Update:** Performance optimizations (Nov 2024)
+-   **Last Major Update:** Authentication system & UI consistency (Nov 2024)
 -   **Stable Branch:** master
+-   **Status:** Authentication complete, awaiting database integration
 
 ---
 
-_This document is specifically designed to provide context for AI assistants (especially Claude) to quickly understand the project state and contribute effectively._
+_This document consolidates all development notes, TODOs, and roadmap items. It is specifically designed to provide context for AI assistants (especially Claude) to quickly understand the project state and contribute effectively._
