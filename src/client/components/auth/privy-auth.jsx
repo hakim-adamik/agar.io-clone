@@ -13,7 +13,7 @@ const PRIVY_CONFIG = {
             logo: '/favicon.ico'
         },
         // Configure login methods
-        loginMethods: ['email', 'google', 'discord', 'twitter'],
+        loginMethods: ['email', 'google', 'discord'],
         // Configure embedded wallets (optional, for future Web3 features)
         embeddedWallets: {
             createOnLogin: 'users-without-wallets'
@@ -31,8 +31,8 @@ function PrivyAuthComponent() {
             const userData = {
                 id: user.id,
                 email: user.email?.address,
-                name: user.google?.name || user.discord?.username || user.twitter?.username || 'Player',
-                provider: Object.keys(user).find(key => ['google', 'discord', 'twitter', 'email'].includes(key))
+                name: user.google?.name || user.discord?.username || 'Player',
+                provider: Object.keys(user).find(key => ['google', 'discord', 'email'].includes(key))
             };
 
             localStorage.setItem('privy_user', JSON.stringify(userData));
