@@ -43,11 +43,11 @@ This document outlines the database architecture for user data persistence, auth
 
 ### Quick Reference: What to Implement When
 
-| Phase | Status | Gameplay Prerequisites | Database Features | Timeline |
-|-------|--------|----------------------|-------------------|----------|
-| 🟢 **Phase A** | **Ready Now** | None - uses existing mechanics | Users, basic stats, preferences, sessions (death-only) | Week 1-2 |
-| 🟡 **Phase B** | **Blocked** | Escape key + cash-out flow | Exit reasons, performance %, win/loss, analytics | Week 3-4 |
-| 🔵 **Phase C** | **Future** | Payment integration (Stripe/crypto) | Money deposits, withdrawals, profit tracking | Month 2+ |
+| Phase          | Status        | Gameplay Prerequisites              | Database Features                                      | Timeline |
+| -------------- | ------------- | ----------------------------------- | ------------------------------------------------------ | -------- |
+| 🟢 **Phase A** | **Ready Now** | None - uses existing mechanics      | Users, basic stats, preferences, sessions (death-only) | Week 1-2 |
+| 🟡 **Phase B** | **Blocked**   | Escape key + cash-out flow          | Exit reasons, performance %, win/loss, analytics       | Week 3-4 |
+| 🔵 **Phase C** | **Future**    | Payment integration (Stripe/crypto) | Money deposits, withdrawals, profit tracking           | Month 2+ |
 
 ---
 
@@ -56,31 +56,35 @@ This document outlines the database architecture for user data persistence, auth
 **Start implementing RIGHT NOW** - Works with existing game mechanics (death-only exits):
 
 **Database Tables:**
-- ✅ **Users** - Privy authentication, profiles, usernames
-- ✅ **Game Stats** - Cumulative stats (kills, deaths, playtime, highest mass)
-- ✅ **Game Sessions** - Match history (final mass, kills, duration) - **death-based only**
-- ✅ **User Preferences** - Saved settings (dark mode, show mass, etc.)
-- ✅ **Leaderboard** - Persistent high scores
+
+-   ✅ **Users** - Privy authentication, profiles, usernames
+-   ✅ **Game Stats** - Cumulative stats (kills, deaths, playtime, highest mass)
+-   ✅ **Game Sessions** - Match history (final mass, kills, duration) - **death-based only**
+-   ✅ **User Preferences** - Saved settings (dark mode, show mass, etc.)
+-   ✅ **Leaderboard** - Persistent high scores
 
 **What You CAN Track:**
-- Total games played
-- Total kills and deaths
-- Highest mass ever achieved
-- Total playtime
-- Game history (recent games, best games)
-- User preferences across sessions
+
+-   Total games played
+-   Total kills and deaths
+-   Highest mass ever achieved
+-   Total playtime
+-   Game history (recent games, best games)
+-   User preferences across sessions
 
 **What You CANNOT Track Yet:**
-- Exit reasons (cashed out vs eaten) - only death works now
-- Performance percentage (% gain/loss) - need starting mass
-- Win/loss classification - need exit_reason
-- Voluntary exits - need Escape key handler
+
+-   Exit reasons (cashed out vs eaten) - only death works now
+-   Performance percentage (% gain/loss) - need starting mass
+-   Win/loss classification - need exit_reason
+-   Voluntary exits - need Escape key handler
 
 **Why Phase A Works:**
-- Players currently only exit by dying → all sessions end the same way
-- We can track everything that happens during death
-- No code changes to game mechanics needed
-- Pure data persistence layer
+
+-   Players currently only exit by dying → all sessions end the same way
+-   We can track everything that happens during death
+-   No code changes to game mechanics needed
+-   Pure data persistence layer
 
 ---
 
@@ -89,24 +93,27 @@ This document outlines the database architecture for user data persistence, auth
 **BLOCKED until Escape key is implemented** - Requires voluntary exit mechanics:
 
 **Gameplay Prerequisites:**
+
 1. **Escape Key Handler** - Allow players to exit voluntarily
 2. **Starting Mass Tracking** - Record mass at spawn (for % calculations)
 3. **Cash-Out Confirmation** - "Exit with X mass?" modal
 4. **Exit Event** - Socket event to save state on voluntary exit
 
 **Database Additions:**
-- ⚠️ **Exit Reason** - 'cashed_out', 'eaten', 'disconnected'
-- ⚠️ **Starting Mass** - Required for performance_pct calculation
-- ⚠️ **Performance %** - (final_mass / starting_mass - 1) × 100
-- ⚠️ **Win/Loss Flags** - is_win, is_early_loss, reached_110_pct
-- ⚠️ **Analytics Stats** - Win rate, streaks, retention metrics
+
+-   ⚠️ **Exit Reason** - 'cashed_out', 'eaten', 'disconnected'
+-   ⚠️ **Starting Mass** - Required for performance_pct calculation
+-   ⚠️ **Performance %** - (final_mass / starting_mass - 1) × 100
+-   ⚠️ **Win/Loss Flags** - is_win, is_early_loss, reached_110_pct
+-   ⚠️ **Analytics Stats** - Win rate, streaks, retention metrics
 
 **What Phase B Enables:**
-- Exit reason tracking and analytics
-- Performance-based metrics (not just absolute mass)
-- Win/loss classification (>10% gain = win)
-- Fairness analysis (early loss rate, win concentration)
-- Retention analysis (return rate after wins vs losses)
+
+-   Exit reason tracking and analytics
+-   Performance-based metrics (not just absolute mass)
+-   Win/loss classification (>10% gain = win)
+-   Fairness analysis (early loss rate, win concentration)
+-   Retention analysis (return rate after wins vs losses)
 
 ---
 
@@ -115,22 +122,25 @@ This document outlines the database architecture for user data persistence, auth
 **FUTURE** - Requires payment gateway integration:
 
 **Payment Prerequisites:**
+
 1. Payment processor (Stripe, crypto wallet, etc.)
 2. KYC/compliance for real money
 3. Withdrawal approval workflow
 4. Financial reporting and auditing
 
 **Database Additions:**
-- 💰 Entry/exit amounts in real currency
-- 💰 Net profit tracking
-- 💰 Deposit/withdrawal history
-- 💰 House edge monitoring
+
+-   💰 Entry/exit amounts in real currency
+-   💰 Net profit tracking
+-   💰 Deposit/withdrawal history
+-   💰 House edge monitoring
 
 **What Phase C Enables:**
-- Real-money gameplay
-- Player bankrolls
-- Financial analytics
-- Regulatory compliance tracking
+
+-   Real-money gameplay
+-   Player bankrolls
+-   Financial analytics
+-   Regulatory compliance tracking
 
 ---
 
@@ -205,19 +215,19 @@ CREATE TABLE IF NOT EXISTS game_stats (
   total_cashouts INTEGER DEFAULT 0,         -- Voluntary exits (Escape key)
   early_losses INTEGER DEFAULT 0,           -- Eaten before reaching 110%
   win_rate REAL DEFAULT 0,                  -- wins / (wins + losses)
-  
+
   avg_performance_pct REAL DEFAULT 0,       -- Average % gain/loss per game
   best_performance_pct REAL DEFAULT 0,      -- Best % gain in a single game
   worst_performance_pct REAL DEFAULT 0,     -- Worst % loss in a single game
   total_performance_pct REAL DEFAULT 0,     -- Cumulative performance across all games
-  
+
   win_streak INTEGER DEFAULT 0,             -- Current win streak
   best_win_streak INTEGER DEFAULT 0,        -- Best win streak
   loss_streak INTEGER DEFAULT 0,            -- Current loss streak (for fairness analysis)
-  
+
   games_after_win INTEGER DEFAULT 0,        -- Times played again after winning
   games_after_loss INTEGER DEFAULT 0,       -- Times played again after losing
-  
+
   last_win_at INTEGER,                      -- Last win timestamp
   last_loss_at INTEGER,                     -- Last loss timestamp
 
@@ -271,7 +281,7 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   final_mass INTEGER,                       -- Mass at end of game
   highest_mass INTEGER,                     -- Peak mass during game
   final_rank INTEGER,                       -- Leaderboard position at end (1-10)
-  
+
   -- 🟢 PHASE A: Gameplay stats (implement now)
   kills INTEGER DEFAULT 0,                  -- Cells eaten this game
   deaths INTEGER DEFAULT 0,                 -- Times died (usually 0 or 1)
@@ -295,7 +305,7 @@ CREATE INDEX idx_sessions_highest_mass ON game_sessions(highest_mass DESC);
 -- Add these columns when Escape key and cash-out are implemented:
 ALTER TABLE game_sessions ADD COLUMN starting_mass INTEGER;           -- Mass at spawn
 ALTER TABLE game_sessions ADD COLUMN performance_pct REAL;            -- % gain/loss
-ALTER TABLE game_sessions ADD COLUMN exit_reason TEXT 
+ALTER TABLE game_sessions ADD COLUMN exit_reason TEXT
   CHECK(exit_reason IN ('cashed_out', 'eaten', 'disconnected'));
 ALTER TABLE game_sessions ADD COLUMN reached_110_pct BOOLEAN DEFAULT 0;
 ALTER TABLE game_sessions ADD COLUMN is_win BOOLEAN DEFAULT 0;
@@ -445,56 +455,60 @@ CREATE INDEX idx_user_achievements_user ON user_achievements(user_id, unlocked_a
 #### Database Schema
 
 1. **Update `src/server/sql.js`:**
-   - Add `users` table
-   - Add `game_stats` table (Phase A columns only)
-   - Add `game_sessions` table (Phase A columns only)
-   - Add `user_preferences` table
-   - Add `leaderboard` table (optional - can use in-memory for now)
-   - Add all Phase A indexes
+    - Add `users` table
+    - Add `game_stats` table (Phase A columns only)
+    - Add `game_sessions` table (Phase A columns only)
+    - Add `user_preferences` table
+    - Add `leaderboard` table (optional - can use in-memory for now)
+    - Add all Phase A indexes
 
 #### Repositories
 
 2. **Create `src/server/repositories/user-repository.js`:**
-   - `createUser(privyId, userData)` - Create new user from Privy auth
-   - `getUserByPrivyId(privyId)` - Find user by Privy ID
-   - `getUserById(userId)` - Find user by internal ID
-   - `updateUser(userId, updates)` - Update user profile
-   - `getUserWithStats(userId)` - Get user + stats (JOIN)
-   - `updateLastSeen(userId)` - Track user activity
+
+    - `createUser(privyId, userData)` - Create new user from Privy auth
+    - `getUserByPrivyId(privyId)` - Find user by Privy ID
+    - `getUserById(userId)` - Find user by internal ID
+    - `updateUser(userId, updates)` - Update user profile
+    - `getUserWithStats(userId)` - Get user + stats (JOIN)
+    - `updateLastSeen(userId)` - Track user activity
 
 3. **Create `src/server/repositories/stats-repository.js`:**
-   - `getOrCreateStats(userId)` - Initialize stats for new user
-   - `updateStats(userId, statsUpdate)` - Increment Phase A stats only
-   - `incrementGamesPlayed(userId)` - On game start
-   - `updateOnDeath(userId, sessionStats)` - On player death
+
+    - `getOrCreateStats(userId)` - Initialize stats for new user
+    - `updateStats(userId, statsUpdate)` - Increment Phase A stats only
+    - `incrementGamesPlayed(userId)` - On game start
+    - `updateOnDeath(userId, sessionStats)` - On player death
 
 4. **Create `src/server/repositories/session-repository.js`:**
-   - `startSession(userId)` - Begin new game session
-   - `endSession(sessionId, finalStats)` - Complete session (death only for now)
-   - `updateHighestMass(sessionId, mass)` - Track peak mass
-   - `getUserSessions(userId, limit)` - Match history
+
+    - `startSession(userId)` - Begin new game session
+    - `endSession(sessionId, finalStats)` - Complete session (death only for now)
+    - `updateHighestMass(sessionId, mass)` - Track peak mass
+    - `getUserSessions(userId, limit)` - Match history
 
 5. **Create `src/server/repositories/preferences-repository.js`:**
-   - `getPreferences(userId)` - Load user settings
-   - `updatePreferences(userId, settings)` - Save settings
-   - `getOrCreateDefaults(userId)` - Initialize with defaults
+    - `getPreferences(userId)` - Load user settings
+    - `updatePreferences(userId, settings)` - Save settings
+    - `getOrCreateDefaults(userId)` - Initialize with defaults
 
 #### Server Integration
 
 6. **Integrate with Socket.IO (`src/server/server.js`):**
-   - On connection: Link socket to user ID (if authenticated)
-   - On 'gotit': Start game session, load preferences
-   - On player death: End session, update stats
-   - On disconnect: End session gracefully
-   - Track authenticated vs guest players
+    - On connection: Link socket to user ID (if authenticated)
+    - On 'gotit': Start game session, load preferences
+    - On player death: End session, update stats
+    - On disconnect: End session gracefully
+    - Track authenticated vs guest players
 
 **What Phase A Gives You:**
-- ✅ User profiles with Privy authentication
-- ✅ Persistent leaderboard (highest mass ever)
-- ✅ Game history (recent games, best games)
-- ✅ Saved preferences (dark mode, settings)
-- ✅ Basic stats (games played, kills, deaths, playtime)
-- ✅ Match history (last 10 games per user)
+
+-   ✅ User profiles with Privy authentication
+-   ✅ Persistent leaderboard (highest mass ever)
+-   ✅ Game history (recent games, best games)
+-   ✅ Saved preferences (dark mode, settings)
+-   ✅ Basic stats (games played, kills, deaths, playtime)
+-   ✅ Match history (last 10 games per user)
 
 ---
 
@@ -507,42 +521,46 @@ CREATE INDEX idx_user_achievements_user ON user_achievements(user_id, unlocked_a
 #### Gameplay Features to Build First
 
 1. **Escape Key Handler (Client):**
-   - Listen for Escape key press
-   - Show "Cash Out?" confirmation modal
-   - Emit 'cashout' event to server
+
+    - Listen for Escape key press
+    - Show "Cash Out?" confirmation modal
+    - Emit 'cashout' event to server
 
 2. **Cash-Out Flow (Server):**
-   - Handle 'cashout' socket event
-   - Save current game state (mass, kills, etc.)
-   - Calculate performance_pct
-   - End session with exit_reason = 'cashed_out'
+
+    - Handle 'cashout' socket event
+    - Save current game state (mass, kills, etc.)
+    - Calculate performance_pct
+    - End session with exit_reason = 'cashed_out'
 
 3. **Starting Mass Tracking:**
-   - Record starting_mass when session begins
-   - Use for performance_pct calculation
+    - Record starting_mass when session begins
+    - Use for performance_pct calculation
 
 #### Database Migration
 
 4. **Add Phase B columns:**
-   ```sql
-   ALTER TABLE game_sessions ADD COLUMN starting_mass INTEGER;
-   ALTER TABLE game_sessions ADD COLUMN performance_pct REAL;
-   ALTER TABLE game_sessions ADD COLUMN exit_reason TEXT;
-   -- etc. (see Phase B schema above)
-   ```
+
+    ```sql
+    ALTER TABLE game_sessions ADD COLUMN starting_mass INTEGER;
+    ALTER TABLE game_sessions ADD COLUMN performance_pct REAL;
+    ALTER TABLE game_sessions ADD COLUMN exit_reason TEXT;
+    -- etc. (see Phase B schema above)
+    ```
 
 5. **Update repositories:**
-   - Modify `endSession()` to include exit_reason, performance_pct
-   - Add win/loss classification logic
-   - Update stats to include Phase B fields
+    - Modify `endSession()` to include exit_reason, performance_pct
+    - Add win/loss classification logic
+    - Update stats to include Phase B fields
 
 **What Phase B Gives You:**
-- ✅ Exit reason tracking (cashed out vs eaten)
-- ✅ Performance percentage metrics
-- ✅ Win/loss classification
-- ✅ Analytics queries (fairness, concentration, retention)
-- ✅ Early loss detection
-- ✅ Win/loss streaks
+
+-   ✅ Exit reason tracking (cashed out vs eaten)
+-   ✅ Performance percentage metrics
+-   ✅ Win/loss classification
+-   ✅ Analytics queries (fairness, concentration, retention)
+-   ✅ Early loss detection
+-   ✅ Win/loss streaks
 
 ---
 
@@ -555,41 +573,45 @@ CREATE INDEX idx_user_achievements_user ON user_achievements(user_id, unlocked_a
 #### Payment Features to Build First
 
 1. **Deposit System:**
-   - Payment gateway integration
-   - User wallet/balance
-   - Deposit confirmation
+
+    - Payment gateway integration
+    - User wallet/balance
+    - Deposit confirmation
 
 2. **Withdrawal System:**
-   - Cash-out to bank/wallet
-   - Minimum withdrawal amounts
-   - Withdrawal approval flow
+
+    - Cash-out to bank/wallet
+    - Minimum withdrawal amounts
+    - Withdrawal approval flow
 
 3. **Money-to-Mass Conversion:**
-   - Define exchange rate (e.g., $1 = 1 mass)
-   - Handle fractional amounts
-   - Balance tracking
+    - Define exchange rate (e.g., $1 = 1 mass)
+    - Handle fractional amounts
+    - Balance tracking
 
 #### Database Migration
 
 4. **Add Phase C columns:**
-   ```sql
-   ALTER TABLE game_sessions ADD COLUMN entry_amount REAL DEFAULT 0;
-   ALTER TABLE game_sessions ADD COLUMN exit_amount REAL DEFAULT 0;
-   ALTER TABLE game_sessions ADD COLUMN net_profit REAL DEFAULT 0;
-   -- etc. (see Phase C schema above)
-   ```
+
+    ```sql
+    ALTER TABLE game_sessions ADD COLUMN entry_amount REAL DEFAULT 0;
+    ALTER TABLE game_sessions ADD COLUMN exit_amount REAL DEFAULT 0;
+    ALTER TABLE game_sessions ADD COLUMN net_profit REAL DEFAULT 0;
+    -- etc. (see Phase C schema above)
+    ```
 
 5. **Add financial tracking:**
-   - Money transaction history table
-   - Pending withdrawals table
-   - House edge monitoring
+    - Money transaction history table
+    - Pending withdrawals table
+    - House edge monitoring
 
 **What Phase C Gives You:**
-- ✅ Real-money gameplay
-- ✅ Deposit/withdrawal tracking
-- ✅ Profit/loss analytics
-- ✅ Financial reporting
-- ✅ House edge monitoring
+
+-   ✅ Real-money gameplay
+-   ✅ Deposit/withdrawal tracking
+-   ✅ Profit/loss analytics
+-   ✅ Financial reporting
+-   ✅ House edge monitoring
 
 ---
 
