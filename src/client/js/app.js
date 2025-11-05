@@ -1033,3 +1033,98 @@ function resize() {
         screenHeight: global.screen.height,
     });
 }
+
+// Exit Game Functionality
+var exitCountdownTimer = null;
+var exitCountdownValue = 5;
+
+function exitGame() {
+    var exitCountdownEl = document.getElementById("exitCountdown");
+    var countdownNumberEl = exitCountdownEl.querySelector(".countdown-number");
+
+    // Show countdown overlay
+    exitCountdownEl.style.display = "block";
+    exitCountdownValue = 5;
+    countdownNumberEl.textContent = exitCountdownValue;
+
+    // Start countdown
+    exitCountdownTimer = setInterval(function() {
+        exitCountdownValue--;
+        countdownNumberEl.textContent = exitCountdownValue;
+
+        if (exitCountdownValue <= 0) {
+            clearInterval(exitCountdownTimer);
+            exitCountdownTimer = null;
+
+            // Cleanup and return to landing page
+            cleanupGame();
+            returnToLanding();
+        }
+    }, 1000);
+}
+
+function cleanupGame() {
+    // Stop the game loop
+    if (global.animLoopHandle) {
+        window.cancelAnimationFrame(global.animLoopHandle);
+        global.animLoopHandle = null;
+    }
+
+    // Set game state to stopped
+    global.gameStart = false;
+    global.died = true;
+
+    // Disconnect socket
+    if (socket) {
+        socket.disconnect();
+        socket = null;
+    }
+
+    // Clear any remaining entities
+    foods = [];
+    viruses = [];
+    fireFood = [];
+    users = [];
+
+    // Reset player
+    player = {
+        id: -1,
+        x: global.screen.width / 2,
+        y: global.screen.height / 2,
+        screenWidth: global.screen.width,
+        screenHeight: global.screen.height,
+        target: {x: global.screen.width / 2, y: global.screen.height / 2}
+    };
+}
+
+function returnToLanding() {
+    var landingView = document.getElementById("landingView");
+    var gameView = document.getElementById("gameView");
+    var exitCountdownEl = document.getElementById("exitCountdown");
+
+    if (landingView && gameView) {
+        // Hide game view
+        gameView.style.display = "none";
+        document.getElementById("gameAreaWrapper").style.opacity = 0;
+
+        // Hide countdown
+        exitCountdownEl.style.display = "none";
+
+        // Show landing view
+        landingView.style.display = "block";
+
+        // Reset player name input if needed
+        playerNameInput.value = "";
+    }
+}
+
+// Initialize exit button event listener
+window.addEventListener("load", function() {
+    var exitGameBtn = document.getElementById("exitGameBtn");
+
+    if (exitGameBtn) {
+        exitGameBtn.addEventListener("click", function() {
+            exitGame();
+        });
+    }
+});
