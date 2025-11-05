@@ -40,14 +40,9 @@ function copyClientResources() {
 }
 
 function buildClientJS() {
-    // For Vercel, output directly to src/client/js so it's accessible
-    // For local development, output to bin/client/js
-    const destPath = process.env.VERCEL || process.env.VERCEL_ENV
-        ? 'src/client/js/'
-        : 'bin/client/js/';
     return gulp.src(['src/client/js/app.js'])
-        .pipe(webpack(getWebpackConfig()))
-        .pipe(gulp.dest(destPath));
+        .pipe(webpack(getWebpackConfig(), require('webpack')))
+        .pipe(gulp.dest('bin/client/js/'));
 }
 
 function copyClientJS() {

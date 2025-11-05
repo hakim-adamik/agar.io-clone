@@ -1,15 +1,33 @@
-module.exports = (isProduction) => ({
-    entry: "./src/client/js/app.js",
-    mode: isProduction ? 'production' : 'development',
-    output: {
-        library: "app",
-        filename: "app.js"
-    },
-    devtool: false,
-    module: {
-        rules: getRules(isProduction)
-    },
-});
+const path = require('path');
+
+module.exports = (isProduction) => {
+    const outputPath = path.resolve(__dirname, 'bin/client/js');
+
+    return {
+        entry: "./src/client/js/app.js",
+        mode: isProduction ? 'production' : 'development',
+        target: 'web',
+        output: {
+            library: "app",
+            libraryTarget: 'var',
+            filename: "app.js",
+            path: outputPath
+        },
+        resolve: {
+            extensions: ['.js'],
+            modules: [path.resolve(__dirname, 'bin/client/js'), 'node_modules']
+        },
+        devtool: false,
+        module: {
+            rules: getRules(isProduction)
+        },
+        node: {
+            global: false,
+            __filename: false,
+            __dirname: false
+        }
+    };
+};
 
 function getRules(isProduction) {
     if (isProduction) {
@@ -21,7 +39,10 @@ function getRules(isProduction) {
                     loader: 'babel-loader',
                     options: {
                         presets: [
-                            ['@babel/preset-env', { targets: "defaults" }]
+                            ['@babel/preset-env', {
+                                targets: "defaults",
+                                modules: false // Let webpack handle module system
+                            }]
                         ]
                     }
                 }

@@ -31,15 +31,24 @@ const path = require('path');
 const fs = require('fs');
 
 // Try multiple possible paths for built files
+// In Vercel: __dirname is /var/task/src/server, process.cwd() is /var/task
 const possiblePaths = [
-  path.join(__dirname, '../../bin/client'),      // Normal build output
-  path.join(__dirname, '../client'),              // Source files
-  path.join(process.cwd(), 'bin/client'),        // From project root
-  path.join(process.cwd(), 'src/client')         // Source from project root
+  path.join(process.cwd(), 'bin/client'),        // Primary: build output from project root
+  path.join(__dirname, '../../bin/client'),     // Fallback: relative from server.js
+  path.join(__dirname, '../client'),            // Source files as last resort
+  path.join(process.cwd(), 'src/client')        // Source from project root
 ];
 
-let staticPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[1]; // Default to source if none found
+let staticPath = possiblePaths.find(p => {
+  try {
+    return fs.existsSync(p) && fs.statSync(p).isDirectory();
+  } catch (e) {
+    return false;
+  }
+}) || possiblePaths[2]; // Default to source if none found
+
 console.log(`[DEBUG] Serving static files from: ${staticPath}`);
+console.log(`[DEBUG] Available paths checked:`, possiblePaths.map(p => `${p} (${fs.existsSync(p) ? 'exists' : 'missing'})`).join(', '));
 
 app.use(express.static(staticPath));
 
