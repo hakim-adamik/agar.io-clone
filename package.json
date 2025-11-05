@@ -45,6 +45,8 @@
     "@babel/preset-env": "^7.21.5",
     "@babel/preset-react": "^7.28.5",
     "@privy-io/react-auth": "^3.5.1",
+    "ajv": "^6.12.6",
+    "ajv-keywords": "^3.5.2",
     "babel-loader": "^9.1.2",
     "buffer": "^6.0.3",
     "chai": "^4.3.7",
@@ -71,8 +73,12 @@
     "stream-browserify": "^3.0.0",
     "style-loader": "^4.0.0",
     "uuid": "^9.0.0",
-    "webpack": "^5.82.1",
+    "webpack": "^5.95.0",
     "webpack-stream": "^7.0.0"
+  },
+  "overrides": {
+    "ajv": "6.12.6",
+    "ajv-keywords": "3.5.2"
   },
   "devDependencies": {
     "@types/sat": "^0.0.32",
