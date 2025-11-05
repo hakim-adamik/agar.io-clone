@@ -106,7 +106,7 @@ gcloud run deploy $SERVICE_NAME \
   --max-instances 20 \
   --min-instances 0 \
   --timeout 300 \
-  --set-env-vars NODE_ENV=production \
+  --set-env-vars NODE_ENV=production,PRIVY_APP_ID=cmhkpg56r02vbjr0cdeex8n7i \
   --quiet
 
 if [ $? -eq 0 ]; then

@@ -196,12 +196,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function redirectToGame() {
         // Instead of redirecting, trigger seamless game start
-        if (typeof startSeamlessGame === 'function') {
-            startSeamlessGame();
+        if (typeof window.startSeamlessGame === 'function') {
+            window.startSeamlessGame();
         } else {
-            // Fallback to redirect if function not available
-            document.body.style.opacity = '0';
-            setTimeout(() => window.location.href = GAME_URL, TRANSITION_DELAY);
+            // Fallback: manually start the game
+            const playerNameInput = document.getElementById("playerNameInput");
+            if (playerNameInput && !playerNameInput.value) {
+                playerNameInput.value = "Guest_" + Math.floor(Math.random() * 10000);
+            }
+            
+            // Hide landing view and show game view
+            const landingView = document.getElementById("landingView");
+            const gameView = document.getElementById("gameView");
+            
+            if (landingView && gameView) {
+                landingView.style.display = "none";
+                gameView.style.display = "block";
+                setTimeout(() => {
+                    const gameArea = document.getElementById("gameAreaWrapper");
+                    if (gameArea) gameArea.style.opacity = 1;
+                }, 50);
+            }
+            
+            // Initialize game if startGame function is available
+            if (typeof window.startGame === 'function') {
+                window.startGame("player");
+            }
         }
     }
 
