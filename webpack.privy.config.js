@@ -2,7 +2,7 @@ const path = require('path');
 const webpack = require('webpack');
 
 module.exports = {
-    entry: './src/client/auth/privy-auth.jsx',
+    entry: './src/client/components/auth/privy-auth.jsx',
     output: {
         path: path.resolve(__dirname, 'bin/client/auth'),
         filename: 'privy-auth-bundle.js',

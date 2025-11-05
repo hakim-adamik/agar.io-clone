@@ -49,7 +49,7 @@ function buildClientJS() {
 }
 
 function buildPrivyAuth() {
-    return gulp.src(['src/client/auth/privy-auth.jsx'])
+    return gulp.src(['src/client/components/auth/privy-auth.jsx'])
         .pipe(webpack(require('./webpack.privy.config.js')))
         .pipe(gulp.dest('bin/client/auth/'));
 }
