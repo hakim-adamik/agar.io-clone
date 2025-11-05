@@ -347,6 +347,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Initialize Privy authentication
+    window.dispatchEvent(new CustomEvent('privy:init'));
+
     // Initialize parallax effect
     initParallax();
 
