@@ -3,8 +3,9 @@ import ReactDOM from 'react-dom/client';
 import { PrivyProvider, usePrivy, useLogin, useLogout } from '@privy-io/react-auth';
 
 // Privy configuration
+// Read from window.ENV injected by server, fallback to process.env for local dev
 const PRIVY_CONFIG = {
-    appId: process.env.PRIVY_APP_ID || 'YOUR_PRIVY_APP_ID',
+    appId: (typeof window !== 'undefined' && window.ENV && window.ENV.PRIVY_APP_ID) || process.env.PRIVY_APP_ID || 'YOUR_PRIVY_APP_ID',
     config: {
         // Customize the login modal appearance
         appearance: {
