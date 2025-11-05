@@ -80,6 +80,8 @@ Tracks cumulative gameplay performance.
 ```sql
 CREATE TABLE IF NOT EXISTS game_stats (
   user_id INTEGER PRIMARY KEY,
+  
+  -- Basic gameplay stats
   games_played INTEGER DEFAULT 0,           -- Total games
   total_playtime INTEGER DEFAULT 0,         -- Total minutes played
   total_mass_eaten INTEGER DEFAULT 0,       -- Cumulative mass eaten
@@ -93,29 +95,66 @@ CREATE TABLE IF NOT EXISTS game_stats (
   viruses_popped INTEGER DEFAULT 0,         -- Viruses destroyed
   longest_survival INTEGER DEFAULT 0,       -- Longest game in seconds
   avg_survival INTEGER DEFAULT 0,           -- Average game duration
-  win_streak INTEGER DEFAULT 0,             -- Current win streak (top 3 finish)
+  
+  -- Win/Loss tracking (analytics-focused)
+  total_wins INTEGER DEFAULT 0,             -- Games with performance_pct > 10
+  total_losses INTEGER DEFAULT 0,           -- Games eaten
+  total_cashouts INTEGER DEFAULT 0,         -- Voluntary exits (Escape key)
+  early_losses INTEGER DEFAULT 0,           -- Eaten before reaching 110%
+  win_rate REAL DEFAULT 0,                  -- wins / (wins + losses)
+  
+  -- Performance metrics
+  avg_performance_pct REAL DEFAULT 0,       -- Average % gain/loss per game
+  best_performance_pct REAL DEFAULT 0,      -- Best % gain in a single game
+  worst_performance_pct REAL DEFAULT 0,     -- Worst % loss in a single game
+  total_performance_pct REAL DEFAULT 0,     -- Cumulative performance across all games
+  
+  -- Streaks
+  win_streak INTEGER DEFAULT 0,             -- Current win streak
   best_win_streak INTEGER DEFAULT 0,        -- Best win streak
+  loss_streak INTEGER DEFAULT 0,            -- Current loss streak (for fairness analysis)
+  
+  -- Retention behavior tracking
+  games_after_win INTEGER DEFAULT 0,        -- Times played again after winning
+  games_after_loss INTEGER DEFAULT 0,       -- Times played again after losing
+  
+  -- Money-based gameplay (future)
+  total_deposited REAL DEFAULT 0,           -- Total money brought in (future)
+  total_withdrawn REAL DEFAULT 0,           -- Total money cashed out (future)
+  net_profit REAL DEFAULT 0,                -- total_withdrawn - total_deposited (future)
+  biggest_win REAL DEFAULT 0,               -- Largest single-game profit (future)
+  biggest_loss REAL DEFAULT 0,              -- Largest single-game loss (future)
+  
+  -- Timestamps
   last_game_at INTEGER,                     -- Last game timestamp
+  last_win_at INTEGER,                      -- Last win timestamp
+  last_loss_at INTEGER,                     -- Last loss timestamp
   updated_at INTEGER NOT NULL,              -- Last stats update
+  
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_stats_highest_mass ON game_stats(highest_mass DESC);
 CREATE INDEX idx_stats_total_kills ON game_stats(total_kills DESC);
 CREATE INDEX idx_stats_games_played ON game_stats(games_played DESC);
+CREATE INDEX idx_stats_win_rate ON game_stats(win_rate DESC);
+CREATE INDEX idx_stats_total_performance ON game_stats(total_performance_pct DESC);
+CREATE INDEX idx_stats_net_profit ON game_stats(net_profit DESC);
 ```
 
 **Design Notes:**
-- One row per user (1:1 relationship)
-- All cumulative stats for profile display
-- Indexes for leaderboard queries (highest mass, most kills, etc.)
-- `CASCADE` delete ensures stats are removed if user is deleted
+- **Analytics-focused:** Tracks wins, losses, cashouts, and performance percentages
+- **Fairness metrics:** `early_losses`, `loss_streak` for spawn balance analysis
+- **Retention tracking:** `games_after_win` vs `games_after_loss` for behavioral analysis
+- **Money-ready:** Fields for real-money gameplay (deposits, withdrawals, profit/loss)
+- **Performance-based:** Uses % metrics (not just absolute values) for fair comparison
+- **Win definition:** `performance_pct > 10` = win (gaining 10%+ mass)
 
 ---
 
 ### 3. Game Sessions Table
 
-Tracks individual game sessions for match history.
+Tracks individual game sessions for match history and analytics.
 
 ```sql
 CREATE TABLE IF NOT EXISTS game_sessions (
@@ -124,28 +163,53 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   started_at INTEGER NOT NULL,              -- Game start timestamp
   ended_at INTEGER,                         -- Game end timestamp (NULL if ongoing)
   duration INTEGER,                         -- Duration in seconds
+  
+  -- Mass tracking
+  starting_mass INTEGER NOT NULL,           -- Mass at spawn (usually 10)
   final_mass INTEGER,                       -- Mass at end of game
   highest_mass INTEGER,                     -- Peak mass during game
+  performance_pct REAL,                     -- (final_mass / starting_mass - 1) * 100
+  
+  -- Money-based gameplay (future: replace mass with real money)
+  entry_amount REAL DEFAULT 0,              -- Money brought into game (future)
+  exit_amount REAL DEFAULT 0,               -- Money taken out of game (future)
+  net_profit REAL DEFAULT 0,                -- exit_amount - entry_amount (future)
+  
+  -- Exit mechanics
+  exit_reason TEXT CHECK(exit_reason IN ('cashed_out', 'eaten', 'disconnected')),
+  reached_110_pct BOOLEAN DEFAULT 0,        -- Did player reach 110% growth before exit?
+  
+  -- Gameplay stats
   final_rank INTEGER,                       -- Leaderboard position at end (1-10)
   kills INTEGER DEFAULT 0,                  -- Cells eaten this game
   deaths INTEGER DEFAULT 0,                 -- Times died (usually 0 or 1)
   splits INTEGER DEFAULT 0,                 -- Splits performed
   ejects INTEGER DEFAULT 0,                 -- Mass ejections
   viruses_popped INTEGER DEFAULT 0,         -- Viruses destroyed
+  
+  -- Win/loss classification
+  is_win BOOLEAN DEFAULT 0,                 -- performance_pct > 10 (gained 10%+)
+  is_early_loss BOOLEAN DEFAULT 0,          -- Eaten before reaching 110% mass
   was_top_3 BOOLEAN DEFAULT 0,              -- Finished in top 3
+  
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_sessions_user_id ON game_sessions(user_id);
 CREATE INDEX idx_sessions_started_at ON game_sessions(started_at DESC);
 CREATE INDEX idx_sessions_highest_mass ON game_sessions(highest_mass DESC);
+CREATE INDEX idx_sessions_performance ON game_sessions(performance_pct DESC);
+CREATE INDEX idx_sessions_exit_reason ON game_sessions(exit_reason);
+CREATE INDEX idx_sessions_is_win ON game_sessions(is_win, user_id);
 ```
 
 **Design Notes:**
-- Individual game history for each player
-- Can query recent games, best games, etc.
-- Supports "ongoing" games (`ended_at` NULL)
-- Useful for achievements and analytics
+- **Performance tracking:** `performance_pct` is key metric for win/loss (not absolute mass)
+- **Exit mechanics:** Supports cash-out (Escape key), being eaten, or disconnect
+- **Money-based gameplay:** Fields ready for real-money integration (entry_amount, exit_amount, net_profit)
+- **Analytics-focused:** `is_win`, `is_early_loss`, `reached_110_pct` for fairness analysis
+- **Win definition:** `performance_pct > 10` (gained 10%+) = successful game
+- **Early loss detection:** Tracks if eaten before growing (spawn fairness metric)
 
 ---
 
@@ -585,6 +649,170 @@ Test performance with:
 
 ---
 
+## Game Analytics & Key Metrics
+
+### Core Learning Questions
+
+Based on minimal analytics approach (3 events: `user_signup`, `game_start`, `game_end`):
+
+#### 1. 🧠 **Is the game addictive?**
+**Metric:** `avg_games_per_user_per_day`
+```sql
+-- Games per user per day
+SELECT 
+  DATE(started_at / 1000, 'unixepoch') as game_date,
+  COUNT(*) / COUNT(DISTINCT user_id) as avg_games_per_user
+FROM game_sessions
+WHERE started_at >= strftime('%s', 'now', '-7 days') * 1000
+GROUP BY game_date;
+```
+
+#### 2. 💭 **Do users come back?**
+**Metrics:** `D1/D3/D7 retention` after wins vs losses
+```sql
+-- D1 Retention after wins
+SELECT 
+  COUNT(DISTINCT s1.user_id) as returned_users,
+  COUNT(DISTINCT s1.user_id) * 100.0 / 
+    (SELECT COUNT(DISTINCT user_id) FROM game_sessions WHERE is_win = 1) as retention_pct
+FROM game_sessions s1
+WHERE s1.is_win = 1
+AND EXISTS (
+  SELECT 1 FROM game_sessions s2 
+  WHERE s2.user_id = s1.user_id 
+  AND s2.started_at BETWEEN s1.ended_at AND s1.ended_at + (86400000) -- Next 24h
+);
+
+-- Compare: D1 Retention after losses
+-- (Same query but with is_win = 0)
+```
+
+#### 3. ⚖️ **Is the game fair?**
+**Metric:** `early_loss_rate` = % eaten before reaching 110%
+```sql
+-- Early loss rate (spawn fairness)
+SELECT 
+  COUNT(CASE WHEN is_early_loss = 1 THEN 1 END) * 100.0 / 
+    COUNT(CASE WHEN exit_reason = 'eaten' THEN 1 END) as early_loss_pct,
+  AVG(CASE WHEN is_early_loss = 1 THEN duration END) as avg_time_before_early_death
+FROM game_sessions
+WHERE exit_reason = 'eaten';
+
+-- Target: <30% early losses = fair spawning
+-- If >50% early losses = spawn points need balancing
+```
+
+#### 4. 👑 **Are wins concentrated among few users?**
+**Metric:** `win_concentration_rate`
+```sql
+-- Win concentration (top 10% dominance)
+WITH user_wins AS (
+  SELECT user_id, COUNT(*) as wins
+  FROM game_sessions
+  WHERE is_win = 1
+  GROUP BY user_id
+),
+top_10_pct AS (
+  SELECT SUM(wins) as top_wins
+  FROM user_wins
+  ORDER BY wins DESC
+  LIMIT (SELECT COUNT(DISTINCT user_id) / 10 FROM user_wins)
+)
+SELECT 
+  top_wins * 100.0 / (SELECT SUM(wins) FROM user_wins) as concentration_pct
+FROM top_10_pct;
+
+-- Target: <40% = fair distribution
+-- If >60% = game favors experienced players too much
+```
+
+#### 5. 🌱 **Is the user base growing?**
+**Metrics:** `DAU`, `MAU`, `growth_rate`
+```sql
+-- Daily Active Users & Growth
+SELECT 
+  DATE(started_at / 1000, 'unixepoch') as game_date,
+  COUNT(DISTINCT user_id) as dau,
+  COUNT(DISTINCT CASE 
+    WHEN u.created_at >= strftime('%s', 'now', '-1 day') * 1000 
+    THEN user_id 
+  END) as new_users
+FROM game_sessions gs
+JOIN users u ON gs.user_id = u.id
+WHERE started_at >= strftime('%s', 'now', '-30 days') * 1000
+GROUP BY game_date;
+```
+
+### Performance Percentage Calculations
+
+**Win/Loss Definition:**
+- **Win:** `performance_pct > 10` (gained 10%+ mass)
+- **Fair Game:** `performance_pct between -10 and 110`
+- **Early Loss:** Eaten with `performance_pct < 10`
+
+**Example Calculations:**
+```sql
+-- Calculate performance percentage on game end
+UPDATE game_sessions 
+SET 
+  performance_pct = ((final_mass - starting_mass) * 100.0 / starting_mass),
+  is_win = (final_mass > starting_mass * 1.1),
+  is_early_loss = (exit_reason = 'eaten' AND final_mass < starting_mass * 1.1),
+  reached_110_pct = (highest_mass >= starting_mass * 1.1)
+WHERE id = ?;
+```
+
+### Cash-Out Mechanics (Escape Key)
+
+**Exit Reason Flow:**
+```
+Player presses Escape → exit_reason = 'cashed_out'
+Player eaten → exit_reason = 'eaten'
+Player disconnects → exit_reason = 'disconnected'
+```
+
+**Analytics Impact:**
+```sql
+-- Cashout behavior analysis
+SELECT 
+  AVG(CASE WHEN exit_reason = 'cashed_out' THEN performance_pct END) as avg_cashout_pct,
+  AVG(CASE WHEN exit_reason = 'eaten' THEN performance_pct END) as avg_eaten_pct,
+  COUNT(CASE WHEN exit_reason = 'cashed_out' AND is_win = 1 THEN 1 END) as profitable_cashouts,
+  COUNT(CASE WHEN exit_reason = 'cashed_out' AND is_win = 0 THEN 1 END) as loss_cutting_cashouts
+FROM game_sessions;
+
+-- Insight: Do players cash out when winning or cut losses?
+```
+
+### Money-Based Gameplay (Future)
+
+**Entry/Exit Flow:**
+```
+1. Player deposits $10 → entry_amount = 10.00, starting_mass = 10
+2. Player grows to mass 25 → performance_pct = 150%
+3. Player cashes out → exit_amount = 25.00, net_profit = +15.00
+```
+
+**Profit/Loss Tracking:**
+```sql
+-- Update money stats on cashout
+UPDATE game_stats
+SET 
+  total_deposited = total_deposited + ?,
+  total_withdrawn = total_withdrawn + ?,
+  net_profit = total_withdrawn - total_deposited,
+  biggest_win = MAX(biggest_win, exit_amount - entry_amount),
+  biggest_loss = MIN(biggest_loss, exit_amount - entry_amount)
+WHERE user_id = ?;
+```
+
+**House Edge Considerations:**
+- Track `total_deposited` vs `total_withdrawn` system-wide
+- Monitor `net_profit` distribution across users
+- Detect outliers (potential cheating or exploits)
+
+---
+
 ## Monitoring & Analytics
 
 ### Database Metrics
@@ -601,8 +829,11 @@ Track:
 - User registration rate
 - Active users (daily/weekly/monthly)
 - Average session duration
-- Leaderboard changes
-- Achievement unlock rates
+- Win/loss distribution
+- Early loss rate (fairness)
+- Win concentration (fairness)
+- Cashout vs eaten ratio
+- Return rate after wins vs losses
 
 ### Alerts
 
@@ -610,7 +841,9 @@ Set up alerts for:
 - Slow queries (>100ms)
 - Failed database connections
 - Unusual stat patterns (potential cheating)
-- High error rates
+- High early loss rate (>50% = unfair spawning)
+- High win concentration (>60% = imbalanced game)
+- Negative net profit outliers (money-based gameplay)
 
 ---
 
