@@ -12,7 +12,7 @@ yarn-error.log
 rebuild.sh
 *.md
 test/
-.eslintrc*
+# .eslintrc* - KEEP FOR BUILD PROCESS
 .prettierrc*
 .github/
 .vscode/
