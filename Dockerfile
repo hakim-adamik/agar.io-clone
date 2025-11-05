@@ -10,8 +10,11 @@ COPY package.json /usr/src/app/
 RUN npm install --legacy-peer-deps && npm cache clean --force
 COPY . /usr/src/app
 
-# Build the application
+# Build the application (gulp build - server + static files)
 RUN npm run build
+
+# Build webpack bundles (client JS and Privy auth)
+RUN node build-webpack.js
 
 CMD [ "npm", "run", "start:prod" ]
 
