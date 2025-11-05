@@ -4,7 +4,7 @@ import { PrivyProvider, usePrivy, useLogin, useLogout } from '@privy-io/react-au
 
 // Privy configuration
 const PRIVY_CONFIG = {
-    appId: 'cmhkpg56r02vbjr0cdeex8n7i',
+    appId: process.env.PRIVY_APP_ID || 'YOUR_PRIVY_APP_ID',
     config: {
         // Customize the login modal appearance
         appearance: {
