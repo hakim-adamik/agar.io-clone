@@ -90,7 +90,7 @@ gulp.task('todo', gulp.series('lint', () => {
         .pipe(gulp.dest('./'));
 }));
 
-gulp.task('build', gulp.series('lint', gulp.parallel(copyClientResources, buildClientJS, buildPrivyAuth, copyClientJS, buildServer, mocha)));
+gulp.task('build', gulp.series('lint', gulp.parallel(copyClientResources, copyClientJS, buildServer, mocha)));
 
 gulp.task('dev', gulp.parallel(copyClientResources, buildClientJS, buildPrivyAuth, copyClientJS, buildServer));
 

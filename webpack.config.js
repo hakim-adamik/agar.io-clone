@@ -9,6 +9,9 @@ module.exports = (isProduction) => ({
     module: {
         rules: getRules(isProduction)
     },
+    optimization: isProduction ? {
+        minimize: false  // Disable minification to avoid terser-webpack-plugin issues
+    } : {}
 });
 
 function getRules(isProduction) {
