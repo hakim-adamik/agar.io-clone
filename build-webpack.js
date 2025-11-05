@@ -4,6 +4,9 @@
  * Used during Docker build to create client JS and Privy auth bundle
  */
 
+// Load environment variables from .env file if it exists (for local builds)
+require('dotenv').config();
+
 const webpack = require('webpack');
 const path = require('path');
 

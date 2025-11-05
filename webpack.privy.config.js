@@ -48,6 +48,8 @@ module.exports = {
         }),
         new webpack.DefinePlugin({
             'process.env': JSON.stringify({
+                // PRIVY_APP_ID is now injected at runtime via window.ENV by the server
+                // Keeping process.env available for compatibility
                 PRIVY_APP_ID: process.env.PRIVY_APP_ID || ''
             })
         })
