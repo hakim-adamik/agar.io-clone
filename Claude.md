@@ -102,6 +102,9 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
     -   **Grid Display Fix:** Grid now fixed in world space instead of moving with player
     -   **Dark Mode:** Added functional checkbox and chat command (`-dark`) support
     -   **Documentation:** Added comprehensive technical architecture and LLM context docs
+    -   **Google Cloud Run Deployment:** Successfully deployed with automated `deploy.sh` script
+    -   **Runtime Environment Injection:** Server-side HTML injection for environment variables (Privy App ID)
+    -   **Webpack Build System:** Custom `build-webpack.js` script for Docker/Cloud Build compatibility
 -   **Performance Update:**
     -   Implemented viewport culling (50-80% reduction in draw calls)
     -   Added grid caching (eliminates 50-100 line draws per frame)
@@ -300,11 +303,34 @@ npm test  # Runs linting and Mocha tests
 
 ## Deployment
 
+### Google Cloud Run (Recommended)
+
+The application is successfully deployed to Google Cloud Run with an automated deployment script.
+
+```bash
+# One-command deployment
+./deploy.sh
+```
+
+**What happens during deployment:**
+1. Prerequisite checks (gcloud CLI, authentication)
+2. `npm run build` - Gulp build (server code + static files)
+3. `node build-webpack.js` - Webpack bundles (app.js + Privy auth)
+4. Local test (5 seconds)
+5. Cloud Run deployment with environment variables
+6. Returns live URL
+
+**Key Configuration:**
+- Port: 8080 (required by Cloud Run)
+- Memory: 512Mi, CPU: 1
+- Auto-scaling: 0-20 instances
+- Environment: `NODE_ENV=production`, `PRIVY_APP_ID` injected at runtime
+
 ### Docker
 
 ```bash
 docker build -t agarioclone .
-docker run -p 3000:3000 agarioclone
+docker run -p 8080:8080 -e PORT=8080 agarioclone
 ```
 
 ### Heroku
@@ -317,7 +343,7 @@ docker run -p 3000:3000 agarioclone
 ```javascript
 // config.js adjustments
 host: "0.0.0.0",  // Bind to all interfaces
-port: process.env.PORT || 3000,  // Use environment port
+port: process.env.PORT || 8080,  // Use environment port (Cloud Run requires 8080)
 adminPass: process.env.ADMIN_PASS || "CHANGE_THIS",  // Secure admin password
 ```
 
@@ -356,9 +382,9 @@ adminPass: process.env.ADMIN_PASS || "CHANGE_THIS",  // Secure admin password
 
 1. **"Cannot connect to server"**
 
-    - Check if port 3000 is available
+    - Check if port 8080 is available (Cloud Run default)
     - Verify firewall settings
-    - Ensure `npm install` completed successfully
+    - Ensure `npm install --legacy-peer-deps` completed successfully
 
 2. **Laggy gameplay**
 
@@ -367,9 +393,21 @@ adminPass: process.env.ADMIN_PASS || "CHANGE_THIS",  // Secure admin password
     - Verify client FPS in browser DevTools
 
 3. **Build failures**
-    - Clear `node_modules` and reinstall
-    - Check Node.js version compatibility
+    - Clear `node_modules` and reinstall with `--legacy-peer-deps`
+    - Check Node.js version compatibility (18.x required)
     - Verify all dev dependencies installed
+    - Run `node build-webpack.js` to rebuild webpack bundles
+
+4. **Privy authentication not working**
+    - Check `PRIVY_APP_ID` environment variable is set
+    - Verify `window.ENV` is injected in HTML (view page source)
+    - Ensure webpack bundle includes the app ID
+    - Check browser console for Privy SDK errors
+
+5. **Game canvas not rendering**
+    - Verify `app.js` and `privy-auth-bundle.js` are loaded (check Network tab)
+    - Ensure webpack bundles were built successfully
+    - Check for JavaScript errors in browser console
 
 ### Useful Commands
 

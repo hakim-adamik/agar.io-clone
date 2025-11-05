@@ -56,6 +56,10 @@ echo ""
 
 # Step 2: Build and test locally
 echo -e "${YELLOW}🔨 Building application...${NC}"
+echo "This runs two build stages:"
+echo "  1. gulp build - Server code + static files"
+echo "  2. node build-webpack.js - Client JS + Privy auth bundles (runs in Dockerfile)"
+echo ""
 npm run build
 
 if [ $? -ne 0 ]; then
@@ -64,6 +68,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo -e "${GREEN}✅ Build successful${NC}"
+echo "Note: Webpack bundles will be built during Docker build in Cloud Run"
 echo ""
 
 # Step 3: Test locally (optional, quick test)
@@ -108,6 +113,17 @@ gcloud run deploy $SERVICE_NAME \
   --timeout 300 \
   --set-env-vars NODE_ENV=production,PRIVY_APP_ID=cmhkpg56r02vbjr0cdeex8n7i \
   --quiet
+
+# What happens during Cloud Build:
+# 1. Dockerfile copies package.json and runs: npm install --legacy-peer-deps
+# 2. Copies source code to container
+# 3. Runs: npm run build (gulp build - server + static files)
+# 4. Runs: node build-webpack.js (webpack bundles - app.js + Privy auth)
+# 5. Starts server: npm run start:prod (node bin/server/server.js)
+#
+# Environment Variables:
+# - NODE_ENV=production - Production mode
+# - PRIVY_APP_ID - Injected at runtime via window.ENV in HTML (see src/server/server.js)
 
 if [ $? -eq 0 ]; then
     echo ""

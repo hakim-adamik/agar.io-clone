@@ -94,6 +94,56 @@ gcloud run deploy raga-io \
       --set-env-vars NODE_ENV=production,PORT=8080
     ```
 
+### Build Process Architecture
+
+The application uses a two-stage build process to handle both server-side and client-side code:
+
+#### Stage 1: Gulp Build (`npm run build`)
+- Transpiles server code with Babel
+- Copies static assets (HTML, CSS, images, audio)
+- Copies client JavaScript files (landing.js, game-config.js)
+- Runs ESLint for code quality
+- **Does NOT** build webpack bundles (disabled due to dependency complexity)
+
+#### Stage 2: Webpack Build (`node build-webpack.js`)
+- Builds `bin/client/js/app.js` - Main game client bundle (241 KB)
+- Builds `bin/client/auth/privy-auth-bundle.js` - Privy authentication (7.3 MB)
+- Loads `.env` file for local development
+- Uses `babel-loader@8.3.0` to avoid ajv dependency conflicts
+- Includes React, Privy SDK, and all client dependencies
+
+#### Environment Variable Handling
+
+**Build Time (Webpack):**
+- Reads from `.env` file locally via `dotenv.config()`
+- In Docker/Cloud Build: Falls back to empty string (OK, runtime injection handles it)
+- `webpack.DefinePlugin` bundles `process.env.PRIVY_APP_ID` for compatibility
+
+**Runtime (Server):**
+- Server reads `PRIVY_APP_ID` from Cloud Run environment variables
+- `src/server/server.js` injects `<script>window.ENV = {...}</script>` into HTML
+- Client code reads from `window.ENV.PRIVY_APP_ID` at runtime
+- Dual approach ensures it works both locally and in production
+
+#### Dockerfile Build Steps
+
+```dockerfile
+# 1. Install dependencies
+RUN npm install --legacy-peer-deps
+
+# 2. Copy source code
+COPY . /usr/src/app
+
+# 3. Gulp build (server + static files)
+RUN npm run build
+
+# 4. Webpack build (client bundles)
+RUN node build-webpack.js
+
+# 5. Start production server
+CMD [ "npm", "run", "start:prod" ]
+```
+
 ### Configuration Options
 
 #### Resource Limits
@@ -162,6 +212,33 @@ gcloud run logs read raga-io --region europe-west1 --limit 50
     - Cloud Run supports WebSockets by default
     - Check client connection URLs
     - Verify no proxy/firewall blocking connections
+
+5. **Missing JavaScript files (404 errors for app.js or privy-auth-bundle.js):**
+
+    - **Root Cause:** Webpack bundles not built during Docker build
+    - **Solution:** The `build-webpack.js` script runs in Dockerfile after `npm run build`
+    - **Local Test:** Run `node build-webpack.js` to verify webpack builds successfully
+    - **Check:** Ensure `bin/client/js/app.js` and `bin/client/auth/privy-auth-bundle.js` exist after build
+
+6. **Privy authentication modal not appearing:**
+
+    - **Root Cause:** `PRIVY_APP_ID` not available at runtime
+    - **Solution:** Environment variable is injected via server-side HTML (see `src/server/server.js`)
+    - **Verify:** View page source and check for `<script>window.ENV = {...}</script>`
+    - **Check:** Browser console should not show "undefined" for Privy App ID
+
+7. **Game canvas not rendering after clicking Play:**
+
+    - **Root Cause:** Missing webpack bundles or JavaScript errors
+    - **Solution:** Ensure `app.js` bundle is loaded successfully (check Network tab)
+    - **Check:** Browser console for JavaScript errors
+    - **Verify:** `global.gameStart` is set to `true` after socket connection
+
+8. **Dependency conflicts (ajv/babel-loader errors):**
+    - **Root Cause:** Incompatible webpack plugin versions
+    - **Solution:** Use `babel-loader@8.3.0` (downgraded from 9.x)
+    - **Install:** Always use `npm install --legacy-peer-deps`
+    - **Fix:** Clear `node_modules` and `package-lock.json`, then reinstall
 
 #### Performance Monitoring
 
