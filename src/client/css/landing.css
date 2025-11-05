@@ -1,7 +1,9 @@
 /* CSS Variables for gaming theme */
 :root {
     --primary-blue: #3b82f6;
-    --primary-green: #84cc16;
+    --primary-blue: #4a90e2;
+    --primary-cyan: #50e3c2;
+    --primary-green: #4a90e2; /* Changed to blue for consistency */
     --primary-red: #ef4444;
     --bg-dark: #0a0e1a;
     --bg-darker: #050810;
@@ -350,7 +352,7 @@ html, body {
 }
 
 .play-btn {
-    background: linear-gradient(135deg, #84cc16, #65a30d);
+    background: linear-gradient(135deg, #4a90e2, #50e3c2);
     border: none;
     color: white;
     padding: 1.25rem 3.5rem;
@@ -361,7 +363,7 @@ html, body {
     transition: var(--transition);
     text-transform: uppercase;
     letter-spacing: 2px;
-    box-shadow: 0 10px 30px rgba(132, 204, 22, 0.3);
+    box-shadow: 0 10px 30px rgba(74, 144, 226, 0.3);
     position: relative;
     overflow: hidden;
 }
@@ -381,7 +383,7 @@ html, body {
 
 .play-btn:hover {
     transform: scale(1.05);
-    box-shadow: 0 15px 40px rgba(132, 204, 22, 0.4);
+    box-shadow: 0 15px 40px rgba(74, 144, 226, 0.4);
 }
 
 .play-btn:hover::before {
@@ -563,7 +565,7 @@ html, body {
 
 .tutorial-step i {
     font-size: 1.75rem;
-    color: var(--primary-green);
+    color: var(--primary-blue);
     margin-bottom: 0.5rem;
     display: block;
 }
@@ -583,7 +585,7 @@ html, body {
 .modal-button {
     width: 100%;
     padding: 1rem;
-    background: linear-gradient(135deg, var(--primary-green), #65a30d);
+    background: linear-gradient(135deg, #4a90e2, #50e3c2);
     color: white;
     border: none;
     border-radius: 30px;
@@ -597,7 +599,7 @@ html, body {
 
 .modal-button:hover {
     transform: scale(1.02);
-    box-shadow: 0 10px 30px rgba(132, 204, 22, 0.3);
+    box-shadow: 0 10px 30px rgba(74, 144, 226, 0.3);
 }
 
 /* Touch-friendly adjustments */

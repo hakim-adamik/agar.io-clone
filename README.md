@@ -38,12 +38,15 @@ You can check out how to play on our [wiki](https://github.com/owenashurst/agar.
 ---
 
 ## Latest Changes
+- **Authentication System**: Integrated Privy SDK for social login (Google, Discord, Twitter, Email)
+- **Guest Profile System**: Clear guest status with inviting "Pro Tip" to encourage sign-in
+- **Direct Auth Flow**: Streamlined authentication without redundant modals
 - Game logic is handled by the server
 - The client side is for rendering of the canvas and its items only.
 - Mobile optimisation.
 - Implementation of working viruses.
 - Display player name.
-- Now supporting chat. 
+- Now supporting chat.
 - Type`-ping` in the chatbox to check your ping, as well as other commands!
 
 ---
@@ -116,10 +119,17 @@ docker run -it -p 3000:3000 agarioclone_agar
 
   Yes you can.
 
+## Documentation
+
+- **[Development Guide](docs/DEVELOPMENT.md)** - Project roadmap, performance optimizations, and development workflow
+- **[Technical Architecture](docs/ARCHITECTURE.md)** - Detailed system architecture and implementation details  
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Google Cloud Run, Heroku, and Docker deployment instructions
+- **[Known Issues & Troubleshooting](docs/ISSUES.md)** - Common problems and solutions
+- **[LLM Context](Claude.md)** - Comprehensive context document for AI assistants
+
 ## For Developers
  - [Game Architecture](https://github.com/owenashurst/agar.io-clone/wiki/Game-Architecture) to understand how the backend works.
  - If you want to start your own project, I recommend you use [this template](https://github.com/huytd/node-online-game-template). Happy developing!
- -
 
 ## TODOs
  We have an explicit [TODO](https://github.com/owenashurst/agar.io-clone/wiki/Coming-Features) list for the all the features we aim to develop in the future. Feel free to contribute, we'll be more than grateful.

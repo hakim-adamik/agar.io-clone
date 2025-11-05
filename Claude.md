@@ -26,23 +26,74 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 -   **Seamless Game Experience:** Unified landing page and game in single index.html with instant play capability
 -   **Auto Guest Names:** Automatically generates guest names (e.g., Guest_8209) for immediate gameplay
 -   **Centralized Default Settings:** Configurable defaults in `game-config.js` (dark mode, mass display, borders, continuity enabled by default)
+-   **Social Authentication:** Privy SDK integration for Google, Discord, Twitter, and Email login
+-   **Guest Profile System:** Clear guest status indication with invitation to sign in for rewards
 
-### 🚧 Known Issues & TODOs
+### 🚧 Next Steps & Roadmap
 
-1. **Code Organization:**
+#### 🔐 Authentication & User System (Priority: High) - `user-data-persistence` branch
 
-    - `src/client/js/app.js:96` - Break out GameControls into separate class
-    - `src/client/js/chat-client.js:24` - Refactor GameControls into separate modules
+**1. Database Integration (In Progress)**
+- [x] ~~Choose database system~~ → Using existing SQLite infrastructure
+- [ ] Create user tables schema in sql.js
+  - [ ] Users table (id, privy_id, username, display_name, created_at, last_seen)
+  - [ ] Game statistics table (user_id, games_played, total_mass_eaten, high_score, etc.)
+  - [ ] User preferences table (dark_mode, show_mass, show_border, etc.)
+  - [ ] Sessions table (session_id, user_id, created_at, last_activity)
+- [ ] Create user-repository.js for user data operations
+- [ ] Integrate Privy auth IDs with user profiles
+- [ ] Link Socket.IO sessions to authenticated users
+- [ ] Implement real-time stats tracking during gameplay
+- [ ] Add session management for persistent login
 
-2. **Potential Improvements:**
-    - Consider WebGL rendering for better performance
-    - Implement replay system
-    - Add tournament/room system for scalability
-    - Enhance anti-cheat measures
+**2. Leaderboard Persistence (Next Priority)**
+- [ ] Create leaderboard table (user_id, score, username, timestamp)
+- [ ] Global leaderboard with all-time high scores
+- [ ] Daily/Weekly/Monthly rankings
+- [ ] Store match history and show recent games in profile
+- [ ] Replace mock profile data with real database queries
+
+#### 💰 Privy Wallet Integration (Priority: Medium)
+- [ ] Enable embedded wallets in Privy config
+- [ ] Display wallet address in profile
+- [ ] Plan Web3 features (NFT achievements, tokenized rewards, cosmetics store)
+
+#### 🎮 Enhanced Profile System (Priority: Medium)
+- [ ] Replace mock data with real database queries
+- [ ] Add profile customization (bio, region, preferred settings)
+- [ ] Implement friends system and following features
+- [ ] Create private rooms with password protection
+
+#### 🏆 Achievement System (Priority: Low)
+- [ ] Gameplay achievements (first kill, mass thresholds, survival time)
+- [ ] Social achievements (playing with friends, follower milestones)
+- [ ] Special badges and rewards
+
+#### 🔧 Technical Improvements
+**Backend Architecture:**
+- [ ] RESTful API layer for user data
+- [ ] Redis caching for sessions and leaderboard
+- [ ] Queue system for async stats processing
+
+**Code Organization:**
+- [ ] Break out GameControls into separate class (`src/client/js/app.js:96`)
+- [ ] Refactor GameControls into separate modules (`src/client/js/chat-client.js:24`)
+
+**Performance:**
+- [ ] Consider WebGL rendering for better performance
+- [ ] Implement replay system
+
+**Security:**
+- [ ] Rate limiting for API endpoints
+- [ ] Input validation for user data
+- [ ] Enhanced anti-cheat measures
 
 ### 📊 Recent Changes
 
 -   **Latest Updates (November 2024):**
+    -   **Authentication System:** Integrated Privy SDK for social login (Google, Discord, Twitter, Email)
+    -   **Guest Profile Modal:** Improved guest experience with clear status and "Pro Tip" to encourage sign-in
+    -   **Direct Auth Flow:** Removed redundant modals, clicking "Sign In" directly opens Privy authentication
     -   **Seamless Play Experience:** Merged landing page and game into unified index.html
     -   **Auto Guest Names:** Players can instantly join without entering a name
     -   **UI Improvements:** Professional landing page with animated background and modal system
@@ -51,6 +102,9 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
     -   **Grid Display Fix:** Grid now fixed in world space instead of moving with player
     -   **Dark Mode:** Added functional checkbox and chat command (`-dark`) support
     -   **Documentation:** Added comprehensive technical architecture and LLM context docs
+    -   **Google Cloud Run Deployment:** Successfully deployed with automated `deploy.sh` script
+    -   **Runtime Environment Injection:** Server-side HTML injection for environment variables (Privy App ID)
+    -   **Webpack Build System:** Custom `build-webpack.js` script for Docker/Cloud Build compatibility
 -   **Performance Update:**
     -   Implemented viewport culling (50-80% reduction in draw calls)
     -   Added grid caching (eliminates 50-100 line draws per frame)
@@ -160,6 +214,11 @@ npm test
     - **Landing Styles:** `src/client/css/landing.css`
     - **Game Styles:** `src/client/css/main.css` (scoped to #gameView)
     - **Client Logic:** `src/client/js/app.js` (includes seamless game start)
+    - **Authentication:**
+        - `src/client/auth/privy-auth.jsx` - Privy React component
+        - `src/client/auth/auth-modal.js` - Authentication modal wrapper
+        - `webpack.react.config.js` - Webpack config for Privy bundle
+        - `rebuild.sh` - Quick rebuild script with Privy app ID
 
 ---
 
@@ -244,11 +303,34 @@ npm test  # Runs linting and Mocha tests
 
 ## Deployment
 
+### Google Cloud Run (Recommended)
+
+The application is successfully deployed to Google Cloud Run with an automated deployment script.
+
+```bash
+# One-command deployment
+./deploy.sh
+```
+
+**What happens during deployment:**
+1. Prerequisite checks (gcloud CLI, authentication)
+2. `npm run build` - Gulp build (server code + static files)
+3. `node build-webpack.js` - Webpack bundles (app.js + Privy auth)
+4. Local test (5 seconds)
+5. Cloud Run deployment with environment variables
+6. Returns live URL
+
+**Key Configuration:**
+- Port: 8080 (required by Cloud Run)
+- Memory: 512Mi, CPU: 1
+- Auto-scaling: 0-20 instances
+- Environment: `NODE_ENV=production`, `PRIVY_APP_ID` injected at runtime
+
 ### Docker
 
 ```bash
 docker build -t agarioclone .
-docker run -p 3000:3000 agarioclone
+docker run -p 8080:8080 -e PORT=8080 agarioclone
 ```
 
 ### Heroku
@@ -261,7 +343,7 @@ docker run -p 3000:3000 agarioclone
 ```javascript
 // config.js adjustments
 host: "0.0.0.0",  // Bind to all interfaces
-port: process.env.PORT || 3000,  // Use environment port
+port: process.env.PORT || 8080,  // Use environment port (Cloud Run requires 8080)
 adminPass: process.env.ADMIN_PASS || "CHANGE_THIS",  // Secure admin password
 ```
 
@@ -300,9 +382,9 @@ adminPass: process.env.ADMIN_PASS || "CHANGE_THIS",  // Secure admin password
 
 1. **"Cannot connect to server"**
 
-    - Check if port 3000 is available
+    - Check if port 8080 is available (Cloud Run default)
     - Verify firewall settings
-    - Ensure `npm install` completed successfully
+    - Ensure `npm install --legacy-peer-deps` completed successfully
 
 2. **Laggy gameplay**
 
@@ -311,9 +393,21 @@ adminPass: process.env.ADMIN_PASS || "CHANGE_THIS",  // Secure admin password
     - Verify client FPS in browser DevTools
 
 3. **Build failures**
-    - Clear `node_modules` and reinstall
-    - Check Node.js version compatibility
+    - Clear `node_modules` and reinstall with `--legacy-peer-deps`
+    - Check Node.js version compatibility (18.x required)
     - Verify all dev dependencies installed
+    - Run `node build-webpack.js` to rebuild webpack bundles
+
+4. **Privy authentication not working**
+    - Check `PRIVY_APP_ID` environment variable is set
+    - Verify `window.ENV` is injected in HTML (view page source)
+    - Ensure webpack bundle includes the app ID
+    - Check browser console for Privy SDK errors
+
+5. **Game canvas not rendering**
+    - Verify `app.js` and `privy-auth-bundle.js` are loaded (check Network tab)
+    - Ensure webpack bundles were built successfully
+    - Check for JavaScript errors in browser console
 
 ### Useful Commands
 
@@ -340,13 +434,48 @@ node --inspect bin/server/server.js
 
 ---
 
+## Implementation Notes
+
+### Current State
+- **Authentication:** Privy SDK is fully integrated and working
+- **User Data:** Currently using mocked data - needs database integration
+- **Profile Modal:** Shows random stats - awaiting database backend
+- **Leaderboard:** Only exists during active gameplay - needs persistence
+- **Wallet Features:** Not yet implemented despite Privy support
+
+### Recommended Implementation Order
+
+**Phase 1: Basic Database (Week 1)**
+1. Set up SQLite/PostgreSQL
+2. Create user and stats tables
+3. Link game sessions to users
+4. Replace mock profile data
+
+**Phase 2: Stats Tracking (Week 2)**
+1. Implement real-time stat tracking
+2. Build persistent leaderboard
+3. Add match history
+
+**Phase 3: Wallet Integration (Week 3)**
+1. Enable Privy embedded wallets
+2. Basic wallet display in profile
+3. Plan Web3 features
+
+**Phase 4: Social Features (Week 4+)**
+1. Friends system
+2. Achievement system
+3. Enhanced profile customization
+
+---
+
 ## Version Information
 
 -   **Current Version:** 1.0.0
 -   **Node.js Required:** 14.x or higher
--   **Last Major Update:** Performance optimizations (Nov 2024)
+-   **Last Major Update:** Authentication system & UI consistency (Nov 2024)
 -   **Stable Branch:** master
+-   **Status:** Authentication complete, awaiting database integration
 
 ---
 
-_This document is specifically designed to provide context for AI assistants (especially Claude) to quickly understand the project state and contribute effectively._
+_This document consolidates all development notes, TODOs, and roadmap items. It is specifically designed to provide context for AI assistants (especially Claude) to quickly understand the project state and contribute effectively._
