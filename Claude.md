@@ -31,19 +31,27 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 
 ### 🚧 Next Steps & Roadmap
 
-#### 🔐 Authentication & User System (Priority: High)
+#### 🔐 Authentication & User System (Priority: High) - `user-data-persistence` branch
 
-**1. Database Integration**
-- [ ] Choose database system (SQLite for dev, PostgreSQL for production, or MongoDB for flexibility)
-- [ ] Create user schema with Privy integration
-- [ ] Create stats tracking schema (games_played, high_score, total_mass_eaten, etc.)
+**1. Database Integration (In Progress)**
+- [x] ~~Choose database system~~ → Using existing SQLite infrastructure
+- [ ] Create user tables schema in sql.js
+  - [ ] Users table (id, privy_id, username, display_name, created_at, last_seen)
+  - [ ] Game statistics table (user_id, games_played, total_mass_eaten, high_score, etc.)
+  - [ ] User preferences table (dark_mode, show_mass, show_border, etc.)
+  - [ ] Sessions table (session_id, user_id, created_at, last_activity)
+- [ ] Create user-repository.js for user data operations
+- [ ] Integrate Privy auth IDs with user profiles
 - [ ] Link Socket.IO sessions to authenticated users
 - [ ] Implement real-time stats tracking during gameplay
+- [ ] Add session management for persistent login
 
-**2. Leaderboard Persistence**
+**2. Leaderboard Persistence (Next Priority)**
+- [ ] Create leaderboard table (user_id, score, username, timestamp)
 - [ ] Global leaderboard with all-time high scores
 - [ ] Daily/Weekly/Monthly rankings
 - [ ] Store match history and show recent games in profile
+- [ ] Replace mock profile data with real database queries
 
 #### 💰 Privy Wallet Integration (Priority: Medium)
 - [ ] Enable embedded wallets in Privy config

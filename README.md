@@ -119,10 +119,17 @@ docker run -it -p 3000:3000 agarioclone_agar
 
   Yes you can.
 
+## Documentation
+
+- **[Development Guide](docs/DEVELOPMENT.md)** - Project roadmap, performance optimizations, and development workflow
+- **[Technical Architecture](docs/ARCHITECTURE.md)** - Detailed system architecture and implementation details  
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Google Cloud Run, Heroku, and Docker deployment instructions
+- **[Known Issues & Troubleshooting](docs/ISSUES.md)** - Common problems and solutions
+- **[LLM Context](Claude.md)** - Comprehensive context document for AI assistants
+
 ## For Developers
  - [Game Architecture](https://github.com/owenashurst/agar.io-clone/wiki/Game-Architecture) to understand how the backend works.
  - If you want to start your own project, I recommend you use [this template](https://github.com/huytd/node-online-game-template). Happy developing!
- -
 
 ## TODOs
  We have an explicit [TODO](https://github.com/owenashurst/agar.io-clone/wiki/Coming-Features) list for the all the features we aim to develop in the future. Feel free to contribute, we'll be more than grateful.
