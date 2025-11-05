@@ -4,7 +4,7 @@ import { PrivyProvider, usePrivy, useLogin, useLogout } from '@privy-io/react-au
 
 // Privy configuration
 const PRIVY_CONFIG = {
-    appId: process.env.PRIVY_APP_ID || 'YOUR_PRIVY_APP_ID', // You'll need to get this from Privy Dashboard
+    appId: process.env.PRIVY_APP_ID || 'YOUR_PRIVY_APP_ID',
     config: {
         // Customize the login modal appearance
         appearance: {
@@ -26,7 +26,6 @@ function PrivyAuthComponent() {
     const { ready, authenticated, user } = usePrivy();
     const { login } = useLogin({
         onComplete: (user, isNewUser) => {
-            console.log('Login successful:', user);
 
             // Store user data in localStorage for game access
             const userData = {
@@ -58,7 +57,6 @@ function PrivyAuthComponent() {
 
     const { logout } = useLogout({
         onSuccess: () => {
-            console.log('Logout successful');
             localStorage.removeItem('privy_user');
             // Immediately update global state
             window.PrivyAuthState.authenticated = false;
@@ -67,7 +65,6 @@ function PrivyAuthComponent() {
 
             // Force page reload after logout to ensure clean state
             setTimeout(() => {
-                console.log('[Privy] Reloading page after logout...');
                 window.location.reload();
             }, 100);
         },
@@ -84,7 +81,6 @@ function PrivyAuthComponent() {
 
             // Force page reload even on error to ensure clean state
             setTimeout(() => {
-                console.log('[Privy] Reloading page after logout error...');
                 window.location.reload();
             }, 100);
         }
@@ -95,17 +91,13 @@ function PrivyAuthComponent() {
     useEffect(() => {
         // Listen for auth modal events
         const handleShowAuth = () => {
-            console.log('[Privy] Received auth:show-privy event, calling login directly');
             login(); // Directly open Privy login instead of showing intermediate modal
         };
         const handleHideAuth = () => setShowAuthModal(false);
         const handleTriggerLogout = () => {
-            console.log('[Privy] Logout triggered. Authenticated:', authenticated);
             if (authenticated) {
-                console.log('[Privy] Calling Privy logout...');
                 logout();
             } else {
-                console.log('[Privy] User not authenticated, clearing local state only');
                 localStorage.removeItem('privy_user');
                 window.PrivyAuthState.authenticated = false;
                 window.PrivyAuthState.user = null;
@@ -128,7 +120,6 @@ function PrivyAuthComponent() {
     useEffect(() => {
         window.PrivyAuthState.authenticated = authenticated;
         window.PrivyAuthState.user = user;
-        console.log('[Privy] Global state updated:', { authenticated, user: !!user });
     }, [authenticated, user]);
 
     // Wait for Privy to be ready
@@ -163,15 +154,11 @@ let root = null;
 
 // Initialize and mount the React component
 function initPrivyAuth() {
-    console.log('[Privy] initPrivyAuth called');
     const container = document.getElementById('privy-auth-container');
-    console.log('[Privy] Container found:', !!container);
     if (container) {
         if (!root) {
-            console.log('[Privy] Creating React root');
             root = ReactDOM.createRoot(container);
         }
-        console.log('[Privy] Rendering PrivyAuthApp');
         root.render(<PrivyAuthApp />);
     } else {
         console.error('[Privy] privy-auth-container not found!');
@@ -179,11 +166,9 @@ function initPrivyAuth() {
 }
 
 // Wait for explicit initialization from auth-modal
-console.log('[Privy] Script loaded, waiting for privy:init event');
 
 // Only initialize when explicitly requested by auth-modal
 window.addEventListener('privy:init', () => {
-    console.log('[Privy] Received privy:init event');
     initPrivyAuth();
 });
 

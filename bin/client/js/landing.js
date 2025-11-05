@@ -318,20 +318,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     authBtn.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('[Landing] Sign In button clicked, closing modal and triggering Privy...');
-                        // Close the current modal first
                         closeModal(modal);
-                        // Directly trigger Privy authentication modal
-                        console.log('[Landing] Dispatching auth:show-privy event');
                         window.dispatchEvent(new CustomEvent('auth:show-privy'));
-
-                        // Also try calling the Privy login function directly as a fallback
-                        setTimeout(() => {
-                            if (window.PrivyAuth && typeof window.PrivyAuth.login === 'function') {
-                                console.log('[Landing] Calling PrivyAuth.login directly as fallback');
-                                window.PrivyAuth.login();
-                            }
-                        }, 100);
                     });
                 }
 
