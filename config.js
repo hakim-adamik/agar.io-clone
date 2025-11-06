@@ -28,14 +28,14 @@ module.exports = {
     networkUpdateFactor: 60,
     maxHeartbeatInterval: 5000,
     foodUniformDisposition: true,
-    newPlayerInitialPosition: "farthest",  // Multi-arena supports farthest with max 10 players per arena
-    
+    newPlayerInitialPosition: "farthest", // Multi-arena supports farthest with max 10 players per arena
+
     // Multi-arena configuration
-    multiArenaEnabled: true,              // Enable multi-arena system
-    maxPlayersPerArena: 10,               // Player capacity per arena
-    arenaCleanupTimeout: 60000,           // Milliseconds before cleaning empty arenas (60 seconds)
-    maxTotalArenas: 50,                   // Maximum concurrent arenas (resource limit)
-    
+    multiArenaEnabled: true, // Enable multi-arena system
+    maxPlayersPerArena: 10, // Player capacity per arena
+    arenaCleanupTimeout: 60000, // Milliseconds before cleaning empty arenas (60 seconds)
+    maxTotalArenas: 50, // Maximum concurrent arenas (resource limit)
+
     massLossRate: 1,
     minMassLoss: 50,
     sqlinfo: {
