@@ -159,14 +159,7 @@ class Arena {
      * Setup socket event handlers for a player
      */
     setupPlayerEvents(socket, currentPlayer) {
-        // Initial welcome sent immediately (for first connection)
-        socket.emit("welcome", currentPlayer, {
-            width: this.config.gameWidth,
-            height: this.config.gameHeight,
-            arenaId: this.id,
-        });
-        
-        // Respawn handler (for subsequent respawns after death)
+        // Respawn handler - client sends this first to request spawn
         socket.on("respawn", () => {
             this.map.players.removePlayerByID(currentPlayer.id);
             socket.emit("welcome", currentPlayer, {
