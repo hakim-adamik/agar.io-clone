@@ -9,3 +9,9 @@ bin
 
 # Build scripts
 rebuild.sh
+
+# Database files (generated at runtime)
+src/server/db/*.sqlite3
+src/server/db/*.db
+*.sqlite3
+*.db
