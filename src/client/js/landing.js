@@ -204,11 +204,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (playerNameInput && !playerNameInput.value) {
                 playerNameInput.value = "Guest_" + Math.floor(Math.random() * 10000);
             }
-            
+
             // Hide landing view and show game view
             const landingView = document.getElementById("landingView");
             const gameView = document.getElementById("gameView");
-            
+
             if (landingView && gameView) {
                 landingView.style.display = "none";
                 gameView.style.display = "block";
@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (gameArea) gameArea.style.opacity = 1;
                 }, 50);
             }
-            
+
             // Initialize game if startGame function is available
             if (typeof window.startGame === 'function') {
                 window.startGame("player");
@@ -227,7 +227,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function showModal(modalId) {
         const modal = document.getElementById(modalId);
-        if (modal) modal.classList.add('show');
+        if (modal) {
+            modal.classList.add('show');
+        }
     }
 
     function closeModal(modal) {
@@ -267,6 +269,30 @@ document.addEventListener('DOMContentLoaded', function() {
         // Then redirect to game
         redirectToGame();
     });
+
+    // Game settings button - handle both click and touch
+    const gameSettingsBtn = document.getElementById('gameSettingsBtn');
+    if (gameSettingsBtn) {
+        gameSettingsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showModal('settingsModal');
+        });
+        gameSettingsBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showModal('settingsModal');
+        });
+    }
+
+    // Settings modal close button
+    const closeSettingsBtn = document.querySelector('.close-settings');
+    if (closeSettingsBtn) {
+        closeSettingsBtn.addEventListener('click', () => {
+            const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal) closeModal(settingsModal);
+        });
+    }
 
     // Add close button functionality to existing modals
     document.querySelectorAll('.modal').forEach(modal => {

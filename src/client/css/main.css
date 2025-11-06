@@ -17,11 +17,18 @@ body {
 }
 
 html,
-body,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
 canvas {
     width: 100%;
     height: 100%;
     margin: 0;
+    position: relative;
+    z-index: 1;
     padding: 0;
     background: rgba(0, 0, 0, 0.4);
 }
@@ -37,20 +44,75 @@ div {
     position: absolute;
     bottom: 10px;
     left: 10px;
-    width: 100px;
-    height: 100px;
+    width: 70px;
+    height: 70px;
     padding: 5px;
     border: none;
+    z-index: 1000;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: auto;
+    touch-action: auto;
+    background: #d3d3d3;
+    border-radius: 50%;
+    opacity: 0.5;
+}
+
+#split:focus,
+#split:active {
+    outline: none;
 }
 
 #feed {
     position: absolute;
-    bottom: 10px;
-    right: 10px;
-    width: 100px;
-    height: 100px;
+    bottom: 90px; /* 10px bottom + 70px split + 10px gap */
+    left: 10px;
+    width: 70px;
+    height: 70px;
     padding: 5px;
     border: none;
+    z-index: 1000;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: auto;
+    touch-action: auto;
+    background: #d3d3d3;
+    border-radius: 50%;
+    opacity: 0.5;
+}
+
+#feed:focus,
+#feed:active {
+    outline: none;
+}
+
+#exit {
+    position: absolute;
+    bottom: 170px; /* 10px bottom + 70px split + 10px gap + 70px feed + 10px gap */
+    left: 10px;
+    width: 70px;
+    height: 70px;
+    padding: 5px;
+    border: none;
+    z-index: 1000;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: auto;
+    touch-action: auto;
+    background: #d3d3d3;
+    border-radius: 50%;
+    opacity: 0.5;
+}
+
+#exit:focus,
+#exit:active {
+    outline: none;
 }
 
 #fpsCounter {
@@ -328,3 +390,10 @@ input [type="image"]:focus {
     outline: 1px solid transparent;
     border-style: none;
 }
+
+/* Game Settings Button - Hidden for now */
+#landingView .game-settings-btn {
+    display: none;
+}
+
+/* Exit countdown is now drawn on canvas, no HTML element needed */

@@ -24,6 +24,11 @@
     <body>
         <!-- Landing Page View -->
         <div id="landingView" class="view-container">
+            <!-- Settings Button (top-left corner) -->
+            <button id="gameSettingsBtn" class="game-settings-btn">
+                <i class="fas fa-cog"></i>
+            </button>
+
             <!-- Animated background cells -->
             <div class="background-animation">
                 <!-- Large cells -->
@@ -76,6 +81,12 @@
                             <button class="play-btn" id="playBtn">
                                 <span>Play</span>
                             </button>
+
+                            <!-- Last Score Display -->
+                            <div class="last-score-box" id="lastScoreBox">
+                                <span class="last-score-label">Last score:</span>
+                                <span class="last-score-value" id="lastScoreValue">-</span>
+                            </div>
                         </div>
                     </div>
                 </main>
@@ -121,10 +132,10 @@
                 <div id="mobile">
                     <input
                         type="image"
-                        id="split"
-                        class="split"
-                        src="img/split.png"
-                        alt="splitBtn"
+                        id="exit"
+                        class="exit"
+                        src="img/exit.png"
+                        alt="exitBtn"
                     />
                     <input
                         type="image"
@@ -133,14 +144,16 @@
                         src="img/feed.png"
                         alt="feedBtn"
                     />
+                    <input
+                        type="image"
+                        id="split"
+                        class="split"
+                        src="img/split.png"
+                        alt="splitBtn"
+                    />
                 </div>
                 <canvas tabindex="1" id="cvs"></canvas>
             </div>
-
-            <!-- Settings Button (floating during gameplay) -->
-            <button id="gameSettingsBtn" class="game-settings-btn">
-                <i class="fas fa-cog"></i>
-            </button>
         </div>
 
         <!-- Hidden elements for game initialization -->

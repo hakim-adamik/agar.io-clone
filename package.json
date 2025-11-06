@@ -4,6 +4,7 @@
   "description": "A simple Agar.io clone",
   "main": "server/server.js",
   "scripts": {
+    "clean": "git clean -fdX -e '!.env*'",
     "build": "gulp build",
     "start": "gulp run",
     "start:prod": "node bin/server/server.js",
