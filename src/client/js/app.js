@@ -386,21 +386,7 @@ window.onload = function () {
         };
     }
 
-    // Game settings button (during gameplay)
-    var gameSettingsBtn = document.getElementById("gameSettingsBtn");
-    if (gameSettingsBtn) {
-        gameSettingsBtn.onclick = function () {
-            showModal("settingsModal");
-        };
-    }
-
-    // Settings modal close button
-    var closeSettingsBtn = document.querySelector(".close-settings");
-    if (closeSettingsBtn) {
-        closeSettingsBtn.onclick = function () {
-            closeModal(document.getElementById("settingsModal"));
-        };
-    }
+    // Settings button is now handled in landing.js
 
     // Settings synchronization
     var settingsMenu = document.getElementById("settingsButton");
@@ -529,14 +515,29 @@ if (showFpsGame) {
 var c = window.canvas.cv;
 var graph = c.getContext("2d");
 
-$("#feed").click(function () {
+// Feed button - handle both click and touch
+$("#feed").on("click touchstart", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
     socket.emit("1");
     window.canvas.reenviar = false;
 });
 
-$("#split").click(function () {
+// Split button - handle both click and touch
+$("#split").on("click touchstart", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
     socket.emit("2");
     window.canvas.reenviar = false;
+});
+
+// Exit button - handle both click and touch
+$("#exit").on("click touchstart", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (global.gameStart) {
+        exitGame();
+    }
 });
 
 function handleDisconnect() {
@@ -1187,17 +1188,18 @@ function displayLastScore() {
     }
 }
 
-// Initialize exit functionality
-window.addEventListener("load", function() {
-    // Keyboard ESC key trigger
-    document.addEventListener("keydown", function(event) {
-        // Check if ESC key is pressed and game is active
-        if (event.key === "Escape" && global.gameStart) {
-            event.preventDefault();
-            exitGame();
-        }
-    });
-
-    // Display last score on page load
-    displayLastScore();
+// Initialize exit functionality - Keyboard ESC key trigger
+document.addEventListener("keydown", function(event) {
+    // Check if ESC key is pressed and game is active
+    if (event.key === "Escape" && global.gameStart) {
+        event.preventDefault();
+        exitGame();
+    }
 });
+
+// Display last score when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', displayLastScore);
+} else {
+    displayLastScore();
+}

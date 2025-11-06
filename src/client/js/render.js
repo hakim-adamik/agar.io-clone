@@ -117,8 +117,8 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph, exitCou
             let fontSize = baseFontSize * pulseScale;
 
             graph.font = "bold " + Math.round(fontSize) + "px sans-serif";
-            graph.strokeText(`${exitCountdownValue}!`, cell.x, cell.y);
-            graph.fillText(`${exitCountdownValue}!`, cell.x, cell.y);
+            graph.strokeText(`${exitCountdownValue} !`, cell.x, cell.y);
+            graph.fillText(`${exitCountdownValue} !`, cell.x, cell.y);
         } else {
             // Draw the name of the player
             let fontSize = Math.max(cell.radius / 3, 12);
