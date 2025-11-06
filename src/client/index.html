@@ -76,6 +76,12 @@
                             <button class="play-btn" id="playBtn">
                                 <span>Play</span>
                             </button>
+
+                            <!-- Last Score Display -->
+                            <div class="last-score-box" id="lastScoreBox">
+                                <span class="last-score-label">Last score:</span>
+                                <span class="last-score-value" id="lastScoreValue">-</span>
+                            </div>
                         </div>
                     </div>
                 </main>
@@ -144,15 +150,12 @@
 
             <!-- Exit Game Button (bottom-right) -->
             <button id="exitGameBtn" class="exit-game-btn">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Exit Game</span>
+                <span>Escape!</span>
             </button>
 
             <!-- Countdown Display -->
             <div id="exitCountdown" class="exit-countdown" style="display: none;">
                 <div class="countdown-content">
-                    <i class="fas fa-hourglass-half"></i>
-                    <p>Returning to menu in</p>
                     <span class="countdown-number">5</span>
                 </div>
             </div>

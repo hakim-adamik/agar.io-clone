@@ -362,22 +362,24 @@ input [type="image"]:focus {
     right: 20px;
     z-index: 1001;
     background: rgba(239, 68, 68, 0.9);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 12px 20px;
+    border: 2px solid rgba(239, 94, 68, 0.2);
+    border-radius: 50px;
+    padding: 16px 32px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease;
     color: white;
-    font-size: 16px;
+    font-size: 40px;
     font-weight: bold;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    width: 150px;
+    box-sizing: border-box;
 }
 
-.exit-game-btn i {
-    font-size: 18px;
+.exit-game-btn span {
+    font-weight: bold;
 }
 
 .exit-game-btn:hover {
@@ -391,82 +393,53 @@ input [type="image"]:focus {
     box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
 }
 
-/* Exit Countdown Display */
+/* Exit Countdown Display - swapped colors from button */
 .exit-countdown {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 2000;
-    background: rgba(10, 14, 26, 0.95);
-    border: 3px solid rgba(59, 130, 246, 0.6);
-    border-radius: 20px;
-    padding: 40px 60px;
-    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
-    animation: fadeIn 0.3s ease;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1001;
+    /* Swapped: button's border color becomes countdown's background */
+    background: rgba(235, 67, 55, 0.9);
+    /* Swapped: button's background color becomes countdown's border */
+    border: 2px solid rgba(239, 68, 68, 0.9);
+    border-radius: 50px;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    animation: boxPulse 1s ease-in-out infinite;
+    /* Match button width */
+    width: 150px;
+    box-sizing: border-box;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.8);
+@keyframes boxPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     }
-    to {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
+    50% {
+        transform: scale(1.15);
+        box-shadow: 0 8px 35px rgba(255, 255, 255, 0.4);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     }
 }
 
 .countdown-content {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 15px;
-    color: white;
-    text-align: center;
-}
-
-.countdown-content i {
-    font-size: 48px;
-    color: #3b82f6;
-    animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 0.7;
-        transform: scale(1.1);
-    }
-}
-
-.countdown-content p {
-    font-size: 18px;
-    margin: 0;
-    color: #94a3b8;
+    justify-content: center;
 }
 
 .countdown-number {
-    font-size: 72px;
+    font-size: 40px;
     font-weight: bold;
-    color: #3b82f6;
-    text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-    animation: countdownPulse 1s infinite;
-}
-
-@keyframes countdownPulse {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.1);
-    }
-    100% {
-        transform: scale(1);
-    }
+    color: white;
 }
 
 /* Mobile adjustments for exit button */
@@ -474,11 +447,19 @@ input [type="image"]:focus {
     .exit-game-btn {
         bottom: 120px;
         right: 10px;
-        padding: 10px 16px;
-        font-size: 14px;
+        padding: 16px 28px;
+        font-size: 18px;
+        width: 120px;
     }
 
-    .exit-game-btn i {
-        font-size: 16px;
+    .exit-countdown {
+        bottom: 120px;
+        right: 10px;
+        padding: 16px 28px;
+        width: 120px;
+    }
+
+    .countdown-number {
+        font-size: 18px;
     }
 }

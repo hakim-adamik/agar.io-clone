@@ -678,15 +678,48 @@ function setupSocket(socket) {
 
     // Death.
     socket.on("RIP", function () {
+        // Save last score before death
+        if (player && player.massTotal) {
+            saveLastScore(player.massTotal);
+        }
+
         global.gameStart = false;
         render.drawErrorMessage("You died!", graph, global.screen);
         window.setTimeout(() => {
-            document.getElementById("gameAreaWrapper").style.opacity = 0;
-            document.getElementById("startMenuWrapper").style.maxHeight =
-                "1000px";
-            if (global.animLoopHandle) {
-                window.cancelAnimationFrame(global.animLoopHandle);
-                global.animLoopHandle = undefined;
+            // Return to landing page instead of old menu
+            var landingView = document.getElementById("landingView");
+            var gameView = document.getElementById("gameView");
+
+            if (landingView && gameView) {
+                // Hide game view
+                gameView.style.display = "none";
+                document.getElementById("gameAreaWrapper").style.opacity = 0;
+
+                // Show landing view
+                landingView.style.display = "block";
+
+                // Display last score
+                displayLastScore();
+
+                // Cleanup
+                if (global.animLoopHandle) {
+                    window.cancelAnimationFrame(global.animLoopHandle);
+                    global.animLoopHandle = undefined;
+                }
+
+                // Disconnect socket
+                if (socket) {
+                    socket.disconnect();
+                    socket = null;
+                }
+            } else {
+                // Fallback to old menu if landing page not found
+                document.getElementById("gameAreaWrapper").style.opacity = 0;
+                document.getElementById("startMenuWrapper").style.maxHeight = "1000px";
+                if (global.animLoopHandle) {
+                    window.cancelAnimationFrame(global.animLoopHandle);
+                    global.animLoopHandle = undefined;
+                }
             }
         }, 2500);
     });
@@ -1039,10 +1072,12 @@ var exitCountdownTimer = null;
 var exitCountdownValue = 5;
 
 function exitGame() {
+    var exitGameBtn = document.getElementById("exitGameBtn");
     var exitCountdownEl = document.getElementById("exitCountdown");
     var countdownNumberEl = exitCountdownEl.querySelector(".countdown-number");
 
-    // Show countdown overlay
+    // Hide button and show countdown in its place
+    exitGameBtn.style.display = "none";
     exitCountdownEl.style.display = "block";
     exitCountdownValue = 5;
     countdownNumberEl.textContent = exitCountdownValue;
@@ -1064,6 +1099,11 @@ function exitGame() {
 }
 
 function cleanupGame() {
+    // Save last score before cleanup
+    if (player && player.massTotal) {
+        saveLastScore(player.massTotal);
+    }
+
     // Stop the game loop
     if (global.animLoopHandle) {
         window.cancelAnimationFrame(global.animLoopHandle);
@@ -1100,6 +1140,7 @@ function cleanupGame() {
 function returnToLanding() {
     var landingView = document.getElementById("landingView");
     var gameView = document.getElementById("gameView");
+    var exitGameBtn = document.getElementById("exitGameBtn");
     var exitCountdownEl = document.getElementById("exitCountdown");
 
     if (landingView && gameView) {
@@ -1107,14 +1148,48 @@ function returnToLanding() {
         gameView.style.display = "none";
         document.getElementById("gameAreaWrapper").style.opacity = 0;
 
-        // Hide countdown
+        // Hide countdown and show button again for next game
         exitCountdownEl.style.display = "none";
+        exitGameBtn.style.display = "flex";
 
         // Show landing view
         landingView.style.display = "block";
 
+        // Display last score on landing page
+        displayLastScore();
+
         // Reset player name input if needed
         playerNameInput.value = "";
+    }
+}
+
+// Save last score to localStorage
+function saveLastScore(score) {
+    try {
+        var roundedScore = Math.round(score);
+        localStorage.setItem('lastScore', roundedScore);
+    } catch (e) {
+        console.log('Could not save last score:', e);
+    }
+}
+
+// Display last score on landing page
+function displayLastScore() {
+    try {
+        var lastScore = localStorage.getItem('lastScore');
+        var lastScoreBox = document.getElementById('lastScoreBox');
+        var lastScoreValue = document.getElementById('lastScoreValue');
+
+        if (lastScoreValue && lastScoreBox) {
+            if (lastScore) {
+                lastScoreValue.textContent = lastScore;
+                lastScoreBox.style.display = 'flex';
+            } else {
+                lastScoreBox.style.display = 'none';
+            }
+        }
+    } catch (e) {
+        console.log('Could not display last score:', e);
     }
 }
 
@@ -1127,4 +1202,7 @@ window.addEventListener("load", function() {
             exitGame();
         });
     }
+
+    // Display last score on page load
+    displayLastScore();
 });
