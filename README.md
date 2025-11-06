@@ -38,9 +38,13 @@ You can check out how to play on our [wiki](https://github.com/owenashurst/agar.
 ---
 
 ## Latest Changes
+- **Multi-Arena System**: Supports 500+ concurrent players across independent arenas (10 players each)
+- **Scalable Architecture**: Auto-creates arenas on demand, intelligent player distribution
+- **Arena Monitoring**: Real-time statistics via GET /api/arenas endpoint
 - **Authentication System**: Integrated Privy SDK for social login (Google, Discord, Twitter, Email)
 - **Guest Profile System**: Clear guest status with inviting "Pro Tip" to encourage sign-in
 - **Direct Auth Flow**: Streamlined authentication without redundant modals
+- **Cloud Run Deployment**: Successfully deployed with automated deploy.sh script
 - Game logic is handled by the server
 - The client side is for rendering of the canvas and its items only.
 - Mobile optimisation.
@@ -121,6 +125,8 @@ docker run -it -p 3000:3000 agarioclone_agar
 
 ## Documentation
 
+- **[Multi-Arena Architecture](docs/MULTI_ARENA_ARCHITECTURE.md)** - Complete multi-arena system design and implementation
+- **[Database Design](docs/DATABASE.md)** - User data persistence, analytics, and money-based gameplay (Phase A/B/C)
 - **[Development Guide](docs/DEVELOPMENT.md)** - Project roadmap, performance optimizations, and development workflow
 - **[Technical Architecture](docs/ARCHITECTURE.md)** - Detailed system architecture and implementation details  
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Google Cloud Run, Heroku, and Docker deployment instructions

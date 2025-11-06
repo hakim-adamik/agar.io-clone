@@ -2,6 +2,18 @@
 
 ## Project Roadmap
 
+### Recent Completions (November 2024)
+- ✅ **Multi-Arena System** - Unlimited concurrent players (10 per arena, 50 arenas max)
+- ✅ **Arena Auto-Scaling** - Creates/destroys arenas dynamically based on demand
+- ✅ **Smart Player Distribution** - Automatic assignment with respawn preferences
+- ✅ **Arena Monitoring API** - GET /api/arenas endpoint for real-time statistics
+- ✅ **Authentication System** - Privy SDK integration (Google, Discord, Twitter, Email)
+- ✅ **Guest Profile System** - Auto-generated names with sign-in prompts
+- ✅ **Cloud Run Deployment** - Successfully deployed with automated script
+- ✅ **Preview Deployment System** - Branch-based preview environments for testing
+- ✅ **Performance Optimizations** - Viewport culling, grid caching, socket throttling
+- ✅ **Dark Mode** - Toggle via checkbox or chat command
+
 ### TODOs
 | Filename | line # | TODO
 |:------|:------:|:------
@@ -12,17 +24,25 @@
 
 #### 🔐 Authentication & User System (Priority: High)
 
-**1. Database Integration**
-- [ ] Choose database system (SQLite for dev, PostgreSQL for production, or MongoDB for flexibility)
-- [ ] Create user schema with Privy integration
-- [ ] Create stats tracking schema (games_played, high_score, total_mass_eaten, etc.)
+**1. Database Integration (In Progress)**
+- [x] ~~Choose database system~~ → Using existing SQLite infrastructure
+- [ ] Create user tables schema in sql.js
+  - [ ] Users table (id, privy_id, username, display_name, created_at, last_seen)
+  - [ ] Game statistics table (user_id, games_played, total_mass_eaten, high_score, etc.)
+  - [ ] User preferences table (dark_mode, show_mass, show_border, etc.)
+  - [ ] Sessions table (session_id, user_id, created_at, last_activity)
+- [ ] Create user-repository.js for user data operations
+- [ ] Integrate Privy auth IDs with user profiles
 - [ ] Link Socket.IO sessions to authenticated users
 - [ ] Implement real-time stats tracking during gameplay
+- [ ] Add session management for persistent login
 
-**2. Leaderboard Persistence**
+**2. Leaderboard Persistence (Next Priority)**
+- [ ] Create leaderboard table (user_id, score, username, timestamp)
 - [ ] Global leaderboard with all-time high scores
 - [ ] Daily/Weekly/Monthly rankings
 - [ ] Store match history and show recent games in profile
+- [ ] Replace mock profile data with real database queries
 
 #### 💰 Privy Wallet Integration (Priority: Medium)
 - [ ] Enable embedded wallets in Privy config
@@ -42,6 +62,8 @@
 
 #### 🔧 Technical Improvements
 **Backend Architecture:**
+- [x] ~~Multi-arena system~~ → **COMPLETED** (500+ player support)
+- [x] ~~Arena monitoring API~~ → **COMPLETED** (GET /api/arenas)
 - [ ] RESTful API layer for user data
 - [ ] Redis caching for sessions and leaderboard
 - [ ] Queue system for async stats processing
@@ -75,7 +97,7 @@
    - Already performs visibility culling (acceptable)
    - Update rate at 40fps (configurable via `networkUpdateFactor`)
 
-### Optimizations Implemented
+### Optimizations Implemented ✅
 
 #### 1. Client-Side Viewport Culling
 
