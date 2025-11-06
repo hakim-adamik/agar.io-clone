@@ -2,6 +2,11 @@
 
 ## Project Roadmap
 
+### Recent Completions
+- ✅ **Multi-Arena System** - Unlimited concurrent players (10 per arena, 50 arenas max)
+- ✅ **Arena Auto-Scaling** - Creates/destroys arenas dynamically based on demand
+- ✅ **Cloud Run Deployment** - Successfully deployed with automated script
+
 ### TODOs
 | Filename | line # | TODO
 |:------|:------:|:------
@@ -42,6 +47,7 @@
 
 #### 🔧 Technical Improvements
 **Backend Architecture:**
+- [x] ~~Multi-arena system~~ → **COMPLETED** (500+ player support)
 - [ ] RESTful API layer for user data
 - [ ] Redis caching for sessions and leaderboard
 - [ ] Queue system for async stats processing
