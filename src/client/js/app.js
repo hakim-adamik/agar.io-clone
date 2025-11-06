@@ -989,6 +989,7 @@ function gameLoop() {
         for (var i = 0; i < users.length; i++) {
             let color = "hsl(" + users[i].hue + ", 100%, 50%)";
             let borderColor = "hsl(" + users[i].hue + ", 100%, 45%)";
+            let isCurrentPlayer = (users[i].id === player.id);
             for (var j = 0; j < users[i].cells.length; j++) {
                 let screenX =
                     users[i].cells[j].x - player.x + global.screen.width / 2;
@@ -1014,6 +1015,7 @@ function gameLoop() {
                         radius: users[i].cells[j].radius,
                         x: screenX,
                         y: screenY,
+                        isCurrentPlayer: isCurrentPlayer,
                     });
                 }
             }
@@ -1026,7 +1028,10 @@ function gameLoop() {
             playerConfig,
             global.toggleMassState,
             borders,
-            graph
+            graph,
+            exitCountdownActive,
+            exitCountdownValue,
+            player
         );
 
         // Throttle socket emissions instead of every frame
@@ -1070,26 +1075,21 @@ function resize() {
 // Exit Game Functionality
 var exitCountdownTimer = null;
 var exitCountdownValue = 5;
+var exitCountdownActive = false;
 
 function exitGame() {
-    var exitGameBtn = document.getElementById("exitGameBtn");
-    var exitCountdownEl = document.getElementById("exitCountdown");
-    var countdownNumberEl = exitCountdownEl.querySelector(".countdown-number");
-
-    // Hide button and show countdown in its place
-    exitGameBtn.style.display = "none";
-    exitCountdownEl.style.display = "block";
-    exitCountdownValue = 5;
-    countdownNumberEl.textContent = exitCountdownValue;
-
     // Start countdown
+    exitCountdownActive = true;
+    exitCountdownValue = 5;
+
+    // Start countdown timer
     exitCountdownTimer = setInterval(function() {
         exitCountdownValue--;
-        countdownNumberEl.textContent = exitCountdownValue;
 
         if (exitCountdownValue <= 0) {
             clearInterval(exitCountdownTimer);
             exitCountdownTimer = null;
+            exitCountdownActive = false;
 
             // Cleanup and return to landing page
             cleanupGame();
@@ -1140,17 +1140,11 @@ function cleanupGame() {
 function returnToLanding() {
     var landingView = document.getElementById("landingView");
     var gameView = document.getElementById("gameView");
-    var exitGameBtn = document.getElementById("exitGameBtn");
-    var exitCountdownEl = document.getElementById("exitCountdown");
 
     if (landingView && gameView) {
         // Hide game view
         gameView.style.display = "none";
         document.getElementById("gameAreaWrapper").style.opacity = 0;
-
-        // Hide countdown and show button again for next game
-        exitCountdownEl.style.display = "none";
-        exitGameBtn.style.display = "flex";
 
         // Show landing view
         landingView.style.display = "block";
@@ -1193,15 +1187,16 @@ function displayLastScore() {
     }
 }
 
-// Initialize exit button event listener
+// Initialize exit functionality
 window.addEventListener("load", function() {
-    var exitGameBtn = document.getElementById("exitGameBtn");
-
-    if (exitGameBtn) {
-        exitGameBtn.addEventListener("click", function() {
+    // Keyboard ESC key trigger
+    document.addEventListener("keydown", function(event) {
+        // Check if ESC key is pressed and game is active
+        if (event.key === "Escape" && global.gameStart) {
+            event.preventDefault();
             exitGame();
-        });
-    }
+        }
+    });
 
     // Display last score on page load
     displayLastScore();
