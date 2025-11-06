@@ -388,21 +388,7 @@ window.onload = function () {
         };
     }
 
-    // Game settings button (during gameplay)
-    var gameSettingsBtn = document.getElementById("gameSettingsBtn");
-    if (gameSettingsBtn) {
-        gameSettingsBtn.onclick = function () {
-            showModal("settingsModal");
-        };
-    }
-
-    // Settings modal close button
-    var closeSettingsBtn = document.querySelector(".close-settings");
-    if (closeSettingsBtn) {
-        closeSettingsBtn.onclick = function () {
-            closeModal(document.getElementById("settingsModal"));
-        };
-    }
+    // Settings button is now handled in landing.js
 
     // Settings synchronization
     var settingsMenu = document.getElementById("settingsButton");
@@ -531,14 +517,29 @@ if (showFpsGame) {
 var c = window.canvas.cv;
 var graph = c.getContext("2d");
 
-$("#feed").click(function () {
+// Feed button - handle both click and touch
+$("#feed").on("click touchstart", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
     socket.emit("1");
     window.canvas.reenviar = false;
 });
 
-$("#split").click(function () {
+// Split button - handle both click and touch
+$("#split").on("click touchstart", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
     socket.emit("2");
     window.canvas.reenviar = false;
+});
+
+// Exit button - handle both click and touch
+$("#exit").on("click touchstart", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (global.gameStart) {
+        exitGame();
+    }
 });
 
 function handleDisconnect() {
@@ -689,15 +690,48 @@ function setupSocket(socket) {
 
     // Death.
     socket.on("RIP", function () {
+        // Save last score before death
+        if (player && player.massTotal) {
+            saveLastScore(player.massTotal);
+        }
+
         global.gameStart = false;
         render.drawErrorMessage("You died!", graph, global.screen);
         window.setTimeout(() => {
-            document.getElementById("gameAreaWrapper").style.opacity = 0;
-            document.getElementById("startMenuWrapper").style.maxHeight =
-                "1000px";
-            if (global.animLoopHandle) {
-                window.cancelAnimationFrame(global.animLoopHandle);
-                global.animLoopHandle = undefined;
+            // Return to landing page instead of old menu
+            var landingView = document.getElementById("landingView");
+            var gameView = document.getElementById("gameView");
+
+            if (landingView && gameView) {
+                // Hide game view
+                gameView.style.display = "none";
+                document.getElementById("gameAreaWrapper").style.opacity = 0;
+
+                // Show landing view
+                landingView.style.display = "block";
+
+                // Display last score
+                displayLastScore();
+
+                // Cleanup
+                if (global.animLoopHandle) {
+                    window.cancelAnimationFrame(global.animLoopHandle);
+                    global.animLoopHandle = undefined;
+                }
+
+                // Disconnect socket
+                if (socket) {
+                    socket.disconnect();
+                    socket = null;
+                }
+            } else {
+                // Fallback to old menu if landing page not found
+                document.getElementById("gameAreaWrapper").style.opacity = 0;
+                document.getElementById("startMenuWrapper").style.maxHeight = "1000px";
+                if (global.animLoopHandle) {
+                    window.cancelAnimationFrame(global.animLoopHandle);
+                    global.animLoopHandle = undefined;
+                }
             }
         }, 2500);
     });
@@ -967,6 +1001,7 @@ function gameLoop() {
         for (var i = 0; i < users.length; i++) {
             let color = "hsl(" + users[i].hue + ", 100%, 50%)";
             let borderColor = "hsl(" + users[i].hue + ", 100%, 45%)";
+            let isCurrentPlayer = (users[i].id === player.id);
             for (var j = 0; j < users[i].cells.length; j++) {
                 let screenX =
                     users[i].cells[j].x - player.x + global.screen.width / 2;
@@ -992,6 +1027,7 @@ function gameLoop() {
                         radius: users[i].cells[j].radius,
                         x: screenX,
                         y: screenY,
+                        isCurrentPlayer: isCurrentPlayer,
                     });
                 }
             }
@@ -1004,7 +1040,10 @@ function gameLoop() {
             playerConfig,
             global.toggleMassState,
             borders,
-            graph
+            graph,
+            exitCountdownActive,
+            exitCountdownValue,
+            player
         );
 
         // Throttle socket emissions instead of every frame
@@ -1043,4 +1082,135 @@ function resize() {
         screenWidth: global.screen.width,
         screenHeight: global.screen.height,
     });
+}
+
+// Exit Game Functionality
+var exitCountdownTimer = null;
+var exitCountdownValue = 5;
+var exitCountdownActive = false;
+
+function exitGame() {
+    // Start countdown
+    exitCountdownActive = true;
+    exitCountdownValue = 5;
+
+    // Start countdown timer
+    exitCountdownTimer = setInterval(function() {
+        exitCountdownValue--;
+
+        if (exitCountdownValue <= 0) {
+            clearInterval(exitCountdownTimer);
+            exitCountdownTimer = null;
+            exitCountdownActive = false;
+
+            // Cleanup and return to landing page
+            cleanupGame();
+            returnToLanding();
+        }
+    }, 1000);
+}
+
+function cleanupGame() {
+    // Save last score before cleanup
+    if (player && player.massTotal) {
+        saveLastScore(player.massTotal);
+    }
+
+    // Stop the game loop
+    if (global.animLoopHandle) {
+        window.cancelAnimationFrame(global.animLoopHandle);
+        global.animLoopHandle = null;
+    }
+
+    // Set game state to stopped
+    global.gameStart = false;
+    global.died = true;
+
+    // Disconnect socket
+    if (socket) {
+        socket.disconnect();
+        socket = null;
+    }
+
+    // Clear any remaining entities
+    foods = [];
+    viruses = [];
+    fireFood = [];
+    users = [];
+
+    // Reset player
+    player = {
+        id: -1,
+        x: global.screen.width / 2,
+        y: global.screen.height / 2,
+        screenWidth: global.screen.width,
+        screenHeight: global.screen.height,
+        target: {x: global.screen.width / 2, y: global.screen.height / 2}
+    };
+}
+
+function returnToLanding() {
+    var landingView = document.getElementById("landingView");
+    var gameView = document.getElementById("gameView");
+
+    if (landingView && gameView) {
+        // Hide game view
+        gameView.style.display = "none";
+        document.getElementById("gameAreaWrapper").style.opacity = 0;
+
+        // Show landing view
+        landingView.style.display = "block";
+
+        // Display last score on landing page
+        displayLastScore();
+
+        // Reset player name input if needed
+        playerNameInput.value = "";
+    }
+}
+
+// Save last score to localStorage
+function saveLastScore(score) {
+    try {
+        var roundedScore = Math.round(score);
+        localStorage.setItem('lastScore', roundedScore);
+    } catch (e) {
+        console.log('Could not save last score:', e);
+    }
+}
+
+// Display last score on landing page
+function displayLastScore() {
+    try {
+        var lastScore = localStorage.getItem('lastScore');
+        var lastScoreBox = document.getElementById('lastScoreBox');
+        var lastScoreValue = document.getElementById('lastScoreValue');
+
+        if (lastScoreValue && lastScoreBox) {
+            if (lastScore) {
+                lastScoreValue.textContent = lastScore;
+                lastScoreBox.style.display = 'flex';
+            } else {
+                lastScoreBox.style.display = 'none';
+            }
+        }
+    } catch (e) {
+        console.log('Could not display last score:', e);
+    }
+}
+
+// Initialize exit functionality - Keyboard ESC key trigger
+document.addEventListener("keydown", function(event) {
+    // Check if ESC key is pressed and game is active
+    if (event.key === "Escape" && global.gameStart) {
+        event.preventDefault();
+        exitGame();
+    }
+});
+
+// Display last score when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', displayLastScore);
+} else {
+    displayLastScore();
 }

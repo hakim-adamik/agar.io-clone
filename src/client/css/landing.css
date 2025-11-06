@@ -328,6 +328,46 @@ html, body {
     width: auto;
 }
 
+/* Last Score Box */
+.last-score-box {
+    margin-top: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    backdrop-filter: blur(10px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.last-score-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+.last-score-value {
+    font-size: 1.1rem;
+    color: var(--primary-blue);
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(74, 144, 226, 0.3);
+}
+
 .how-to-play-btn {
     background: rgba(0, 0, 0, 0.7);
     border: 2px solid rgba(255, 255, 255, 0.2);

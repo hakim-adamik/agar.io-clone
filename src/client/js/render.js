@@ -84,7 +84,7 @@ const drawCellWithLines = (cell, borders, graph) => {
     graph.stroke();
 };
 
-const drawCells = (cells, playerConfig, toggleMassState, borders, graph) => {
+const drawCells = (cells, playerConfig, toggleMassState, borders, graph, exitCountdownActive, exitCountdownValue, player) => {
     for (let cell of cells) {
         // Draw the cell itself
         graph.fillStyle = cell.color;
@@ -98,8 +98,6 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph) => {
             drawRoundObject(cell, cell.radius, graph);
         }
 
-        // Draw the name of the player
-        let fontSize = Math.max(cell.radius / 3, 12);
         graph.lineWidth = playerConfig.textBorderSize;
         graph.fillStyle = playerConfig.textColor;
         graph.strokeStyle = playerConfig.textBorder;
@@ -107,17 +105,35 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph) => {
         graph.lineJoin = "round";
         graph.textAlign = "center";
         graph.textBaseline = "middle";
-        graph.font = "bold " + fontSize + "px sans-serif";
-        graph.strokeText(cell.name, cell.x, cell.y);
-        graph.fillText(cell.name, cell.x, cell.y);
 
-        // Draw the mass (if enabled)
-        if (toggleMassState === 1) {
-            graph.font =
-                "bold " + Math.max((fontSize / 3) * 2, 10) + "px sans-serif";
-            if (cell.name.length === 0) fontSize = 0;
-            graph.strokeText(Math.round(cell.mass), cell.x, cell.y + fontSize);
-            graph.fillText(Math.round(cell.mass), cell.x, cell.y + fontSize);
+        // Draw countdown instead of name/mass for player's cells when countdown is active
+        if (exitCountdownActive && cell.isCurrentPlayer) {
+            // Draw countdown number at cell center with pulsating animation
+            let baseFontSize = Math.max(cell.radius / 3, 12);
+
+            // Create pulsating effect using sine wave based on current time
+            let time = Date.now() / 1000; // Convert to seconds
+            let pulseScale = 1 + Math.sin(time * Math.PI * 2) * 0.3; // Oscillate between 0.7 and 1.3
+            let fontSize = baseFontSize * pulseScale;
+
+            graph.font = "bold " + Math.round(fontSize) + "px sans-serif";
+            graph.strokeText(`${exitCountdownValue} !`, cell.x, cell.y);
+            graph.fillText(`${exitCountdownValue} !`, cell.x, cell.y);
+        } else {
+            // Draw the name of the player
+            let fontSize = Math.max(cell.radius / 3, 12);
+            graph.font = "bold " + fontSize + "px sans-serif";
+            graph.strokeText(cell.name, cell.x, cell.y);
+            graph.fillText(cell.name, cell.x, cell.y);
+
+            // Draw the mass (if enabled)
+            if (toggleMassState === 1) {
+                graph.font =
+                    "bold " + Math.max((fontSize / 3) * 2, 10) + "px sans-serif";
+                if (cell.name.length === 0) fontSize = 0;
+                graph.strokeText(Math.round(cell.mass), cell.x, cell.y + fontSize);
+                graph.fillText(Math.round(cell.mass), cell.x, cell.y + fontSize);
+            }
         }
     }
 };
