@@ -145,7 +145,9 @@ function startGame(type) {
     }
 
     if (!socket) {
-        socket = io({ query: "type=" + type });
+        // Include arena ID in connection query for respawns
+        const query = `type=${type}${global.arenaId ? '&arenaId=' + global.arenaId : ''}`;
+        socket = io({ query });
         setupSocket(socket);
     }
     if (!global.animLoopHandle) animloop();
@@ -571,7 +573,16 @@ function setupSocket(socket) {
         window.chat.player = player;
         socket.emit("gotit", player);
         global.gameStart = true;
-        window.chat.addSystemLine("Connected to the game!");
+        
+        // Store arena ID for multi-arena support
+        if (gameSizes.arenaId) {
+            global.arenaId = gameSizes.arenaId;
+            console.log(`[CLIENT] Joined arena: ${gameSizes.arenaId}`);
+            window.chat.addSystemLine(`Connected to ${gameSizes.arenaId}!`);
+        } else {
+            window.chat.addSystemLine("Connected to the game!");
+        }
+        
         window.chat.addSystemLine("Type <b>-help</b> for a list of commands.");
         if (global.mobile) {
             document

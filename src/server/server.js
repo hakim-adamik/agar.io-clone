@@ -7,24 +7,16 @@ const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const SAT = require('sat');
 
-const gameLogic = require('./game-logic');
-const loggingRepositry = require('./repositories/logging-repository');
-const chatRepository = require('./repositories/chat-repository');
 const config = require('../../config');
-const util = require('./lib/util');
-const mapUtils = require('./map/map');
-const {getPosition} = require("./lib/entityUtils");
+const ArenaManager = require('./arena-manager');
 
-let map = new mapUtils.Map(config);
+// Initialize arena manager (replaces single map)
+const arenaManager = new ArenaManager(config);
 
-let sockets = {};
-let spectators = [];
-const INIT_MASS_LOG = util.mathLog(config.defaultPlayerMass, config.slowBase);
+// Create initial arena on startup
+arenaManager.createArena();
 
-let leaderboard = [];
-let leaderboardChanged = false;
-
-const Vector = SAT.Vector;
+console.log('[SERVER] Multi-arena system initialized');
 
 // Serve index.html with injected environment variables
 const fs = require('fs');
@@ -55,28 +47,92 @@ app.get('/', (req, res) => {
 
 app.use(express.static(__dirname + '/../client'));
 
+// API endpoint: Arena statistics
+app.get('/api/arenas', (req, res) => {
+    res.json(arenaManager.getStats());
+});
+
 io.on('connection', function (socket) {
     let type = socket.handshake.query.type;
-    console.log('User has connected: ', type);
+    console.log('[SERVER] User connected: ', type);
+    
     switch (type) {
         case 'player':
-            addPlayer(socket);
+            addPlayerToArena(socket);
             break;
         case 'spectator':
-            addSpectator(socket);
+            addSpectatorToArena(socket);
             break;
         default:
-            console.log('Unknown user type, not doing anything.');
+            console.log('[SERVER] Unknown user type, not doing anything.');
     }
 });
 
-function generateSpawnpoint() {
-    let radius = util.massToRadius(config.defaultPlayerMass);
-    return getPosition(config.newPlayerInitialPosition === 'farthest', radius, map.players.data)
-}
+/**
+ * Add player to an available arena
+ */
+const addPlayerToArena = (socket) => {
+    // Check if player is respawning (has preferred arena)
+    const preferredArenaId = socket.handshake.query.arenaId || null;
+    
+    // Find or create arena
+    const arena = arenaManager.findAvailableArena(preferredArenaId);
+    
+    // Join Socket.io room
+    socket.join(arena.id);
+    
+    // Store arena ID on socket for reference
+    socket.arenaId = arena.id;
+    
+    // Delegate to arena
+    arena.addPlayer(socket);
+    
+    // Log global stats
+    const stats = arenaManager.getStats();
+    console.log(
+        `[SERVER] Player joined ${arena.id} (${arena.getPlayerCount()}/${config.maxPlayersPerArena}). ` +
+        `Total: ${stats.totalPlayers} players across ${stats.totalArenas} arenas`
+    );
+};
 
+/**
+ * Add spectator to an arena
+ */
+const addSpectatorToArena = (socket) => {
+    // Spectators join any active arena (prefer first one)
+    const arena =
+        arenaManager.arenas.values().next().value || arenaManager.createArena();
+    
+    socket.join(arena.id);
+    socket.arenaId = arena.id;
+    
+    arena.addSpectator(socket);
+    
+    console.log(`[SERVER] Spectator joined ${arena.id}`);
+};
 
-const addPlayer = (socket) => {
+// Cleanup empty arenas every 5 minutes
+setInterval(() => {
+    arenaManager.cleanupEmptyArenas();
+}, 300000);
+
+// Server stats logging every 30 seconds
+setInterval(() => {
+    const stats = arenaManager.getStats();
+    if (stats.totalPlayers > 0) {
+        console.log(`[SERVER] Arenas: ${stats.totalArenas}, Players: ${stats.totalPlayers}, Spectators: ${stats.totalSpectators}`);
+    }
+}, 30000);
+
+// Don't touch, IP configurations.
+var ipaddress = process.env.OPENSHIFT_NODEJS_IP || process.env.IP || config.host;
+var serverport = process.env.OPENSHIFT_NODEJS_PORT || process.env.PORT || config.port;
+http.listen(serverport, ipaddress, () => console.log('[SERVER] Listening on ' + ipaddress + ':' + serverport));
+
+// OLD SINGLE-ARENA CODE BELOW - KEPT FOR REFERENCE DURING MIGRATION
+// TO BE REMOVED AFTER TESTING
+/*
+const _OLD_addPlayer = (socket) => {
     var currentPlayer = new mapUtils.playerUtils.Player(socket.id);
 
     socket.on('gotit', function (clientPlayerData) {
@@ -370,11 +426,13 @@ const updateSpectator = (socketID) => {
     }
 }
 
+// Old code - these are now handled per-arena in arena.js
 setInterval(tickGame, 1000 / 60);
 setInterval(gameloop, 1000);
 setInterval(sendUpdates, 1000 / config.networkUpdateFactor);
 
-// Don't touch, IP configurations.
+// Old server startup
 var ipaddress = process.env.OPENSHIFT_NODEJS_IP || process.env.IP || config.host;
 var serverport = process.env.OPENSHIFT_NODEJS_PORT || process.env.PORT || config.port;
 http.listen(serverport, ipaddress, () => console.log('[DEBUG] Listening on ' + ipaddress + ':' + serverport));
+*/

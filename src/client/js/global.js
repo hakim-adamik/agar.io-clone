@@ -29,4 +29,5 @@ module.exports = {
     backgroundColor: "#f2fbff",
     lineColor: "#000000",
     showFpsCounter: true,
+    arenaId: null,  // Multi-arena support: track which arena player is in
 };
