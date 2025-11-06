@@ -542,6 +542,112 @@ $("#exit").on("click touchstart", function (e) {
     }
 });
 
+// Directional pad control - touch anywhere on screen
+(function() {
+    var canvas = document.getElementById('cvs');
+    var touchCenterIndicator = document.getElementById('touchCenter');
+    var touchCenterX = 0;
+    var touchCenterY = 0;
+    var isMoving = false;
+    var movingTouchId = null;
+
+    if (canvas) {
+        canvas.addEventListener('touchstart', function(e) {
+            // Check if this touch is on a button
+            var touch = e.touches[0];
+            var element = document.elementFromPoint(touch.clientX, touch.clientY);
+
+            if (element) {
+                var isButton = element.id === 'split' || element.id === 'feed' || element.id === 'exit' ||
+                               element.closest('#split') || element.closest('#feed') || element.closest('#exit');
+
+                if (isButton) {
+                    return; // Let button handle this
+                }
+            }
+
+            e.preventDefault();
+
+            // Set the touch point as the center of the directional pad
+            touchCenterX = touch.clientX;
+            touchCenterY = touch.clientY;
+            movingTouchId = touch.identifier;
+            isMoving = true;
+
+            // Show visual indicator at touch center
+            if (touchCenterIndicator) {
+                touchCenterIndicator.style.left = touchCenterX + 'px';
+                touchCenterIndicator.style.top = touchCenterY + 'px';
+                touchCenterIndicator.style.display = 'block';
+            }
+        });
+
+        canvas.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+
+            if (isMoving) {
+                // Find the touch that started the movement
+                var touch = null;
+                for (var i = 0; i < e.touches.length; i++) {
+                    if (e.touches[i].identifier === movingTouchId) {
+                        touch = e.touches[i];
+                        break;
+                    }
+                }
+
+                if (touch) {
+                    var deltaX = touch.clientX - touchCenterX;
+                    var deltaY = touch.clientY - touchCenterY;
+
+                    // Update target position
+                    global.target.x = deltaX * 3;
+                    global.target.y = deltaY * 3;
+                }
+            }
+        });
+
+        canvas.addEventListener('touchend', function(e) {
+            e.preventDefault();
+
+            // Check if the moving touch has ended
+            var touchStillActive = false;
+            for (var i = 0; i < e.touches.length; i++) {
+                if (e.touches[i].identifier === movingTouchId) {
+                    touchStillActive = true;
+                    break;
+                }
+            }
+
+            if (!touchStillActive) {
+                isMoving = false;
+                movingTouchId = null;
+
+                // Reset target
+                global.target.x = 0;
+                global.target.y = 0;
+
+                // Hide visual indicator
+                if (touchCenterIndicator) {
+                    touchCenterIndicator.style.display = 'none';
+                }
+            }
+        });
+
+        canvas.addEventListener('touchcancel', function(e) {
+            e.preventDefault();
+            isMoving = false;
+            movingTouchId = null;
+            global.target.x = 0;
+            global.target.y = 0;
+
+            // Hide visual indicator
+            if (touchCenterIndicator) {
+                touchCenterIndicator.style.display = 'none';
+            }
+        });
+    }
+})();
+
 function handleDisconnect() {
     socket.close();
     if (!global.kicked) {
@@ -574,7 +680,7 @@ function setupSocket(socket) {
         window.chat.player = player;
         socket.emit("gotit", player);
         global.gameStart = true;
-        
+
         // Store arena ID for multi-arena support
         if (gameSizes.arenaId) {
             global.arenaId = gameSizes.arenaId;
@@ -583,7 +689,7 @@ function setupSocket(socket) {
         } else {
             window.chat.addSystemLine("Connected to the game!");
         }
-        
+
         window.chat.addSystemLine("Type <b>-help</b> for a list of commands.");
         if (global.mobile) {
             document

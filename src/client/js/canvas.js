@@ -124,46 +124,8 @@ class Canvas {
     }
 
     touchInput(touch) {
-        // Handle multi-touch: find first touch that's not on a button
-        if (!this.directionLock && touch.touches && touch.touches.length > 0) {
-            var movementTouch = null;
-            var hasButtonTouch = false;
-
-            // Check each touch to find one that's not on a button
-            for (var i = 0; i < touch.touches.length; i++) {
-                var currentTouch = touch.touches[i];
-                var element = document.elementFromPoint(currentTouch.clientX, currentTouch.clientY);
-
-                // Check if this touch is on a button or its child
-                var isButton = false;
-                if (element) {
-                    isButton = element.id === 'split' || element.id === 'feed' || element.id === 'exit' ||
-                               element.closest('#split') || element.closest('#feed') || element.closest('#exit');
-                }
-
-                if (isButton) {
-                    hasButtonTouch = true;
-                }
-
-                // Use first touch that's not on a button for movement
-                if (!isButton && !movementTouch) {
-                    movementTouch = currentTouch;
-                }
-            }
-
-            // Only prevent default for canvas touches (not button touches)
-            if (movementTouch && !hasButtonTouch) {
-                touch.preventDefault();
-                touch.stopPropagation();
-            }
-
-            // Update target position with the non-button touch
-            if (movementTouch) {
-                this.parent.target.x = movementTouch.clientX - this.width / 2;
-                this.parent.target.y = movementTouch.clientY - this.height / 2;
-                global.target = this.parent.target;
-            }
-        }
+        // Movement is now handled by canvas touch events directly in app.js
+        // This function is kept for compatibility but does nothing
     }
 
     // Chat command callback functions.
