@@ -50,9 +50,12 @@ describe('Multi-Arena System', function() {
     
     describe('ArenaManager', function() {
         let arenaManager;
+        let mockIo = {
+            to: () => ({ emit: () => {} })  // Mock Socket.io
+        };
         
         beforeEach(function() {
-            arenaManager = new ArenaManager(mockConfig);
+            arenaManager = new ArenaManager(mockConfig, mockIo);
         });
         
         afterEach(function() {
@@ -293,9 +296,12 @@ describe('Multi-Arena System', function() {
     
     describe('Multi-Arena Integration', function() {
         let arenaManager;
+        let mockIo = {
+            to: () => ({ emit: () => {} })
+        };
         
         beforeEach(function() {
-            arenaManager = new ArenaManager(mockConfig);
+            arenaManager = new ArenaManager(mockConfig, mockIo);
         });
         
         afterEach(function() {
@@ -526,9 +532,12 @@ describe('Multi-Arena System', function() {
     
     describe('Edge Cases', function() {
         let arenaManager;
+        let mockIo = {
+            to: () => ({ emit: () => {} })
+        };
         
         beforeEach(function() {
-            arenaManager = new ArenaManager(mockConfig);
+            arenaManager = new ArenaManager(mockConfig, mockIo);
         });
         
         afterEach(function() {

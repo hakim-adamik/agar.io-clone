@@ -11,9 +11,10 @@
 const Arena = require("./arena");
 
 class ArenaManager {
-    constructor(config) {
+    constructor(config, io) {
         this.arenas = new Map(); // arenaId → Arena instance
         this.config = config;
+        this.io = io; // Store io instance to pass to arenas
         this.nextArenaId = 1;
 
         // Read from centralized config.js (always defined)
@@ -79,7 +80,7 @@ class ArenaManager {
         }
 
         const arenaId = `arena_${this.nextArenaId++}`;
-        const arena = new Arena(arenaId, this.config);
+        const arena = new Arena(arenaId, this.config, this.io);
 
         // Start arena game loops
         arena.start();

@@ -18,9 +18,10 @@ const loggingRepository = require("./repositories/logging-repository");
 const Vector = SAT.Vector;
 
 class Arena {
-    constructor(arenaId, config) {
+    constructor(arenaId, config, io) {
         this.id = arenaId;
         this.config = config;
+        this.io = io;  // Store io instance for room broadcasting
         this.createdAt = Date.now();
         this.lastActivityAt = Date.now();
 
@@ -102,6 +103,9 @@ class Arena {
      */
     addPlayer(socket) {
         const currentPlayer = new mapUtils.playerUtils.Player(socket.id);
+        
+        // Initialize heartbeat immediately to prevent premature disconnect
+        currentPlayer.setLastHeartbeat();
 
         socket.on("gotit", (clientPlayerData) => {
             console.log(
@@ -111,6 +115,9 @@ class Arena {
                 this.generateSpawnpoint(),
                 this.config.defaultPlayerMass
             );
+            
+            // Reset heartbeat after init
+            currentPlayer.setLastHeartbeat();
 
             if (this.map.players.findIndexByID(socket.id) > -1) {
                 console.log(
@@ -152,13 +159,20 @@ class Arena {
      * Setup socket event handlers for a player
      */
     setupPlayerEvents(socket, currentPlayer) {
-        // Respawn handler
+        // Initial welcome sent immediately (for first connection)
+        socket.emit("welcome", currentPlayer, {
+            width: this.config.gameWidth,
+            height: this.config.gameHeight,
+            arenaId: this.id,
+        });
+        
+        // Respawn handler (for subsequent respawns after death)
         socket.on("respawn", () => {
             this.map.players.removePlayerByID(currentPlayer.id);
             socket.emit("welcome", currentPlayer, {
                 width: this.config.gameWidth,
                 height: this.config.gameHeight,
-                arenaId: this.id, // Tell client which arena they're in
+                arenaId: this.id,
             });
             console.log(
                 `[ARENA ${this.id}] User ${currentPlayer.name} respawned`
@@ -383,8 +397,14 @@ class Arena {
      * Broadcast event to all players in THIS arena only
      */
     broadcastToArena(event, data) {
-        for (const socketId in this.sockets) {
-            this.sockets[socketId].emit(event, data);
+        // Use Socket.io room broadcasting (more reliable)
+        if (this.io) {
+            this.io.to(this.id).emit(event, data);
+        } else {
+            // Fallback to individual socket emission
+            for (const socketId in this.sockets) {
+                this.sockets[socketId].emit(event, data);
+            }
         }
     }
 
