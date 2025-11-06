@@ -45,6 +45,33 @@ app.get('/', (req, res) => {
     });
 });
 
+// Serve index.html with injected environment variables
+const fs = require('fs');
+const path = require('path');
+
+app.get('/', (req, res) => {
+    const indexPath = path.join(__dirname, '/../client/index.html');
+    fs.readFile(indexPath, 'utf8', (err, data) => {
+        if (err) {
+            console.error('Error reading index.html:', err);
+            res.status(500).send('Error loading page');
+            return;
+        }
+        
+        // Inject environment variables into the HTML
+        const envScript = `
+        <script>
+            window.ENV = {
+                PRIVY_APP_ID: '${process.env.PRIVY_APP_ID || ''}'
+            };
+        </script>`;
+        
+        // Insert the script before the closing </head> tag
+        const modifiedHtml = data.replace('</head>', `${envScript}\n    </head>`);
+        res.send(modifiedHtml);
+    });
+});
+
 app.use(express.static(__dirname + '/../client'));
 
 // API endpoint: Arena statistics
