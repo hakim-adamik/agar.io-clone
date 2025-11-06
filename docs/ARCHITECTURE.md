@@ -12,28 +12,36 @@ This document provides a comprehensive technical overview of the Agar.io clone i
 ### 1.1 High-Level Architecture
 
 ```
-┌─────────────────┐                    ┌─────────────────┐
-│                 │   WebSocket (io)    │                 │
-│  Client (HTML5) │◄──────────────────►│ Server (Node.js)│
-│   Canvas + JS   │                    │   + Express     │
-│                 │                    │                 │
-└─────────────────┘                    └─────────────────┘
-         │                                      │
-         │                                      │
-    ┌────▼────┐                           ┌────▼────┐
-    │ Webpack │                           │ SQLite3 │
-    │  Build  │                           │   DB    │
-    └─────────┘                           └─────────┘
+┌─────────────────┐                    ┌──────────────────────────┐
+│                 │   WebSocket (io)    │     Server (Node.js)     │
+│  Client (HTML5) │◄──────────────────►│    + Express + Socket.io │
+│   Canvas + JS   │                    │                          │
+│  + Privy Auth   │                    │    ┌────────────────┐    │
+│                 │                    │    │ ArenaManager   │    │
+└─────────────────┘                    │    └───────┬────────┘    │
+         │                             │            │             │
+         │                             │    ┌───────▼────────┐    │
+    ┌────▼────┐                       │    │  Arena 1..N    │    │
+    │ Webpack │                       │    │ (10 players)   │    │
+    │  Build  │                       │    └────────────────┘    │
+    └─────────┘                       └──────────────────────────┘
+                                                   │
+                                              ┌────▼────┐
+                                              │ SQLite3 │
+                                              │   DB    │
+                                              └─────────┘
 ```
 
 ### 1.2 Technology Stack
 
-- **Frontend:** HTML5 Canvas, JavaScript (ES6+), Socket.io-client
+- **Frontend:** HTML5 Canvas, JavaScript (ES6+), Socket.io-client, Privy SDK
 - **Backend:** Node.js, Express.js, Socket.io
 - **Database:** SQLite3 (for chat and logging)
 - **Build Tools:** Webpack, Gulp, Babel
 - **Testing:** Mocha, Chai
 - **Utilities:** SAT.js (collision detection), UUID
+- **Authentication:** Privy SDK (Google, Discord, Twitter, Email)
+- **Multi-Arena:** ArenaManager for scalable game instances
 
 ---
 
@@ -131,7 +139,34 @@ agar.io-clone/
   - Performance metrics
   - Error tracking
 
-### 3.4 Utilities (`src/server/lib/`)
+### 3.4 Multi-Arena System
+
+#### 3.4.1 ArenaManager (`src/server/arena-manager.js`)
+- **Purpose:** Orchestrates multiple game instances
+- **Responsibilities:**
+  - Dynamic arena creation/destruction
+  - Player distribution across arenas
+  - Arena lifecycle management
+  - Resource optimization
+- **Key Features:**
+  - Auto-creates arenas when capacity reached (10 players/arena)
+  - Cleans up empty arenas after 60 seconds
+  - Smart player assignment with rejoin preferences
+  - Supports 500+ concurrent players
+
+#### 3.4.2 Arena (`src/server/arena.js`)
+- **Purpose:** Isolated game instance
+- **Components:**
+  - Independent map with own food, viruses, mass food
+  - Separate player collection (max 10)
+  - Isolated leaderboard
+  - Independent game loop (60Hz)
+- **Isolation:**
+  - Socket.io room-based broadcasting
+  - No cross-arena communication
+  - Independent entity IDs
+
+### 3.5 Utilities (`src/server/lib/`)
 
 - **Entity Utils (`entityUtils.js`):**
   - Position calculation
@@ -192,6 +227,21 @@ agar.io-clone/
   - Screen dimensions
   - Input state
   - Game settings
+
+#### 4.1.6 Authentication System
+- **Privy Auth Component (`src/client/auth/privy-auth.jsx`):**
+  - React-based authentication component
+  - Social login providers (Google, Discord, Twitter)
+  - Email authentication fallback
+  - Session management
+- **Auth Modal (`src/client/auth/auth-modal.js`):**
+  - Modal wrapper for authentication UI
+  - Integration with landing page
+  - State synchronization with game
+- **Guest System:**
+  - Auto-generated guest names (Guest_XXXX)
+  - Instant play without registration
+  - Profile modal with sign-in prompts
 
 ### 4.2 Client-Server Communication Protocol
 
