@@ -733,23 +733,16 @@ function setupSocket(socket) {
         var status = '<span class="title">Leaderboard</span>';
         for (var i = 0; i < leaderboard.length; i++) {
             status += "<br />";
+            var displayName = leaderboard[i].name.length !== 0 ? leaderboard[i].name : "An unnamed cell";
+            var score = leaderboard[i].score || 0;
+            // Format score with 2 decimals, removing trailing zeros
+            var displayScore = parseFloat(score.toFixed(2));
+            var entry = (i + 1) + ". " + displayName + " - " + displayScore;
+
             if (leaderboard[i].id == player.id) {
-                if (leaderboard[i].name.length !== 0)
-                    status +=
-                        '<span class="me">' +
-                        (i + 1) +
-                        ". " +
-                        leaderboard[i].name +
-                        "</span>";
-                else
-                    status +=
-                        '<span class="me">' +
-                        (i + 1) +
-                        ". An unnamed cell</span>";
+                status += '<span class="me">' + entry + "</span>";
             } else {
-                if (leaderboard[i].name.length !== 0)
-                    status += i + 1 + ". " + leaderboard[i].name;
-                else status += i + 1 + ". An unnamed cell";
+                status += entry;
             }
         }
         //status += '<br />Players: ' + data.players;
@@ -786,6 +779,15 @@ function setupSocket(socket) {
                 player.hue = playerData.hue;
                 player.massTotal = playerData.massTotal;
                 player.cells = playerData.cells;
+                // Calculate total score from all cells
+                player.score = playerData.cells.reduce((sum, cell) => sum + (cell.score || 0), 0);
+
+                // Update player score display
+                var playerScoreEl = document.getElementById("playerScore");
+                if (playerScoreEl) {
+                    var displayScore = parseFloat(player.score.toFixed(2));
+                    playerScoreEl.innerHTML = '<span class="title">Score</span><br />' + displayScore;
+                }
             }
             users = userData;
             foods = foodsList;
@@ -797,8 +799,8 @@ function setupSocket(socket) {
     // Death.
     socket.on("RIP", function () {
         // Save last score before death
-        if (player && player.massTotal) {
-            saveLastScore(player.massTotal);
+        if (player && player.score !== undefined) {
+            saveLastScore(player.score);
         }
 
         global.gameStart = false;
@@ -1129,6 +1131,7 @@ function gameLoop() {
                         color: color,
                         borderColor: borderColor,
                         mass: users[i].cells[j].mass,
+                        score: users[i].cells[j].score || 0,
                         name: users[i].name,
                         radius: users[i].cells[j].radius,
                         x: screenX,
@@ -1218,8 +1221,8 @@ function exitGame() {
 
 function cleanupGame() {
     // Save last score before cleanup
-    if (player && player.massTotal) {
-        saveLastScore(player.massTotal);
+    if (player && player.score !== undefined) {
+        saveLastScore(player.score);
     }
 
     // Stop the game loop
@@ -1278,8 +1281,9 @@ function returnToLanding() {
 // Save last score to localStorage
 function saveLastScore(score) {
     try {
-        var roundedScore = Math.round(score);
-        localStorage.setItem('lastScore', roundedScore);
+        // Round to 2 decimals for display consistency
+        var preciseScore = Math.round(score * 100) / 100;
+        localStorage.setItem('lastScore', preciseScore);
     } catch (e) {
         console.log('Could not save last score:', e);
     }
@@ -1294,7 +1298,9 @@ function displayLastScore() {
 
         if (lastScoreValue && lastScoreBox) {
             if (lastScore) {
-                lastScoreValue.textContent = lastScore;
+                // Format score to remove trailing zeros
+                var formattedScore = parseFloat(lastScore);
+                lastScoreValue.textContent = formattedScore;
                 lastScoreBox.style.display = 'flex';
             } else {
                 lastScoreBox.style.display = 'none';

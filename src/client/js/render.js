@@ -133,13 +133,16 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph, exitCou
             graph.strokeText(cell.name, cell.x, cell.y);
             graph.fillText(cell.name, cell.x, cell.y);
 
-            // Draw the mass (if enabled)
+            // Draw the score (if enabled)
             if (toggleMassState === 1) {
                 graph.font =
                     "bold " + Math.max((fontSize / 3) * 2, 10) + "px sans-serif";
                 if (cell.name.length === 0) fontSize = 0;
-                graph.strokeText(Math.round(cell.mass), cell.x, cell.y + fontSize);
-                graph.fillText(Math.round(cell.mass), cell.x, cell.y + fontSize);
+                var score = cell.score !== undefined ? cell.score : 0;
+                // Round to 2 decimals for display, remove trailing zeros
+                var displayScore = parseFloat(score.toFixed(2));
+                graph.strokeText(displayScore, cell.x, cell.y + fontSize);
+                graph.fillText(displayScore, cell.x, cell.y + fontSize);
             }
         }
     }

@@ -46,7 +46,13 @@ exports.Map = class {
                 return {
                     x: player.x,
                     y: player.y,
-                    cells: player.cells,
+                    cells: player.cells.map(cell => ({
+                        x: cell.x,
+                        y: cell.y,
+                        mass: cell.mass,
+                        radius: cell.radius,
+                        score: cell.score // Keep full precision, no rounding
+                    })),
                     massTotal: Math.round(player.massTotal),
                     hue: player.hue,
                     id: player.id,

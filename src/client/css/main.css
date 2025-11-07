@@ -168,6 +168,24 @@ div {
     font-size: 16.1px;
 }
 
+#playerScore {
+    position: absolute;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.4);
+    color: #fff;
+    font-size: 16.1px;
+    top: 10px;
+    left: 10px;
+    font-weight: bold;
+    text-align: center;
+    z-index: 100;
+    display: block;
+}
+
+#playerScore .title {
+    font-size: 25px;
+}
+
 .chatbox {
     position: absolute;
     width: 300px;
@@ -382,6 +400,35 @@ div {
 @media only screen and (max-width: 1224px) {
     #chatbox {
         display: none;
+    }
+}
+
+/* Mobile responsive styles for leaderboard and player score */
+@media only screen and (max-width: 768px) {
+    #status {
+        font-size: 12px;
+        padding: 8px;
+        top: 5px;
+        right: 5px;
+    }
+
+    #status .title {
+        font-size: 16px;
+    }
+
+    #status .me {
+        font-size: 12px;
+    }
+
+    #playerScore {
+        font-size: 12px;
+        padding: 8px;
+        top: 5px;
+        left: 5px;
+    }
+
+    #playerScore .title {
+        font-size: 16px;
     }
 }
 
