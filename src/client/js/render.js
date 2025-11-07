@@ -133,16 +133,29 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph, exitCou
             graph.strokeText(cell.name, cell.x, cell.y);
             graph.fillText(cell.name, cell.x, cell.y);
 
-            // Draw the score (if enabled)
+            // Draw the score and mass (if enabled)
             if (toggleMassState === 1) {
                 graph.font =
                     "bold " + Math.max((fontSize / 3) * 2, 10) + "px sans-serif";
+                var smallFontSize = Math.max((fontSize / 3) * 2, 10);
                 if (cell.name.length === 0) fontSize = 0;
+
                 var score = cell.score !== undefined ? cell.score : 0;
                 // Round to 2 decimals for display, remove trailing zeros
                 var displayScore = parseFloat(score.toFixed(2));
-                graph.strokeText(displayScore, cell.x, cell.y + fontSize);
-                graph.fillText(displayScore, cell.x, cell.y + fontSize);
+
+                if (window.gameConfig && window.gameConfig.debug && window.gameConfig.debug.showCellMass) {
+                    // Debug display of mass
+                    graph.strokeText("Score: " + displayScore, cell.x, cell.y + fontSize);
+                    graph.fillText("Score: " + displayScore, cell.x, cell.y + fontSize);
+
+                    var displayMass = Math.round(cell.mass);
+                    graph.strokeText("Mass: " + displayMass, cell.x, cell.y + fontSize + smallFontSize);
+                    graph.fillText("Mass: " + displayMass, cell.x, cell.y + fontSize + smallFontSize);
+                } else {
+                    graph.strokeText(displayScore, cell.x, cell.y + fontSize);
+                    graph.fillText(displayScore, cell.x, cell.y + fontSize);
+                }
             }
         }
     }

@@ -12,13 +12,12 @@ const PUSHING_AWAY_SPEED = 1.1;
 const MERGE_TIMER = 15;
 
 class Cell {
-    constructor(x, y, mass, speed, score = 0) {
+    constructor(x, y, mass, speed) {
         this.x = x;
         this.y = y;
         this.mass = mass;
         this.radius = util.massToRadius(mass);
         this.speed = speed;
-        this.score = score;
     }
 
     setMass(mass) {
@@ -28,10 +27,6 @@ class Cell {
 
     addMass(mass) {
         this.setMass(this.mass + mass);
-    }
-
-    addScore(score) {
-        this.score += score;
     }
 
     recalculateRadius() {
@@ -101,8 +96,9 @@ exports.Player = class {
 
     /* Initalizes things that change with every respawn */
     init(position, defaultPlayerMass) {
-        this.cells = [new Cell(position.x, position.y, defaultPlayerMass, MIN_SPEED, 0)];
+        this.cells = [new Cell(position.x, position.y, defaultPlayerMass, MIN_SPEED)];
         this.massTotal = defaultPlayerMass;
+        this.defaultPlayerMass = defaultPlayerMass;
         this.x = position.x;
         this.y = position.y;
         this.target = {
@@ -111,11 +107,16 @@ exports.Player = class {
         };
     }
 
+    /* Calculate score for a specific cell: mass - (defaultPlayerMass / number of cells) */
+    getCellScore(cell) {
+        return cell.mass - (this.defaultPlayerMass / this.cells.length);
+    }
+
     /* Calculate player's total score (sum of all cell scores) */
     getScore() {
         let totalScore = 0;
         for (let cell of this.cells) {
-            totalScore += cell.score;
+            totalScore += this.getCellScore(cell);
         }
         return Math.max(0, totalScore);
     }
@@ -147,10 +148,6 @@ exports.Player = class {
     changeCellMass(cellIndex, massDifference) {
         this.cells[cellIndex].addMass(massDifference);
         this.massTotal += massDifference;
-        // Only increase score when gaining mass, not when losing it
-        if (massDifference > 0) {
-            this.cells[cellIndex].addScore(massDifference);
-        }
     }
 
     removeCell(cellIndex) {
@@ -160,8 +157,8 @@ exports.Player = class {
     }
 
 
-    // Splits a cell into multiple cells with identical mass and score
-    // Creates n-1 new cells, and lowers the mass and score of the original cell
+    // Splits a cell into multiple cells with identical mass
+    // Creates n-1 new cells, and lowers the mass of the original cell
     // If the resulting cells would be smaller than minSplitMass, creates fewer and bigger cells.
     splitCell(cellIndex, maxRequestedPieces, minSplitMass) {
         let cellToSplit = this.cells[cellIndex];
@@ -171,12 +168,10 @@ exports.Player = class {
             return;
         }
         let newCellsMass = cellToSplit.mass / piecesToCreate;
-        let newCellsScore = cellToSplit.score / piecesToCreate;
         for (let i = 0; i < piecesToCreate - 1; i++) {
-            this.cells.push(new Cell(cellToSplit.x, cellToSplit.y, newCellsMass, SPLIT_CELL_SPEED, newCellsScore));
+            this.cells.push(new Cell(cellToSplit.x, cellToSplit.y, newCellsMass, SPLIT_CELL_SPEED));
         }
         cellToSplit.setMass(newCellsMass);
-        cellToSplit.score = newCellsScore;
         this.setLastSplit();
     }
 
@@ -231,7 +226,6 @@ exports.Player = class {
     mergeCollidingCells() {
         this.enumerateCollidingCells(function (cells, cellAIndex, cellBIndex) {
             cells[cellAIndex].addMass(cells[cellBIndex].mass);
-            cells[cellAIndex].addScore(cells[cellBIndex].score);
             cells[cellBIndex] = null;
         });
     }
