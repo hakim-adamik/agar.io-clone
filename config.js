@@ -5,7 +5,8 @@ module.exports = {
     foodMass: 1,
     fireFood: 20,
     limitSplit: 16,
-    defaultPlayerMass: 10,
+    defaultPlayerMass: 500,
+    minSplitMass: 20,
     virus: {
         fill: "#33ff33",
         stroke: "#19D119",
@@ -23,7 +24,7 @@ module.exports = {
     gameMass: 20000,
     maxFood: 1000,
     maxVirus: 50,
-    slowBase: 4.5,
+    slowBase: 10,
     logChat: 0,
     networkUpdateFactor: 60,
     maxHeartbeatInterval: 5000,

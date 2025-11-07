@@ -39,7 +39,7 @@ class Arena {
 
         // Constants
         this.INIT_MASS_LOG = util.mathLog(
-            config.defaultPlayerMass,
+            config.minSplitMass,
             config.slowBase
         );
     }
@@ -103,7 +103,7 @@ class Arena {
      */
     addPlayer(socket) {
         const currentPlayer = new mapUtils.playerUtils.Player(socket.id);
-        
+
         // Initialize heartbeat immediately to prevent premature disconnect
         currentPlayer.setLastHeartbeat();
 
@@ -115,7 +115,7 @@ class Arena {
                 this.generateSpawnpoint(),
                 this.config.defaultPlayerMass
             );
-            
+
             // Reset heartbeat after init
             currentPlayer.setLastHeartbeat();
 
@@ -227,7 +227,7 @@ class Arena {
         socket.on("2", () => {
             currentPlayer.userSplit(
                 this.config.limitSplit,
-                this.config.defaultPlayerMass
+                this.config.minSplitMass
             );
             this.lastActivityAt = Date.now();
         });
@@ -492,7 +492,7 @@ class Arena {
         currentPlayer.virusSplit(
             cellsToSplit,
             this.config.limitSplit,
-            this.config.defaultPlayerMass
+            this.config.minSplitMass
         );
     }
 

@@ -144,10 +144,10 @@ exports.Player = class {
 
     // Splits a cell into multiple cells with identical mass
     // Creates n-1 new cells, and lowers the mass of the original cell
-    // If the resulting cells would be smaller than defaultPlayerMass, creates fewer and bigger cells.
-    splitCell(cellIndex, maxRequestedPieces, defaultPlayerMass) {
+    // If the resulting cells would be smaller than minSplitMass, creates fewer and bigger cells.
+    splitCell(cellIndex, maxRequestedPieces, minSplitMass) {
         let cellToSplit = this.cells[cellIndex];
-        let maxAllowedPieces = Math.floor(cellToSplit.mass / defaultPlayerMass); // If we split the cell ino more pieces, they will be too small.
+        let maxAllowedPieces = Math.floor(cellToSplit.mass / minSplitMass); // If we split the cell ino more pieces, they will be too small.
         let piecesToCreate = Math.min(maxAllowedPieces, maxRequestedPieces);
         if (piecesToCreate === 0) {
             return;
@@ -162,15 +162,15 @@ exports.Player = class {
 
     // Performs a split resulting from colliding with a virus.
     // The player will have the highest possible number of cells.
-    virusSplit(cellIndexes, maxCells, defaultPlayerMass) {
+    virusSplit(cellIndexes, maxCells, minSplitMass) {
         for (let cellIndex of cellIndexes) {
-            this.splitCell(cellIndex, maxCells - this.cells.length + 1, defaultPlayerMass);
+            this.splitCell(cellIndex, maxCells - this.cells.length + 1, minSplitMass);
         }
     }
 
     // Performs a split initiated by the player.
     // Tries to split every cell in half.
-    userSplit(maxCells, defaultPlayerMass) {
+    userSplit(maxCells, minSplitMass) {
         let cellsToCreate;
         if (this.cells.length > maxCells / 2) { // Not every cell can be split
             cellsToCreate = maxCells - this.cells.length + 1;
@@ -183,7 +183,7 @@ exports.Player = class {
         }
 
         for (let i = 0; i < cellsToCreate; i++) {
-            this.splitCell(i, 2, defaultPlayerMass);
+            this.splitCell(i, 2, minSplitMass);
         }
     }
 
