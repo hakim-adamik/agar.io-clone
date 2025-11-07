@@ -19,13 +19,20 @@ const drawVirus = (position, virus, graph) => {
     graph.strokeStyle = virus.stroke;
     graph.fillStyle = virus.fill;
     graph.lineWidth = virus.strokeWidth;
-    let theta = 0;
-    let sides = 20;
+    let sides = 100; // More sides = more spikes (50 spikes total)
+    let spikeDepth = 0.92; // Spike inward depth (0.92 = 8% inward, shorter spikes)
 
     graph.beginPath();
-    for (let theta = 0; theta < FULL_ANGLE; theta += FULL_ANGLE / sides) {
-        let point = circlePoint(position, virus.radius, theta);
-        graph.lineTo(point.x, point.y);
+    for (let i = 0; i < sides; i++) {
+        let theta = (i * FULL_ANGLE) / sides;
+        // Alternate between outer radius (spike out) and inner radius (spike in)
+        let radius = i % 2 === 0 ? virus.radius : virus.radius * spikeDepth;
+        let point = circlePoint(position, radius, theta);
+        if (i === 0) {
+            graph.moveTo(point.x, point.y);
+        } else {
+            graph.lineTo(point.x, point.y);
+        }
     }
     graph.closePath();
     graph.stroke();

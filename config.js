@@ -10,7 +10,7 @@ module.exports = {
     virus: {
         fill: "#33ff33",
         stroke: "#19D119",
-        strokeWidth: 20,
+        strokeWidth: 2,
         defaultMass: {
             from: 100,
             to: 150,
