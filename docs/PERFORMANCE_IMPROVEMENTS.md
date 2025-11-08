@@ -10,7 +10,7 @@ The spatial grid divides the game world into a 20x20 grid, dramatically reducing
 - **After:** Check only nearby grid cells (~50 items × 10 players = 500 checks)
 - **Result:** Visibility calculations reduced from 3800ms to 0.47ms
 
-**Implementation:** See `src/server/lib/spatial-grid-simple.js`
+**Implementation:** See `src/server/lib/spatial-grid.js`
 
 ### 2. Network Update Rate Optimization
 **Impact: Reduced network jitter**
