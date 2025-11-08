@@ -1239,11 +1239,47 @@ Phase A is complete when:
 - [x] Database tables exist
 - [x] Repository layer works
 - [x] Auth service implemented
-- [ ] API endpoints created
-- [ ] Socket.IO tracks sessions
+- [x] API endpoints created
+- [x] Socket.IO tracks sessions
 - [ ] Client shows real data
 - [ ] Privy auth connects to database
 - [ ] Stats update during gameplay
+
+### 📡 API Endpoints Reference
+
+All API endpoints are implemented and ready for client integration:
+
+| Method | Endpoint | Description | Status |
+|--------|----------|-------------|---------|
+| POST | `/api/auth` | Authenticate user with Privy | ✅ Ready |
+| GET | `/api/user/:userId` | Get user profile with stats | ✅ Ready |
+| GET | `/api/user/:userId/preferences` | Get user preferences | ✅ Ready |
+| PUT | `/api/user/:userId/preferences` | Update user preferences | ✅ Ready |
+| PUT | `/api/user/:userId/profile` | Update user profile | ✅ Ready |
+| GET | `/api/username/available/:username` | Check username availability | ✅ Ready |
+| GET | `/api/leaderboard` | Get leaderboard (limit, offset) | ✅ Ready |
+| GET | `/api/arenas` | Get arena statistics | ✅ Ready |
+
+### 🔌 Socket.IO Integration
+
+Socket connection now accepts query parameters for session tracking:
+
+```javascript
+// Client connection example
+const socket = io({
+    query: {
+        type: 'player',
+        userId: currentUser.id,        // From Privy auth
+        playerName: currentUser.username,
+        arenaId: preferredArena        // For respawn
+    }
+});
+```
+
+Server automatically:
+- Creates game session on connect
+- Tracks stats during gameplay
+- Ends session with final stats on disconnect
 
 _Last Updated: November 2024_
 _Status: Phase A Infrastructure Complete - Integration Pending_
