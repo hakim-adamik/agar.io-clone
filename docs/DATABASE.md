@@ -6,6 +6,440 @@ This document outlines the database architecture for user data persistence, auth
 
 ---
 
+## Persistent Database Setup
+
+### Why Persistent Database?
+
+Google Cloud Run containers have ephemeral storage - SQLite databases get wiped on container restarts. To maintain persistent user data, preferences, and game statistics across deployments, we need a persistent database solution.
+
+### Dual Database Architecture
+
+The application automatically detects and uses the appropriate database:
+
+- **Local Development**: SQLite (`src/server/db/db.sqlite3`)
+- **Cloud Production**: Neon Postgres (via environment variables)
+
+### Database Layer Implementation
+
+The `src/server/db/database-layer.js` provides a unified API that:
+
+- **Auto-Detection**: Checks for `POSTGRES_URL` or `DATABASE_URL` environment variables
+- **Unified Interface**: Same methods work with both SQLite and PostgreSQL
+- **Automatic Schema**: Creates tables on first connection
+- **Query Translation**: Converts PostgreSQL syntax to SQLite when needed
+
+## Setup Instructions
+
+### 1. Local Development (SQLite)
+
+**No setup required!** The application automatically:
+
+- Creates `src/server/db/db.sqlite3` on first run
+- Initializes all tables with proper schema
+- Works offline without any configuration
+
+### 2. Cloud Production (Neon Postgres)
+
+#### Option A: Vercel Dashboard (Recommended)
+
+1. **Create Database:**
+   - Go to https://vercel.com/dashboard/stores
+   - Click "Create Database" → "Neon Serverless Postgres"
+   - Choose region (eu-central-1 recommended for Europe)
+   - Database created instantly
+
+2. **Copy Connection Strings:**
+   - Vercel provides multiple connection string variants
+   - Copy the **pooled connection string** for best performance
+
+#### Option B: Direct Neon Console
+
+1. **Create Account:**
+   - Go to https://console.neon.tech
+   - Sign up or log in
+   - Create new project
+
+2. **Get Connection Details:**
+   - Navigate to "Dashboard" → "Connection Details"
+   - Copy the connection string with pooling enabled
+
+#### 3. Environment Configuration
+
+**Local Testing (.env file):**
+
+```bash
+# Copy .env.example to .env and fill in your values
+POSTGRES_URL="postgresql://user:password@host-pooler.region.aws.neon.tech/database?sslmode=require"
+DATABASE_URL="postgresql://user:password@host-pooler.region.aws.neon.tech/database?sslmode=require"
+```
+
+**Cloud Run Deployment:**
+
+The `deploy.sh` script automatically sets environment variables:
+
+```bash
+# Environment variables set during deployment
+NODE_ENV=production
+PRIVY_APP_ID=your-privy-app-id
+POSTGRES_URL="postgresql://..."
+DATABASE_URL="postgresql://..."
+```
+
+#### 4. Deploy to Cloud Run
+
+```bash
+# Update deploy.sh with your connection strings
+vim deploy.sh
+# Look for --set-env-vars and update POSTGRES_URL
+
+# Deploy with persistent database
+./deploy.sh
+```
+
+## Database Features
+
+### Automatic Schema Management
+
+- **Table Creation**: All tables created automatically on first connection
+- **Cross-Database Schema**: Same schema works for SQLite and PostgreSQL
+- **Indexes**: Performance indexes created automatically
+- **Migrations**: Schema differences handled transparently
+
+### Connection Management
+
+- **PostgreSQL**: New connection per query (serverless-friendly)
+- **SQLite**: Persistent connection with proper cleanup
+- **Error Handling**: Graceful fallback and error reporting
+- **Connection Pooling**: Uses pooled connections in production
+
+### Query Translation
+
+Automatic conversion between database syntaxes:
+
+```javascript
+// PostgreSQL style (what you write)
+const user = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
+
+// Automatically converted to SQLite
+// 'SELECT * FROM users WHERE id = ?'
+```
+
+**Supported Conversions:**
+- Parameter placeholders: `$1, $2` → `?, ?`
+- Auto-increment: `SERIAL` → `INTEGER PRIMARY KEY AUTOINCREMENT`
+- Returning clauses: Handled differently per database
+- Boolean types: `BOOLEAN` → `INTEGER` (SQLite)
+
+## Testing Database Connection
+
+### Test Script
+
+```bash
+# Test your database connection
+node test/test-db-connection.js
+```
+
+**Expected Output:**
+
+```
+Testing Neon Postgres connection...
+Using Postgres: Yes ✅
+✅ Database connection successful!
+Test query result: { test: 1 }
+
+📊 Existing tables: 0
+
+🔨 Initializing database tables...
+✅ Tables initialized successfully!
+
+📊 Tables after initialization: 5
+  - users
+  - game_stats
+  - game_sessions
+  - user_preferences
+  - leaderboard
+```
+
+### Database Structure Verification
+
+**PostgreSQL:**
+```sql
+-- Check tables exist
+SELECT tablename FROM pg_tables WHERE schemaname = 'public';
+
+-- Check table structure
+\d users;
+```
+
+**SQLite:**
+```sql
+-- Check tables exist
+SELECT name FROM sqlite_master WHERE type='table';
+
+-- Check table structure
+.schema users
+```
+
+## Environment Variables Reference
+
+### Required Variables
+
+- `POSTGRES_URL` or `DATABASE_URL`: PostgreSQL connection string
+- `PRIVY_APP_ID`: Authentication provider ID
+- `NODE_ENV`: Set to 'production' for cloud deployment
+
+### Optional Variables
+
+- `DATABASE_URL_UNPOOLED`: Non-pooled connection for migrations
+- `POSTGRES_URL_NON_POOLING`: Alternative non-pooled connection
+- `PORT`: Server port (default: 3000, Cloud Run: 8080)
+- `ADMIN_PASS`: Admin panel password
+
+### Connection String Format
+
+```
+postgresql://username:password@host:port/database?sslmode=require
+```
+
+**Components:**
+- `username`: Database user (usually 'neondb_owner')
+- `password`: Generated password from Neon
+- `host`: Pooled endpoint (ends with '-pooler')
+- `port`: Usually 5432 (omitted if default)
+- `database`: Database name (usually 'neondb')
+- `sslmode=require`: Force SSL connections
+
+## Neon Database Specs
+
+### Free Tier Limits
+
+- **Storage**: 512 MB
+- **Data Transfer**: 5 GB per month
+- **Compute Hours**: 100 hours per month
+- **Connections**: Up to 100 concurrent
+- **Branches**: 10 database branches
+- **Projects**: 1 project per account
+
+### Performance Characteristics
+
+- **Cold Start**: ~100-300ms for first query
+- **Warm Queries**: 10-50ms typical response time
+- **Connection Pooling**: Built-in pgBouncer integration
+- **Auto-Pause**: Database pauses after inactivity (resumes instantly)
+- **Scaling**: Automatic compute scaling based on load
+
+### Regional Availability
+
+- **Europe**: eu-central-1 (Frankfurt)
+- **US East**: us-east-1 (Virginia)
+- **US West**: us-west-2 (Oregon)
+- **Asia**: ap-southeast-1 (Singapore)
+
+## Deployment Script Integration
+
+The deployment process automatically handles database configuration:
+
+### 1. Local Build & Test
+
+```bash
+# deploy.sh automatically:
+# 1. Tests database connection locally
+# 2. Runs npm test with database
+# 3. Verifies all tables exist
+```
+
+### 2. Cloud Build Process
+
+```bash
+# Cloud Build steps:
+# 1. npm install (includes pg dependency)
+# 2. npm run build (static assets)
+# 3. node build-webpack.js (client bundles)
+# 4. Copy src/ directory to build/
+```
+
+### 3. Cloud Run Configuration
+
+```bash
+# Container settings:
+# - Port: 8080 (required by Cloud Run)
+# - Memory: 512Mi
+# - CPU: 1 vCPU
+# - Environment: All database variables injected
+# - Health checks: Built-in endpoint monitoring
+```
+
+### 4. Automatic Database Initialization
+
+- Tables created on first Cloud Run instance startup
+- Schema applied automatically
+- No manual migration commands needed
+- Existing data preserved across deployments
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. \"Database connection failed\"
+
+**Cause**: Invalid connection string or network issues
+
+**Solutions:**
+```bash
+# Check environment variables
+echo $POSTGRES_URL
+echo $DATABASE_URL
+
+# Test connection manually
+node test/test-db-connection.js
+
+# Verify Neon dashboard shows database as active
+```
+
+#### 2. \"Tables not found\" errors
+
+**Cause**: Schema initialization failed
+
+**Solutions:**
+```bash
+# Check if tables were created
+node test/test-db-connection.js
+
+# If using PostgreSQL, check in Neon dashboard
+# If using SQLite, check file exists
+ls -la src/server/db/db.sqlite3
+```
+
+#### 3. \"Connection timeout\" in Cloud Run
+
+**Cause**: Cold start or network issues
+
+**Solutions:**
+- Use pooled connection string (ends with '-pooler')
+- Check Cloud Run logs for specific error
+- Verify Neon database is in same region as Cloud Run
+
+#### 4. \"SSL connection required\" error
+
+**Cause**: Missing or incorrect SSL configuration
+
+**Solutions:**
+```bash
+# Ensure connection string has SSL parameter
+POSTGRES_URL="postgresql://user:pass@host/db?sslmode=require"
+
+# For local testing without SSL (not recommended)
+POSTGRES_URL="postgresql://user:pass@host/db?sslmode=disable"
+```
+
+### Debug Commands
+
+```bash
+# Test local SQLite
+rm src/server/db/db.sqlite3  # Reset local database
+npm start  # Should recreate database
+
+# Test PostgreSQL connection
+POSTGRES_URL="your-connection-string" node test/test-db-connection.js
+
+# Check Cloud Run logs
+gcloud run services logs read agario-clone --region=europe-west1
+
+# Verify environment variables in Cloud Run
+gcloud run services describe agario-clone --region=europe-west1 --format="value(spec.template.spec.template.spec.containers[0].env)"
+```
+
+### Performance Monitoring
+
+#### Database Metrics to Track
+
+1. **Connection Time**: Should be < 300ms for cold starts
+2. **Query Response**: Should be < 50ms for warm queries
+3. **Table Sizes**: Monitor growth of game_sessions and leaderboard tables
+4. **Connection Count**: Stay within Neon limits (100 concurrent)
+
+#### Monitoring Commands
+
+```bash
+# Check database size (in Neon dashboard)
+SELECT
+    schemaname,
+    tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
+FROM pg_tables
+WHERE schemaname = 'public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+
+# Check active connections
+SELECT count(*) FROM pg_stat_activity;
+
+# Monitor query performance
+SELECT query, mean_time, calls
+FROM pg_stat_statements
+ORDER BY mean_time DESC
+LIMIT 10;
+```
+
+## Security Considerations
+
+### Connection Security
+
+- **SSL Required**: All connections use TLS encryption
+- **Environment Variables**: Sensitive credentials stored as environment variables only
+- **Connection Strings**: Never committed to git (use .env.example template)
+- **Network Access**: Neon allows connections from any IP by default
+
+### Data Security
+
+- **Parameterized Queries**: All database queries use parameterized statements (SQL injection protection)
+- **User Data**: Minimal PII stored (email optional, no sensitive data)
+- **Password Security**: No passwords stored (authentication via Privy)
+- **Data Retention**: User data deleted on account deletion (CASCADE constraints)
+
+### Access Control
+
+- **Database User**: Dedicated user account per project
+- **Admin Access**: Only via Neon console (no direct database admin in app)
+- **API Endpoints**: User data protected by user ID validation
+- **Guest Users**: No persistent data stored for unauthenticated users
+
+## Backup & Recovery
+
+### Automatic Backups (Neon)
+
+- **Point-in-Time Recovery**: Restore to any point in last 7 days (free tier)
+- **Daily Snapshots**: Automatic daily backups retained for 7 days
+- **Branch Restoration**: Create new database branch from any backup point
+- **Zero-Downtime**: Restore to new branch, then switch connection string
+
+### Manual Backup
+
+```bash
+# Export database (requires pg_dump)
+pg_dump $POSTGRES_URL > backup.sql
+
+# Restore from backup
+psql $POSTGRES_URL < backup.sql
+
+# Export specific tables
+pg_dump $POSTGRES_URL -t users -t game_stats > user_data.sql
+```
+
+### Data Migration
+
+```bash
+# SQLite to PostgreSQL
+sqlite3 db.sqlite3 .dump > sqlite_export.sql
+# Edit file to fix syntax differences
+psql $POSTGRES_URL < postgresql_import.sql
+
+# PostgreSQL to SQLite
+pg_dump $POSTGRES_URL --no-owner --no-acl > pg_export.sql
+# Convert and import to SQLite
+```
+
+---
+
 ## Current State
 
 ### ✅ Existing Infrastructure

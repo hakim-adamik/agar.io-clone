@@ -111,7 +111,7 @@ gcloud run deploy $SERVICE_NAME \
   --max-instances 20 \
   --min-instances 0 \
   --timeout 300 \
-  --set-env-vars NODE_ENV=production,PRIVY_APP_ID=cmhkpg56r02vbjr0cdeex8n7i \
+  --set-env-vars NODE_ENV=production,PRIVY_APP_ID=cmhkpg56r02vbjr0cdeex8n7i,POSTGRES_URL="postgresql://neondb_owner:npg_dNhm5vgEr8Vy@ep-tiny-night-ago05sk9-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require",DATABASE_URL="postgresql://neondb_owner:npg_dNhm5vgEr8Vy@ep-tiny-night-ago05sk9-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require" \
   --quiet
 
 # What happens during Cloud Build:
