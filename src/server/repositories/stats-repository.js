@@ -131,23 +131,26 @@ class StatsRepository {
     }
 
     /**
-     * Get user rank
+     * Get user rank based on highest_mass leaderboard position
      */
     static async getUserRank(userId) {
-        return new Promise((resolve, reject) => {
-            db.get(
+        try {
+            const result = await db.get(
                 `SELECT COUNT(*) + 1 as rank
                  FROM game_stats g
                  JOIN users u ON g.user_id = u.id
-                 WHERE g.highest_mass > (SELECT highest_mass FROM game_stats WHERE user_id = ?)
-                 AND u.is_banned = 0`,
-                [userId],
-                (err, result) => {
-                    if (err) return reject(err);
-                    resolve(result ? result.rank : null);
-                }
+                 WHERE g.highest_mass > (SELECT COALESCE(highest_mass, 0) FROM game_stats WHERE user_id = $1)
+                 AND (u.is_banned IS NULL OR u.is_banned = FALSE)`,
+                [userId]
             );
-        });
+
+            // Convert rank to number since Postgres returns strings
+            const rank = result ? parseInt(result.rank) : null;
+            return rank;
+        } catch (err) {
+            console.error('Error getting user rank:', err);
+            throw err;
+        }
     }
 }
 
