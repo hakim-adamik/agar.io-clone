@@ -62,19 +62,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 const user = isAuthenticated ? window.PrivyAuth.getUser() : null;
 
                 if (isAuthenticated && user) {
-                    // Authenticated user content with avatar, name, and mocked stats
-                    const displayName = user.name || 'Player';
+                    // Authenticated user content with avatar, name, and real stats
+                    const displayName = user.username || user.name || 'Player';
                     const provider = user.provider || 'email';
                     const avatarUrl = user.avatar || null; // Will be available from Google/Discord
 
-                    // Mock player statistics
-                    const stats = {
-                        gamesPlayed: Math.floor(Math.random() * 150) + 50,
-                        highScore: Math.floor(Math.random() * 50000) + 10000,
-                        totalMass: Math.floor(Math.random() * 500000) + 100000,
-                        winRate: (Math.random() * 40 + 40).toFixed(1), // 40-80%
-                        rank: Math.floor(Math.random() * 1000) + 1
+                    // Use real stats from database if available, otherwise use defaults
+                    const stats = user.stats || {
+                        gamesPlayed: 0,
+                        highScore: 0,
+                        totalMassEaten: 0,
+                        totalPlayersEaten: 0,
+                        totalTimePlayed: 0,
+                        rank: null
                     };
+
+                    // Calculate win rate (placeholder for now)
+                    const winRate = stats.gamesPlayed > 0 ?
+                        ((stats.totalPlayersEaten / Math.max(1, stats.gamesPlayed * 2)) * 100).toFixed(1) :
+                        '0.0';
 
                     return `
                         <div style="padding: 1.5rem; background: rgba(74, 144, 226, 0.1); border-radius: 10px; margin: 1.5rem 0; display: flex; align-items: center; gap: 1.5rem;">
@@ -91,26 +97,26 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <h3 style="margin-bottom: 0.25rem; color: #4a90e2;">${displayName}</h3>
                                 <p style="color: var(--text-secondary); font-size: 0.9rem;">Logged in via ${provider.charAt(0).toUpperCase() + provider.slice(1)}</p>
                                 <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
-                                    <span style="font-size: 0.8rem; color: var(--primary-green);">Rank #${stats.rank}</span>
-                                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Win Rate: ${stats.winRate}%</span>
+                                    <span style="font-size: 0.8rem; color: var(--primary-green);">${stats.rank ? `Rank #${stats.rank}` : 'Unranked'}</span>
+                                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Win Rate: ${winRate}%</span>
                                 </div>
                             </div>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0;">
                             <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-green);">${stats.highScore.toLocaleString()}</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-green);">${(stats.highScore || 0).toLocaleString()}</div>
                                 <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">High Score</div>
                             </div>
                             <div style="background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #2196F3;">${stats.gamesPlayed}</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #2196F3;">${stats.gamesPlayed || 0}</div>
                                 <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Games Played</div>
                             </div>
                             <div style="background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #FF9800;">${stats.totalMass.toLocaleString()}</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #FF9800;">${(stats.totalMassEaten || 0).toLocaleString()}</div>
                                 <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Total Mass Eaten</div>
                             </div>
                             <div style="background: rgba(156, 39, 176, 0.1); border: 1px solid rgba(156, 39, 176, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #9C27B0;">${stats.winRate}%</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #9C27B0;">${winRate}%</div>
                                 <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Win Rate</div>
                             </div>
                         </div>

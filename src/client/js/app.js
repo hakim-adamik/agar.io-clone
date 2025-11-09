@@ -145,8 +145,31 @@ function startGame(type) {
     }
 
     if (!socket) {
-        // Include arena ID in connection query for respawns
-        const query = `type=${type}${global.arenaId ? '&arenaId=' + global.arenaId : ''}`;
+        // Get user data from localStorage (if authenticated)
+        let userData = null;
+        try {
+            const privyUser = localStorage.getItem('privy_user');
+            if (privyUser) {
+                userData = JSON.parse(privyUser);
+            }
+        } catch (e) {
+            console.error('[Socket] Failed to parse user data:', e);
+        }
+
+        // Build query params including user data
+        const queryParams = {
+            type: type,
+            arenaId: global.arenaId || null,
+            userId: userData?.dbUserId || null,
+            playerName: playerNameInput.value || userData?.username || `Guest_${Math.floor(Math.random() * 10000)}`
+        };
+
+        // Convert to query string
+        const query = Object.keys(queryParams)
+            .filter(key => queryParams[key] !== null)
+            .map(key => `${key}=${encodeURIComponent(queryParams[key])}`)
+            .join('&');
+
         socket = io({ query });
         setupSocket(socket);
     }

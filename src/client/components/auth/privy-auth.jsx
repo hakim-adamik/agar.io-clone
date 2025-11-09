@@ -26,7 +26,7 @@ const PRIVY_CONFIG = {
 function PrivyAuthComponent() {
     const { ready, authenticated, user } = usePrivy();
     const { login } = useLogin({
-        onComplete: (user, isNewUser) => {
+        onComplete: async (user, isNewUser) => {
 
             // Store user data in localStorage for game access
             const userData = {
@@ -36,9 +36,41 @@ function PrivyAuthComponent() {
                 provider: Object.keys(user).find(key => ['google', 'discord', 'email'].includes(key))
             };
 
+            // Call database API to create/update user
+            try {
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        privyId: user.id,
+                        email: userData.email,
+                        username: userData.name,
+                        authProvider: userData.provider,
+                        avatarUrl: user.google?.profilePictureUrl || user.discord?.avatarUrl || null
+                    })
+                });
+
+                if (response.ok) {
+                    const dbUser = await response.json();
+
+                    // Store both Privy and database user data
+                    userData.dbUserId = dbUser.user.id;
+                    userData.username = dbUser.user.username;
+                    userData.stats = dbUser.stats;
+                    userData.preferences = dbUser.preferences;
+
+                    console.log('[Auth] Database user created/updated:', dbUser);
+                }
+            } catch (error) {
+                console.error('[Auth] Failed to sync with database:', error);
+                // Continue anyway - user can still play as guest
+            }
+
             localStorage.setItem('privy_user', JSON.stringify(userData));
 
-            // Dispatch login event
+            // Dispatch login event with database info
             window.dispatchEvent(new CustomEvent('auth:login', {
                 detail: { user: userData, isNewUser }
             }));
