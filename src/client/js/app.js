@@ -42,6 +42,87 @@ function applyDefaultGameSettings() {
     }
     var settings = window.chat;
 
+    // Try to load user preferences from server if authenticated
+    var userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    if (userData && userData.dbUserId) {
+        loadUserPreferences(userData.dbUserId, settings);
+    } else {
+        // Fall back to default settings if not authenticated
+        applyConfigDefaults(settings);
+    }
+}
+
+// Load user preferences from server
+function loadUserPreferences(userId, settings) {
+    fetch("/api/user/" + userId + "/preferences")
+        .then(function(response) {
+            if (!response.ok) throw new Error("Failed to load preferences");
+            return response.json();
+        })
+        .then(function(prefs) {
+            applyUserPreferences(prefs, settings);
+        })
+        .catch(function(error) {
+            console.warn("Failed to load user preferences, using defaults:", error);
+            applyConfigDefaults(settings);
+        });
+}
+
+// Apply user preferences from server
+function applyUserPreferences(prefs, settings) {
+    // Apply dark mode
+    if (prefs.dark_mode !== undefined) {
+        var shouldEnable = prefs.dark_mode === 1;
+        var isEnabled = global.backgroundColor === "#181818";
+        if (shouldEnable !== isEnabled) {
+            settings.toggleDarkMode();
+        }
+    }
+
+    // Apply show mass
+    if (prefs.show_mass !== undefined) {
+        var shouldShow = prefs.show_mass === 1;
+        var isShowing = global.toggleMassState === 1;
+        if (shouldShow !== isShowing) {
+            settings.toggleMass();
+        }
+    }
+
+    // Apply show border
+    if (prefs.show_border !== undefined) {
+        var shouldShow = prefs.show_border === 1;
+        if (shouldShow !== global.borderDraw) {
+            settings.toggleBorder();
+        }
+    }
+
+    // Apply continuity
+    if (prefs.continuity !== undefined) {
+        var shouldEnable = prefs.continuity === 1;
+        if (shouldEnable !== global.continuity) {
+            settings.toggleContinuity();
+        }
+    }
+
+    // Apply show FPS
+    if (prefs.show_fps !== undefined) {
+        var shouldShow = prefs.show_fps === 1;
+        if (shouldShow !== global.showFpsCounter) {
+            settings.toggleFpsDisplay();
+        }
+    }
+
+    // Apply round food
+    if (prefs.round_food !== undefined) {
+        global.roundFood = prefs.round_food === 1;
+    }
+
+    // Sync checkbox states
+    syncSettingsCheckboxes();
+}
+
+// Apply default settings from config
+function applyConfigDefaults(settings) {
     var config = window.gameConfig || {};
     var defaults = config.getSettings ? config.getSettings() : {};
 

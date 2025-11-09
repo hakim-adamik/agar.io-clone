@@ -1241,9 +1241,11 @@ Phase A is complete when:
 - [x] Auth service implemented
 - [x] API endpoints created
 - [x] Socket.IO tracks sessions
-- [ ] Client shows real data
-- [ ] Privy auth connects to database
-- [ ] Stats update during gameplay
+- [x] Client shows real data
+- [x] Privy auth connects to database
+- [x] User preferences load from server
+- [x] Preferences save to server on change
+- [ ] Stats update during gameplay (mass eaten, players eaten)
 
 ### 📡 API Endpoints Reference
 
@@ -1281,5 +1283,30 @@ Server automatically:
 - Tracks stats during gameplay
 - Ends session with final stats on disconnect
 
+### 📋 Recent Implementation (November 2024)
+
+#### Client-Database Integration Completed:
+1. **Privy Authentication Connected**
+   - `/api/auth` endpoint called after Privy login
+   - User ID stored in localStorage as `userData.dbUserId`
+   - Database user created/updated on each login
+
+2. **User Preferences System**
+   - Preferences loaded from server on game start (if authenticated)
+   - Settings changes saved to server in real-time
+   - Falls back to default config for guests
+   - Implemented in: `app.js` lines 37-169, `chat-client.js` lines 200-308
+
+3. **Socket.IO Session Tracking**
+   - Socket connection sends userId in query params
+   - Game sessions created on connect
+   - Sessions ended on disconnect
+   - Stats tracked during gameplay
+
+4. **Profile Modal Integration**
+   - Real user stats displayed instead of mock data
+   - Stats fetched from `/api/user/:userId` endpoint
+   - Updates on modal open
+
 _Last Updated: November 2024_
-_Status: Phase A Infrastructure Complete - Integration Pending_
+_Status: Phase A Infrastructure Complete - Ready for Testing_
