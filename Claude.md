@@ -475,34 +475,42 @@ node --inspect bin/server/server.js
 ## Implementation Notes
 
 ### Current State
-- **Authentication:** Privy SDK is fully integrated and working
-- **Database:** ✅ Phase A infrastructure complete (tables, repositories, API)
-- **User Data:** Database backend ready, needs client integration
-- **Profile Modal:** Shows mock data, API ready for real data
-- **Leaderboard:** API endpoint ready, needs client integration
-- **Session Tracking:** Socket.IO integrated, tracking game sessions
+- **Authentication:** Privy SDK fully integrated, connected to database ✅
+- **Database:** Phase A infrastructure complete (tables, repositories, API) ✅
+- **User Data:** Database connected, real user profiles working ✅
+- **Profile Modal:** Shows real user data from database ✅
+- **User Preferences:** Save/load working, persisted to database ✅
+- **Leaderboard:** API endpoint ready, client integration pending
+- **Session Tracking:** Socket.IO integrated, tracking game sessions ✅
+- **Stats Tracking:** Basic session tracking working, real-time stats pending
 - **Wallet Features:** Not yet implemented despite Privy support
 
 ### Completed (November 2024)
-- ✅ Database schema with all Phase A tables
+- ✅ Database schema with all Phase A tables (users, game_stats, game_sessions, user_preferences, leaderboard)
 - ✅ Repository layer (UserRepository, StatsRepository, SessionRepository, PreferencesRepository)
 - ✅ AuthService for authentication orchestration
 - ✅ REST API endpoints for auth, profiles, preferences, leaderboard
 - ✅ Socket.IO session tracking integration
+- ✅ Privy authentication connected to database (user: Fabrice Dautriat, ID: did:privy:cmhkulkzr01dbjr0dqfu00rxc)
+- ✅ User preferences UI in profile modal (replaces disabled chat commands)
+- ✅ Preferences persistence working (save/load from database)
+- ✅ Profile modal shows real user data from database
+- ✅ Dynamic API URL detection for cross-port compatibility
+- ✅ Database persistence across server restarts (./bin/server/db/db.sqlite3)
 
 ### Next Steps
 
-**Client Integration (Priority 1)**
-1. Update client to send userId with socket connection
-2. Call auth API after Privy login
-3. Replace mock profile data with API calls
-4. Load/save preferences from server
+**Real-Time Stats Tracking (Priority 1)**
+1. Track mass eaten during gameplay in player class
+2. Track players eaten counter in game logic
+3. Update session stats in real-time (not just on death)
+4. Display live stats in game UI
 
-**Stats Enhancement (Priority 2)**
-1. Track mass eaten during gameplay
-2. Track players eaten counter
-3. Implement achievements
-4. Add daily/weekly leaderboards
+**Leaderboard Integration (Priority 2)**
+1. Connect client leaderboard to database API
+2. Add daily/weekly/monthly leaderboard views
+3. Show persistent global high scores
+4. Display user rank in leaderboard
 
 **Wallet Integration (Priority 3)**
 1. Enable Privy embedded wallets
@@ -520,10 +528,10 @@ node --inspect bin/server/server.js
 
 -   **Current Version:** 1.0.1
 -   **Node.js Required:** 14.x or higher
--   **Last Major Update:** Database Phase A Infrastructure (Nov 2024)
+-   **Last Major Update:** Database Phase A Complete - User persistence working (Nov 2024)
 -   **Stable Branch:** master
 -   **Development Branch:** user-data-clean
--   **Status:** Database backend complete, client integration pending
+-   **Status:** Database integration complete, preferences working, real-time stats pending
 
 ---
 

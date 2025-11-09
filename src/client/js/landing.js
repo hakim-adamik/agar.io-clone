@@ -96,6 +96,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div>
                                 <h3 style="margin-bottom: 0.25rem; color: #4a90e2;">${displayName}</h3>
                                 <p style="color: var(--text-secondary); font-size: 0.9rem;">Logged in via ${provider.charAt(0).toUpperCase() + provider.slice(1)}</p>
+                                <p style="color: var(--text-secondary); font-size: 0.75rem; font-family: monospace; margin-top: 0.25rem;">
+                                    Privy ID: ${user.id || 'Not available'}
+                                    ${user.dbUserId ? ` | DB ID: ${user.dbUserId}` : ''}
+                                </p>
                                 <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
                                     <span style="font-size: 0.8rem; color: var(--primary-green);">${stats.rank ? `Rank #${stats.rank}` : 'Unranked'}</span>
                                     <span style="font-size: 0.8rem; color: var(--text-secondary);">Win Rate: ${winRate}%</span>

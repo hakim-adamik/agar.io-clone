@@ -11,9 +11,9 @@ class StatsRepository {
         return new Promise((resolve, reject) => {
             db.run(
                 `INSERT INTO game_stats (user_id, games_played, total_mass_eaten, total_players_eaten,
-                 total_time_played, high_score, longest_survival, created_at, updated_at)
-                 VALUES (?, 0, 0, 0, 0, 0, 0, ?, ?)`,
-                [userId, Date.now(), Date.now()],
+                 total_playtime, highest_mass, longest_survival, updated_at)
+                 VALUES (?, 0, 0, 0, 0, 0, 0, ?)`,
+                [userId, Date.now()],
                 (err) => {
                     if (err) return reject(err);
                     resolve(true);
@@ -77,8 +77,8 @@ class StatsRepository {
                         games_played: currentStats.games_played + 1,
                         total_mass_eaten: currentStats.total_mass_eaten + (sessionData.mass_eaten || 0),
                         total_players_eaten: currentStats.total_players_eaten + (sessionData.players_eaten || 0),
-                        total_time_played: currentStats.total_time_played + (sessionData.time_played || 0),
-                        high_score: Math.max(currentStats.high_score, sessionData.final_score || 0),
+                        total_playtime: currentStats.total_playtime + (sessionData.time_played || 0),
+                        highest_mass: Math.max(currentStats.highest_mass, sessionData.final_score || 0),
                         longest_survival: Math.max(currentStats.longest_survival, sessionData.time_played || 0),
                         updated_at: Date.now()
                     };
@@ -87,14 +87,14 @@ class StatsRepository {
                     db.run(
                         `UPDATE game_stats SET
                          games_played = ?, total_mass_eaten = ?, total_players_eaten = ?,
-                         total_time_played = ?, high_score = ?, longest_survival = ?, updated_at = ?
+                         total_playtime = ?, highest_mass = ?, longest_survival = ?, updated_at = ?
                          WHERE user_id = ?`,
                         [
                             newStats.games_played,
                             newStats.total_mass_eaten,
                             newStats.total_players_eaten,
-                            newStats.total_time_played,
-                            newStats.high_score,
+                            newStats.total_playtime,
+                            newStats.highest_mass,
                             newStats.longest_survival,
                             newStats.updated_at,
                             userId
@@ -115,11 +115,11 @@ class StatsRepository {
     static async getLeaderboard(limit = 10, offset = 0) {
         return new Promise((resolve, reject) => {
             db.all(
-                `SELECT u.username, u.avatar_url, g.high_score, g.games_played, g.total_time_played
+                `SELECT u.username, u.avatar_url, g.highest_mass, g.games_played, g.total_playtime
                  FROM game_stats g
                  JOIN users u ON g.user_id = u.id
                  WHERE u.is_banned = 0
-                 ORDER BY g.high_score DESC
+                 ORDER BY g.highest_mass DESC
                  LIMIT ? OFFSET ?`,
                 [limit, offset],
                 (err, rows) => {
@@ -139,7 +139,7 @@ class StatsRepository {
                 `SELECT COUNT(*) + 1 as rank
                  FROM game_stats g
                  JOIN users u ON g.user_id = u.id
-                 WHERE g.high_score > (SELECT high_score FROM game_stats WHERE user_id = ?)
+                 WHERE g.highest_mass > (SELECT highest_mass FROM game_stats WHERE user_id = ?)
                  AND u.is_banned = 0`,
                 [userId],
                 (err, result) => {

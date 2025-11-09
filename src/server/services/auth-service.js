@@ -46,8 +46,8 @@ class AuthService {
                     gamesPlayed: stats.games_played,
                     totalMassEaten: stats.total_mass_eaten,
                     totalPlayersEaten: stats.total_players_eaten,
-                    totalTimePlayed: stats.total_time_played,
-                    highScore: stats.high_score,
+                    totalTimePlayed: stats.total_playtime,
+                    highScore: stats.highest_mass,
                     longestSurvival: stats.longest_survival,
                     rank: rank
                 },

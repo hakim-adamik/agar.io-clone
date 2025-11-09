@@ -85,6 +85,7 @@ const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CR
         total_playtime INTEGER DEFAULT 0,
         total_mass_eaten INTEGER DEFAULT 0,
         total_kills INTEGER DEFAULT 0,
+        total_players_eaten INTEGER DEFAULT 0,
         total_deaths INTEGER DEFAULT 0,
         highest_mass INTEGER DEFAULT 0,
         highest_rank INTEGER DEFAULT 0,

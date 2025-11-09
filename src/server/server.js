@@ -68,11 +68,19 @@ app.get('/api/arenas', (req, res) => {
 // API endpoint: User authentication
 app.post('/api/auth', async (req, res) => {
     try {
+        console.log('[API] /api/auth request received:', {
+            body: req.body,
+            headers: req.headers['content-type']
+        });
+
         const { privyId, email, username, authProvider, avatarUrl } = req.body;
 
         if (!privyId) {
+            console.error('[API] Auth failed: Privy ID is missing');
             return res.status(400).json({ error: 'Privy ID is required' });
         }
+
+        console.log('[API] Authenticating user with Privy ID:', privyId);
 
         const userData = await AuthService.authenticateUser({
             privyId,
@@ -82,6 +90,7 @@ app.post('/api/auth', async (req, res) => {
             avatarUrl
         });
 
+        console.log('[API] Auth successful for user:', userData.user.id);
         res.json(userData);
     } catch (error) {
         console.error('[API] Auth error:', error);

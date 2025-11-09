@@ -26,35 +26,74 @@ const PRIVY_CONFIG = {
 function PrivyAuthComponent() {
     const { ready, authenticated, user } = usePrivy();
     const { login } = useLogin({
-        onComplete: async (user, isNewUser) => {
+        onComplete: async (authData) => {
+            // The actual user object is nested inside authData.user
+            const user = authData.user;
+            const isNewUser = authData.isNewUser;
+
+            // Log the full user object to debug structure
+            console.log('[Privy Auth] Full auth data:', authData);
+            console.log('[Privy Auth] Actual user object:', user);
+
+            // Extract linked account data (Google, Discord, etc.)
+            const linkedAccount = user.linkedAccounts?.[0];
+            const providerType = linkedAccount?.type || 'email';
 
             // Store user data in localStorage for game access
             const userData = {
                 id: user.id,
-                email: user.email?.address,
-                name: user.google?.name || user.discord?.username || 'Player',
-                provider: Object.keys(user).find(key => ['google', 'discord', 'email'].includes(key))
+                email: user.email?.address || linkedAccount?.email,
+                name: linkedAccount?.name || linkedAccount?.username || 'Player',
+                provider: providerType
             };
+
+            // Log Privy user data for debugging
+            console.log('[Privy Auth] User authenticated:', {
+                privyId: user.id,
+                email: userData.email,
+                name: userData.name,
+                provider: userData.provider
+            });
+
+            // Skip API call if no Privy ID
+            if (!user.id) {
+                console.error('[Auth] User object missing ID:', user);
+                localStorage.setItem('privy_user', JSON.stringify(userData));
+                window.dispatchEvent(new CustomEvent('auth:login', {
+                    detail: { user: userData, isNewUser }
+                }));
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('auth:hide-modal'));
+                }, 1000);
+                return;
+            }
 
             // Call database API to create/update user
             try {
-                // Use the same origin as the current page or fallback to localhost:8080
-                const apiUrl = window.location.port === '8080'
+                // Dynamic port detection based on current location
+                const currentPort = window.location.port || '80';
+                const apiUrl = currentPort === '3000'
                     ? '/api/auth'
-                    : 'http://localhost:8080/api/auth';
+                    : (currentPort === '8080'
+                        ? '/api/auth'
+                        : `http://localhost:${currentPort}/api/auth`);
+
+                const requestBody = {
+                    privyId: user.id,
+                    email: userData.email,
+                    username: userData.name,
+                    authProvider: userData.provider,
+                    avatarUrl: linkedAccount?.profilePictureUrl || linkedAccount?.avatarUrl || null
+                };
+
+                console.log('[Auth] Sending to /api/auth:', requestBody, 'URL:', apiUrl);
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        privyId: user.id,
-                        email: userData.email,
-                        username: userData.name,
-                        authProvider: userData.provider,
-                        avatarUrl: user.google?.profilePictureUrl || user.discord?.avatarUrl || null
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (response.ok) {
@@ -67,6 +106,9 @@ function PrivyAuthComponent() {
                     userData.preferences = dbUser.preferences;
 
                     console.log('[Auth] Database user created/updated:', dbUser);
+                } else {
+                    const errorText = await response.text();
+                    console.error('[Auth] Failed to sync with database. Status:', response.status, 'Response:', errorText);
                 }
             } catch (error) {
                 console.error('[Auth] Failed to sync with database:', error);
@@ -105,22 +147,6 @@ function PrivyAuthComponent() {
             setTimeout(() => {
                 window.location.reload();
             }, 100);
-        },
-        onError: (error) => {
-            console.error('Logout failed:', error);
-            // Even if logout fails on Privy side, clear local state
-            localStorage.removeItem('privy_user');
-            window.PrivyAuthState.authenticated = false;
-            window.PrivyAuthState.user = null;
-            window.dispatchEvent(new CustomEvent('auth:logout'));
-            window.dispatchEvent(new CustomEvent('auth:error', {
-                detail: { error: 'Logout failed, but local session cleared' }
-            }));
-
-            // Force page reload even on error to ensure clean state
-            setTimeout(() => {
-                window.location.reload();
-            }, 100);
         }
     });
 
@@ -134,7 +160,22 @@ function PrivyAuthComponent() {
         const handleHideAuth = () => setShowAuthModal(false);
         const handleTriggerLogout = () => {
             if (authenticated) {
-                logout();
+                // Wrap in try-catch to handle any potential errors
+                try {
+                    logout();
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    // Clear local state even if logout fails
+                    localStorage.removeItem('privy_user');
+                    window.PrivyAuthState.authenticated = false;
+                    window.PrivyAuthState.user = null;
+                    window.dispatchEvent(new CustomEvent('auth:logout'));
+
+                    // Force reload to clean state
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 100);
+                }
             } else {
                 localStorage.removeItem('privy_user');
                 window.PrivyAuthState.authenticated = false;
