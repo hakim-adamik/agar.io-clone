@@ -59,6 +59,7 @@ app.get('/', (req, res) => {
 });
 
 app.use(express.static(__dirname + '/../client'));
+app.use('/shared', express.static(__dirname + '/../shared'));
 
 // API endpoint: Arena statistics
 app.get('/api/arenas', (req, res) => {

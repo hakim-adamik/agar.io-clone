@@ -605,7 +605,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
                     if (userData && userData.dbUserId) {
                         // Use the correct API URL
-                        const apiBase = window.location.port === '8080' ? '' : 'http://localhost:8080';
+                        const apiBase = '';
 
                         // Fetch current preferences
                         fetch(`${apiBase}/api/user/${userData.dbUserId}/preferences`)
@@ -675,7 +675,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 }
 
                                 // Get the correct API URL again
-                                const saveApiBase = window.location.port === '8080' ? '' : 'http://localhost:8080';
+                                const saveApiBase = '';
 
                                 // Save preference to server
                                 const preferences = {};
@@ -782,7 +782,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Get the correct API URL
-            const apiBase = window.location.port === '8080' ? '' : 'http://localhost:8080';
+            const apiBase = '';
 
             // Check username availability (excluding current user)
             const availabilityResponse = await fetch(`${apiBase}/api/username/available/${encodeURIComponent(newUsername)}?userId=${userData.dbUserId}`);

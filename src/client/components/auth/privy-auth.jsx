@@ -70,13 +70,8 @@ function PrivyAuthComponent() {
 
             // Call database API to create/update user
             try {
-                // Dynamic port detection based on current location
-                const currentPort = window.location.port || '80';
-                const apiUrl = currentPort === '3000'
-                    ? '/api/auth'
-                    : (currentPort === '8080'
-                        ? '/api/auth'
-                        : `http://localhost:${currentPort}/api/auth`);
+                // Always use relative path for API calls (works on localhost and Cloud Run)
+                const apiUrl = '/api/auth';
 
                 const requestBody = {
                     privyId: user.id,
