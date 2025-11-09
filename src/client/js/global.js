@@ -29,5 +29,6 @@ module.exports = {
     backgroundColor: "#f2fbff",
     lineColor: "#000000",
     showFpsCounter: true,
+    showGrid: true,  // Default to true, will be overridden by user preferences
     arenaId: null,  // Multi-arena support: track which arena player is in
 };

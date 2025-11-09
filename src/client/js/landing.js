@@ -83,82 +83,92 @@ document.addEventListener('DOMContentLoaded', function() {
                         '0.0';
 
                     return `
-                        <div style="padding: 1.5rem; background: rgba(74, 144, 226, 0.1); border-radius: 10px; margin: 1.5rem 0; display: flex; align-items: center; gap: 1.5rem;">
-                            <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white; position: relative;">
+                        <div style="padding: 1.5rem; background: linear-gradient(135deg, rgba(74, 144, 226, 0.15), rgba(80, 227, 194, 0.1)); border-radius: 12px; margin: 1rem 0; display: flex; align-items: center; gap: 1.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                            <div style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.8rem; color: white; position: relative; box-shadow: 0 4px 8px rgba(74, 144, 226, 0.3);">
                                 ${avatarUrl ?
                                     `<img src="${avatarUrl}" alt="${displayName}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` :
-                                    `<i class="fas fa-user-check"></i>`
+                                    `<i class="fas fa-user"></i>`
                                 }
-                                <div style="position: absolute; bottom: -2px; right: -2px; width: 24px; height: 24px; background: #4a90e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white;">
-                                    <i class="fas fa-${provider === 'google' ? 'google' : provider === 'discord' ? 'discord' : provider === 'twitter' ? 'twitter' : 'envelope'}" style="font-size: 10px; color: white;"></i>
+                                <div style="position: absolute; bottom: 0; right: 0; width: 28px; height: 28px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);">
+                                    <i class="fa-brands fa-${provider === 'google_oauth' || provider === 'google' ? 'google' : provider === 'discord' ? 'discord' : provider === 'twitter' ? 'twitter' : 'envelope'}" style="font-size: 14px; color: ${provider === 'google_oauth' || provider === 'google' ? '#4285F4' : provider === 'discord' ? '#5865F2' : provider === 'twitter' ? '#1DA1F2' : '#4a90e2'};"></i>
                                 </div>
                             </div>
-                            <div>
-                                <h3 style="margin-bottom: 0.25rem; color: #4a90e2;">${displayName}</h3>
-                                <p style="color: var(--text-secondary); font-size: 0.9rem;">Logged in via ${provider.charAt(0).toUpperCase() + provider.slice(1)}</p>
-                                <p style="color: var(--text-secondary); font-size: 0.75rem; font-family: monospace; margin-top: 0.25rem;">
-                                    Privy ID: ${user.id || 'Not available'}
-                                    ${user.dbUserId ? ` | DB ID: ${user.dbUserId}` : ''}
-                                </p>
-                                <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
-                                    <span style="font-size: 0.8rem; color: var(--primary-green);">${stats.rank ? `Rank #${stats.rank}` : 'Unranked'}</span>
-                                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Win Rate: ${winRate}%</span>
+                            <div style="flex: 1;">
+                                <h2 style="margin: 0; font-size: 1.5rem; color: white; font-weight: 600;">${displayName}</h2>
+                                <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+                                    ${stats.rank ?
+                                        `<div style="display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; background: linear-gradient(135deg, #FFD700, #FFA500); border-radius: 20px;">
+                                            <i class="fas fa-trophy" style="font-size: 0.75rem; margin-right: 0.35rem; color: white;"></i>
+                                            <span style="font-size: 0.85rem; font-weight: 600; color: white;">Rank #${stats.rank}</span>
+                                        </div>` :
+                                        `<div style="display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; background: rgba(255, 255, 255, 0.1); border-radius: 20px;">
+                                            <span style="font-size: 0.85rem; color: var(--text-secondary);">Unranked</span>
+                                        </div>`
+                                    }
+                                    <div style="display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; background: rgba(255, 255, 255, 0.1); border-radius: 20px;">
+                                        <i class="fas fa-gamepad" style="font-size: 0.75rem; margin-right: 0.35rem; color: var(--text-secondary);"></i>
+                                        <span style="font-size: 0.85rem; color: var(--text-secondary);">${stats.gamesPlayed || 0} games</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0;">
-                            <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-green);">${(stats.highScore || 0).toLocaleString()}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">High Score</div>
-                            </div>
-                            <div style="background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #2196F3;">${stats.gamesPlayed || 0}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Games Played</div>
-                            </div>
-                            <div style="background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #FF9800;">${(stats.totalMassEaten || 0).toLocaleString()}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Total Mass Eaten</div>
-                            </div>
-                            <div style="background: rgba(156, 39, 176, 0.1); border: 1px solid rgba(156, 39, 176, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #9C27B0;">${winRate}%</div>
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Win Rate</div>
+                        <div style="margin: 1.5rem 0;">
+                            <h3 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px;">
+                                <i class="fas fa-chart-line" style="margin-right: 0.5rem;"></i>Performance Stats
+                            </h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem;">
+                                <div style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
+                                    <i class="fas fa-crown" style="color: #4CAF50; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
+                                    <div style="font-size: 1.75rem; font-weight: bold; color: #4CAF50; line-height: 1;">${(stats.highScore || 0).toLocaleString()}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Best Score</div>
+                                </div>
+                                <div style="background: linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
+                                    <i class="fas fa-crosshairs" style="color: #2196F3; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
+                                    <div style="font-size: 1.75rem; font-weight: bold; color: #2196F3; line-height: 1;">${stats.totalPlayersEaten || 0}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Players Eaten</div>
+                                </div>
+                                <div style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.2), rgba(255, 152, 0, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
+                                    <i class="fas fa-cookie-bite" style="color: #FF9800; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
+                                    <div style="font-size: 1.75rem; font-weight: bold; color: #FF9800; line-height: 1;">${Math.floor((stats.totalMassEaten || 0) / 1000)}K</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Mass Eaten</div>
+                                </div>
+                                <div style="background: linear-gradient(135deg, rgba(156, 39, 176, 0.2), rgba(156, 39, 176, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
+                                    <i class="fas fa-clock" style="color: #9C27B0; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
+                                    <div style="font-size: 1.75rem; font-weight: bold; color: #9C27B0; line-height: 1;">${Math.floor((stats.totalTimePlayed || 0) / 60)}h</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Play Time</div>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Preferences Section for Logged-in Users -->
-                        <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-                            <h3 style="color: #4a90e2; margin-bottom: 1.5rem;">
-                                <i class="fas fa-cog" style="margin-right: 0.5rem;"></i>
-                                Game Preferences
+                        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                            <h3 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px;">
+                                <i class="fas fa-sliders-h" style="margin-right: 0.5rem;"></i>Game Settings
                             </h3>
-                            <div id="preferencesSection" style="display: grid; gap: 1rem;">
-                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
-                                    <span><i class="fas fa-moon" style="margin-right: 0.5rem;"></i>Dark Mode</span>
+                            <div id="preferencesSection" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s; hover: background: rgba(255, 255, 255, 0.08);">
+                                    <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-moon" style="margin-right: 0.5rem; color: #FFC107;"></i>Dark Mode</span>
                                     <input type="checkbox" id="pref-darkMode" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
                                 </label>
-                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
-                                    <span><i class="fas fa-weight" style="margin-right: 0.5rem;"></i>Show Mass</span>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s;">
+                                    <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-weight-hanging" style="margin-right: 0.5rem; color: #4CAF50;"></i>Show Mass</span>
                                     <input type="checkbox" id="pref-showMass" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
                                 </label>
-                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
-                                    <span><i class="fas fa-border-style" style="margin-right: 0.5rem;"></i>Show Border</span>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s;">
+                                    <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-border-all" style="margin-right: 0.5rem; color: #2196F3;"></i>Show Border</span>
                                     <input type="checkbox" id="pref-showBorder" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
                                 </label>
-                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
-                                    <span><i class="fas fa-tachometer-alt" style="margin-right: 0.5rem;"></i>Show FPS</span>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s;">
+                                    <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-tachometer-alt" style="margin-right: 0.5rem; color: #FF5722;"></i>Show FPS</span>
                                     <input type="checkbox" id="pref-showFps" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
                                 </label>
-                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
-                                    <span><i class="fas fa-th" style="margin-right: 0.5rem;"></i>Show Grid</span>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s;">
+                                    <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-th" style="margin-right: 0.5rem; color: #9C27B0;"></i>Show Grid</span>
                                     <input type="checkbox" id="pref-showGrid" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
                                 </label>
-                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
-                                    <span><i class="fas fa-arrows-alt" style="margin-right: 0.5rem;"></i>Continuity</span>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s;">
+                                    <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-infinity" style="margin-right: 0.5rem; color: #00BCD4;"></i>Continuity</span>
                                     <input type="checkbox" id="pref-continuity" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
-                                </label>
-                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
-                                    <span><i class="fas fa-circle" style="margin-right: 0.5rem;"></i>Round Food</span>
-                                    <input type="checkbox" id="pref-roundFood" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
                                 </label>
                             </div>
                             <div id="prefSaveStatus" style="margin-top: 1rem; padding: 0.75rem; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 8px; font-size: 0.85rem; color: var(--text-secondary);">
@@ -248,15 +258,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function redirectToGame() {
+        // Set the username for logged-in users
+        const playerNameInput = document.getElementById("playerNameInput");
+        if (playerNameInput) {
+            // Check if user is logged in
+            const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+            if (userData && userData.username) {
+                // Use the logged-in user's username
+                playerNameInput.value = userData.username;
+            } else if (!playerNameInput.value) {
+                // Only set guest name if not logged in and no name entered
+                playerNameInput.value = "Guest_" + Math.floor(Math.random() * 10000);
+            }
+        }
+
         // Instead of redirecting, trigger seamless game start
         if (typeof window.startSeamlessGame === 'function') {
             window.startSeamlessGame();
         } else {
             // Fallback: manually start the game
-            const playerNameInput = document.getElementById("playerNameInput");
-            if (playerNameInput && !playerNameInput.value) {
-                playerNameInput.value = "Guest_" + Math.floor(Math.random() * 10000);
-            }
 
             // Hide landing view and show game view
             const landingView = document.getElementById("landingView");
@@ -467,7 +487,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const showFpsEl = document.getElementById('pref-showFps');
                                 const showGridEl = document.getElementById('pref-showGrid');
                                 const continuityEl = document.getElementById('pref-continuity');
-                                const roundFoodEl = document.getElementById('pref-roundFood');
 
                                 if (darkModeEl) darkModeEl.checked = prefs.darkMode === true;
                                 if (showMassEl) showMassEl.checked = prefs.showMass === true;
@@ -475,7 +494,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (showFpsEl) showFpsEl.checked = prefs.showFps === true;
                                 if (showGridEl) showGridEl.checked = prefs.showGrid === true;
                                 if (continuityEl) continuityEl.checked = prefs.continuity === true;
-                                if (roundFoodEl) roundFoodEl.checked = prefs.roundFood === true;
                             })
                             .catch(error => {
                                 console.warn('Failed to load preferences, using defaults:', error);
@@ -487,7 +505,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const showFpsEl = document.getElementById('pref-showFps');
                                 const showGridEl = document.getElementById('pref-showGrid');
                                 const continuityEl = document.getElementById('pref-continuity');
-                                const roundFoodEl = document.getElementById('pref-roundFood');
 
                                 if (darkModeEl) darkModeEl.checked = defaults.darkMode !== false;
                                 if (showMassEl) showMassEl.checked = defaults.showMass !== false;
@@ -495,7 +512,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (showFpsEl) showFpsEl.checked = defaults.showFps === true;
                                 if (showGridEl) showGridEl.checked = defaults.showGrid !== false;
                                 if (continuityEl) continuityEl.checked = defaults.continuity !== false;
-                                if (roundFoodEl) roundFoodEl.checked = defaults.roundFood !== false;
                             });
 
                         // Add change listeners to save preferences
@@ -511,8 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     'showBorder': 'show_border',
                                     'showFps': 'show_fps',
                                     'showGrid': 'show_grid',
-                                    'continuity': 'continuity',
-                                    'roundFood': 'round_food'
+                                    'continuity': 'continuity'
                                 };
 
                                 const dbPrefName = prefMap[prefName];

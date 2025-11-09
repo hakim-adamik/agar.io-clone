@@ -2,6 +2,7 @@
 'use strict';
 
 const db = require('../sql');
+const DEFAULT_PREFERENCES = require('../../shared/default-preferences');
 
 class PreferencesRepository {
     /**
@@ -35,17 +36,27 @@ class PreferencesRepository {
     }
 
     /**
-     * Create default preferences for a new user
+     * Create default preferences for a new user using game defaults
      */
     static async createDefaultPreferences(userId) {
         return new Promise((resolve, reject) => {
+            // Convert boolean values to SQLite integers (0 or 1)
+            const darkMode = DEFAULT_PREFERENCES.darkMode ? 1 : 0;
+            const showMass = DEFAULT_PREFERENCES.showMass ? 1 : 0;
+            const showBorder = DEFAULT_PREFERENCES.showBorder ? 1 : 0;
+            const showFps = DEFAULT_PREFERENCES.showFps ? 1 : 0;
+            const showGrid = DEFAULT_PREFERENCES.showGrid ? 1 : 0;
+            const continuity = DEFAULT_PREFERENCES.continuity ? 1 : 0;
+            const roundFood = DEFAULT_PREFERENCES.roundFood ? 1 : 0;
+
             db.run(
                 `INSERT INTO user_preferences (user_id, dark_mode, show_mass, show_border,
                  show_fps, show_grid, continuity, round_food, skin_id, updated_at)
-                 VALUES (?, 1, 1, 1, 0, 1, 1, 1, NULL, ?)`,
-                [userId, Date.now()],
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+                [userId, darkMode, showMass, showBorder, showFps, showGrid, continuity, roundFood, Date.now()],
                 (err) => {
                     if (err) return reject(err);
+                    console.log(`[PREFERENCES] Created default preferences for user ${userId} using game defaults`);
                     resolve(true);
                 }
             );
@@ -101,19 +112,29 @@ class PreferencesRepository {
     }
 
     /**
-     * Reset preferences to defaults
+     * Reset preferences to defaults using shared configuration
      */
     static async resetToDefaults(userId) {
         return new Promise((resolve, reject) => {
+            // Convert boolean values to SQLite integers (0 or 1)
+            const darkMode = DEFAULT_PREFERENCES.darkMode ? 1 : 0;
+            const showMass = DEFAULT_PREFERENCES.showMass ? 1 : 0;
+            const showBorder = DEFAULT_PREFERENCES.showBorder ? 1 : 0;
+            const showFps = DEFAULT_PREFERENCES.showFps ? 1 : 0;
+            const showGrid = DEFAULT_PREFERENCES.showGrid ? 1 : 0;
+            const continuity = DEFAULT_PREFERENCES.continuity ? 1 : 0;
+            const roundFood = DEFAULT_PREFERENCES.roundFood ? 1 : 0;
+
             db.run(
                 `UPDATE user_preferences SET
-                 dark_mode = 1, show_mass = 1, show_border = 1, show_fps = 0,
-                 show_grid = 1, continuity = 1, round_food = 1, skin_id = NULL,
+                 dark_mode = ?, show_mass = ?, show_border = ?, show_fps = ?,
+                 show_grid = ?, continuity = ?, round_food = ?, skin_id = NULL,
                  updated_at = ?
                  WHERE user_id = ?`,
-                [Date.now(), userId],
+                [darkMode, showMass, showBorder, showFps, showGrid, continuity, roundFood, Date.now(), userId],
                 (err) => {
                     if (err) return reject(err);
+                    console.log(`[PREFERENCES] Reset preferences to defaults for user ${userId}`);
                     resolve(true);
                 }
             );

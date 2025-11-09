@@ -59,6 +59,11 @@ function copyClientJS() {
         .pipe(gulp.dest('bin/client/js/'));
 }
 
+function copyShared() {
+    return gulp.src(['src/shared/**/*.*'])
+        .pipe(gulp.dest('bin/shared/'));
+}
+
 function setDev(done) {
     process.env.IS_DEV = 'true';
     done();
@@ -90,9 +95,9 @@ gulp.task('todo', gulp.series('lint', () => {
         .pipe(gulp.dest('./'));
 }));
 
-gulp.task('build', gulp.series('lint', gulp.parallel(copyClientResources, buildClientJS, copyClientJS, buildPrivyAuth, buildServer)));
+gulp.task('build', gulp.series('lint', gulp.parallel(copyClientResources, buildClientJS, copyClientJS, buildPrivyAuth, buildServer, copyShared)));
 
-gulp.task('dev', gulp.parallel(copyClientResources, buildClientJS, buildPrivyAuth, copyClientJS, buildServer));
+gulp.task('dev', gulp.parallel(copyClientResources, buildClientJS, buildPrivyAuth, copyClientJS, buildServer, copyShared));
 
 gulp.task('run', gulp.series('build', runServer));
 

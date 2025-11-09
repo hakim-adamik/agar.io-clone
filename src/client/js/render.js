@@ -172,6 +172,11 @@ let gridCache = {
 };
 
 const drawGrid = (global, player, screen, graph) => {
+    // Don't draw grid if disabled by user preference
+    if (!global.showGrid) {
+        return;
+    }
+
     const gridSize = screen.height / 18;
 
     // Ensure player position is valid (handle undefined/null/NaN)

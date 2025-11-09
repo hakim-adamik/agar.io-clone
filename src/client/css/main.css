@@ -116,33 +116,61 @@ div {
 }
 
 #fpsCounter {
-    position: absolute;
-    padding: 8px 12px;
-    background: rgba(0, 0, 0, 0.6);
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     color: #fff;
-    font-size: 13px;
-    top: 10px;
-    left: 10px;
-    font-weight: bold;
-    font-family: monospace;
-    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
+                0 0 1px rgba(255, 255, 255, 0.1) inset;
     z-index: 1000;
     user-select: none;
     display: none;
     white-space: nowrap;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
+    transition: all 0.3s ease;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+#fpsCounter:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4),
+                0 0 1px rgba(255, 255, 255, 0.15) inset;
 }
 
 #fpsCounter.low {
-    background: rgba(200, 0, 0, 0.7);
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.85), rgba(185, 28, 28, 0.85));
+    border-color: rgba(220, 38, 38, 0.3);
+    animation: pulseRed 2s ease-in-out infinite;
 }
 
 #fpsCounter.medium {
-    background: rgba(200, 150, 0, 0.7);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.85), rgba(217, 119, 6, 0.85));
+    border-color: rgba(245, 158, 11, 0.3);
 }
 
 #fpsCounter.high {
-    background: rgba(0, 150, 0, 0.7);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.85), rgba(22, 163, 74, 0.85));
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+@keyframes pulseRed {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4),
+                    0 0 1px rgba(255, 255, 255, 0.1) inset;
+    }
+    50% {
+        box-shadow: 0 4px 20px rgba(220, 38, 38, 0.6),
+                    0 0 1px rgba(255, 255, 255, 0.1) inset;
+    }
 }
 
 #status {
