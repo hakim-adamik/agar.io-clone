@@ -218,6 +218,9 @@ class ChatClient {
         if (darkModeCheckbox) {
             darkModeCheckbox.checked = (global.backgroundColor === DARK);
         }
+
+        // Save preference to server
+        this.savePreference("dark_mode", global.backgroundColor === DARK ? 1 : 0);
     }
 
     toggleBorder() {
@@ -228,6 +231,9 @@ class ChatClient {
             global.borderDraw = false;
             this.addSystemLine("Hiding border.");
         }
+
+        // Save preference to server
+        this.savePreference("show_border", global.borderDraw ? 1 : 0);
     }
 
     toggleMass() {
@@ -238,6 +244,9 @@ class ChatClient {
             global.toggleMassState = 0;
             this.addSystemLine("Viewing mass disabled.");
         }
+
+        // Save preference to server
+        this.savePreference("show_mass", global.toggleMassState);
     }
 
     toggleContinuity() {
@@ -248,6 +257,9 @@ class ChatClient {
             global.continuity = false;
             this.addSystemLine("Continuity disabled.");
         }
+
+        // Save preference to server
+        this.savePreference("continuity", global.continuity ? 1 : 0);
     }
 
     toggleRoundFood(args) {
@@ -259,6 +271,9 @@ class ChatClient {
             global.foodSides = 5;
             this.addSystemLine("Food is no longer rounded!");
         }
+
+        // Save preference to server
+        this.savePreference("round_food", global.foodSides >= 10 ? 1 : 0);
     }
 
     toggleFpsDisplay() {
@@ -286,6 +301,32 @@ class ChatClient {
         } catch (e) {
             // Ignore localStorage errors
         }
+
+        // Save preference to server
+        this.savePreference("show_fps", global.showFpsCounter ? 1 : 0);
+    }
+
+    // Save a preference to the server
+    savePreference(key, value) {
+        var userData = JSON.parse(localStorage.getItem("userData") || "{}");
+        if (!userData || !userData.dbUserId) {
+            // Not logged in, can't save preferences
+            return;
+        }
+
+        var preferences = {};
+        preferences[key] = value;
+
+        fetch("/api/user/" + userData.dbUserId + "/preferences", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(preferences)
+        })
+        .catch(function(error) {
+            console.warn("Failed to save preference:", error);
+        });
     }
 }
 
