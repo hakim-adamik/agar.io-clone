@@ -117,6 +117,11 @@ function applyUserPreferences(prefs, settings) {
         global.roundFood = prefs.round_food === 1;
     }
 
+    // Apply show grid
+    if (prefs.show_grid !== undefined) {
+        global.showGrid = prefs.show_grid === 1;
+    }
+
     // Sync checkbox states
     syncSettingsCheckboxes();
 }

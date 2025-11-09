@@ -7,6 +7,7 @@ window.gameConfig = {
         darkMode: true,        // Enable dark theme by default
         showMass: true,        // Display cell mass values
         showBorder: true,      // Show game area borders
+        showGrid: true,        // Show background grid
         continuity: true,      // Continue moving when mouse leaves screen
         showFps: false,        // Hide FPS counter for cleaner UI
         roundFood: true        // Use round food particles

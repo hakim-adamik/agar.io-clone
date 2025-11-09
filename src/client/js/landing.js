@@ -157,9 +157,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <input type="checkbox" id="pref-roundFood" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
                                 </label>
                             </div>
-                            <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 8px; font-size: 0.85rem; color: var(--text-secondary);">
+                            <div id="prefSaveStatus" style="margin-top: 1rem; padding: 0.75rem; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 8px; font-size: 0.85rem; color: var(--text-secondary);">
                                 <i class="fas fa-info-circle" style="color: var(--primary-green); margin-right: 0.5rem;"></i>
-                                Preferences are automatically saved and will be applied when you start the game.
+                                <span id="prefStatusText">Preferences are automatically saved and will be applied when you start the game.</span>
                             </div>
                         </div>
 
@@ -447,19 +447,48 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (userData && userData.dbUserId) {
                         // Fetch current preferences
                         fetch(`/api/user/${userData.dbUserId}/preferences`)
-                            .then(response => response.json())
+                            .then(response => {
+                                if (!response.ok) throw new Error('Failed to load preferences');
+                                return response.json();
+                            })
                             .then(prefs => {
+                                console.log('Loaded preferences from server:', prefs);
                                 // Set checkbox states based on server preferences
-                                document.getElementById('pref-darkMode').checked = prefs.dark_mode === 1;
-                                document.getElementById('pref-showMass').checked = prefs.show_mass === 1;
-                                document.getElementById('pref-showBorder').checked = prefs.show_border === 1;
-                                document.getElementById('pref-showFps').checked = prefs.show_fps === 1;
-                                document.getElementById('pref-showGrid').checked = prefs.show_grid === 1;
-                                document.getElementById('pref-continuity').checked = prefs.continuity === 1;
-                                document.getElementById('pref-roundFood').checked = prefs.round_food === 1;
+                                const darkModeEl = document.getElementById('pref-darkMode');
+                                const showMassEl = document.getElementById('pref-showMass');
+                                const showBorderEl = document.getElementById('pref-showBorder');
+                                const showFpsEl = document.getElementById('pref-showFps');
+                                const showGridEl = document.getElementById('pref-showGrid');
+                                const continuityEl = document.getElementById('pref-continuity');
+                                const roundFoodEl = document.getElementById('pref-roundFood');
+
+                                if (darkModeEl) darkModeEl.checked = prefs.dark_mode === 1;
+                                if (showMassEl) showMassEl.checked = prefs.show_mass === 1;
+                                if (showBorderEl) showBorderEl.checked = prefs.show_border === 1;
+                                if (showFpsEl) showFpsEl.checked = prefs.show_fps === 1;
+                                if (showGridEl) showGridEl.checked = prefs.show_grid === 1;
+                                if (continuityEl) continuityEl.checked = prefs.continuity === 1;
+                                if (roundFoodEl) roundFoodEl.checked = prefs.round_food === 1;
                             })
                             .catch(error => {
-                                console.warn('Failed to load preferences:', error);
+                                console.warn('Failed to load preferences, using defaults:', error);
+                                // Set default values from game config
+                                const defaults = window.gameConfig ? window.gameConfig.defaultSettings : {};
+                                const darkModeEl = document.getElementById('pref-darkMode');
+                                const showMassEl = document.getElementById('pref-showMass');
+                                const showBorderEl = document.getElementById('pref-showBorder');
+                                const showFpsEl = document.getElementById('pref-showFps');
+                                const showGridEl = document.getElementById('pref-showGrid');
+                                const continuityEl = document.getElementById('pref-continuity');
+                                const roundFoodEl = document.getElementById('pref-roundFood');
+
+                                if (darkModeEl) darkModeEl.checked = defaults.darkMode !== false;
+                                if (showMassEl) showMassEl.checked = defaults.showMass !== false;
+                                if (showBorderEl) showBorderEl.checked = defaults.showBorder !== false;
+                                if (showFpsEl) showFpsEl.checked = defaults.showFps === true;
+                                if (showGridEl) showGridEl.checked = defaults.showGrid !== false;
+                                if (continuityEl) continuityEl.checked = defaults.continuity !== false;
+                                if (roundFoodEl) roundFoodEl.checked = defaults.roundFood !== false;
                             });
 
                         // Add change listeners to save preferences
@@ -482,6 +511,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const dbPrefName = prefMap[prefName];
                                 if (!dbPrefName) return;
 
+                                // Show saving status
+                                const statusEl = document.getElementById('prefStatusText');
+                                if (statusEl) {
+                                    statusEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Saving...';
+                                }
+
                                 // Save preference to server
                                 const preferences = {};
                                 preferences[dbPrefName] = value;
@@ -496,11 +531,27 @@ document.addEventListener('DOMContentLoaded', function() {
                                 .then(response => {
                                     if (!response.ok) throw new Error('Failed to save preference');
                                     console.log(`Preference ${dbPrefName} saved:`, value);
+
+                                    // Show success status
+                                    if (statusEl) {
+                                        statusEl.innerHTML = '<i class="fas fa-check" style="color: var(--primary-green); margin-right: 0.5rem;"></i>Saved! Preferences will be applied when you start the game.';
+                                        setTimeout(() => {
+                                            statusEl.innerHTML = 'Preferences are automatically saved and will be applied when you start the game.';
+                                        }, 2000);
+                                    }
                                 })
                                 .catch(error => {
                                     console.error('Failed to save preference:', error);
-                                    // Optionally revert the checkbox
+                                    // Revert the checkbox
                                     this.checked = !this.checked;
+
+                                    // Show error status
+                                    if (statusEl) {
+                                        statusEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #f44336; margin-right: 0.5rem;"></i>Failed to save. Please try again.';
+                                        setTimeout(() => {
+                                            statusEl.innerHTML = 'Preferences are automatically saved and will be applied when you start the game.';
+                                        }, 3000);
+                                    }
                                 });
                             });
                         });
