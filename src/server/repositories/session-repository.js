@@ -1,7 +1,7 @@
 /*jslint node: true */
 'use strict';
 
-const db = require('../sql').db;
+const db = require('../sql');
 
 class SessionRepository {
     /**
