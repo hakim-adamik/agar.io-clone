@@ -26,30 +26,26 @@ class StatsRepository {
      * Get user statistics
      */
     static async getUserStats(userId) {
-        return new Promise((resolve, reject) => {
-            db.get(
-                'SELECT * FROM game_stats WHERE user_id = ?',
-                [userId],
-                async (err, stats) => {
-                    if (err) return reject(err);
-
-                    // Initialize stats if they don't exist
-                    if (!stats) {
-                        await this.initializeStats(userId);
-                        db.get(
-                            'SELECT * FROM game_stats WHERE user_id = ?',
-                            [userId],
-                            (err2, newStats) => {
-                                if (err2) return reject(err2);
-                                resolve(newStats);
-                            }
-                        );
-                    } else {
-                        resolve(stats);
-                    }
-                }
+        try {
+            let stats = await db.get(
+                'SELECT * FROM game_stats WHERE user_id = $1',
+                [userId]
             );
-        });
+
+            // Initialize stats if they don't exist
+            if (!stats) {
+                await this.initializeStats(userId);
+                stats = await db.get(
+                    'SELECT * FROM game_stats WHERE user_id = $1',
+                    [userId]
+                );
+            }
+
+            return stats;
+        } catch (err) {
+            console.error('Error getting user stats:', err);
+            throw err;
+        }
     }
 
     /**
@@ -113,21 +109,21 @@ class StatsRepository {
      * Get leaderboard data
      */
     static async getLeaderboard(limit = 10, offset = 0) {
-        return new Promise((resolve, reject) => {
-            db.all(
+        try {
+            const result = await db.query(
                 `SELECT u.username, u.avatar_url, g.highest_mass, g.games_played, g.total_playtime
                  FROM game_stats g
                  JOIN users u ON g.user_id = u.id
-                 WHERE u.is_banned = 0
+                 WHERE (u.is_banned IS NULL OR u.is_banned = FALSE)
                  ORDER BY g.highest_mass DESC
-                 LIMIT ? OFFSET ?`,
-                [limit, offset],
-                (err, rows) => {
-                    if (err) return reject(err);
-                    resolve(rows);
-                }
+                 LIMIT $1 OFFSET $2`,
+                [limit, offset]
             );
-        });
+            return result.rows;
+        } catch (err) {
+            console.error('Error getting leaderboard:', err);
+            throw err;
+        }
     }
 
     /**

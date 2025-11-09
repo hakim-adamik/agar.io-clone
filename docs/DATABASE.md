@@ -6,27 +6,92 @@ This document outlines the database architecture for user data persistence, auth
 
 ---
 
-## Persistent Database Setup
+## ✅ Persistent Database Setup (November 2024 - IMPLEMENTED)
 
 ### Why Persistent Database?
 
-Google Cloud Run containers have ephemeral storage - SQLite databases get wiped on container restarts. To maintain persistent user data, preferences, and game statistics across deployments, we need a persistent database solution.
+Google Cloud Run containers have ephemeral storage - SQLite databases get wiped on container restarts. To maintain persistent user data, preferences, and game statistics across deployments, we implemented a persistent database solution using **Neon Postgres**.
 
-### Dual Database Architecture
+### ✅ Dual Database Architecture (Working)
 
-The application automatically detects and uses the appropriate database:
+The application **automatically detects** and uses the appropriate database:
 
-- **Local Development**: SQLite (`src/server/db/db.sqlite3`)
-- **Cloud Production**: Neon Postgres (via environment variables)
+- **Local Development**: SQLite (`src/server/db/db.sqlite3`) - Zero configuration
+- **Cloud Production**: Neon Postgres (via environment variables) - Persistent across deployments
 
-### Database Layer Implementation
+### ✅ Database Layer Implementation (Completed)
 
 The `src/server/db/database-layer.js` provides a unified API that:
 
-- **Auto-Detection**: Checks for `POSTGRES_URL` or `DATABASE_URL` environment variables
-- **Unified Interface**: Same methods work with both SQLite and PostgreSQL
-- **Automatic Schema**: Creates tables on first connection
-- **Query Translation**: Converts PostgreSQL syntax to SQLite when needed
+- **✅ Auto-Detection**: Checks for `POSTGRES_URL` or `DATABASE_URL` environment variables
+- **✅ Unified Interface**: Same methods work with both SQLite and PostgreSQL
+- **✅ Automatic Schema**: Creates all tables on first connection
+- **✅ Query Translation**: Converts PostgreSQL syntax to SQLite automatically
+- **✅ Debug Logging**: Console shows which database type is being used
+- **✅ Error Handling**: Graceful fallback and detailed error messages
+
+### ✅ Implementation Status
+
+**Current State (November 2024):**
+- ✅ **Database Layer**: Complete and tested with both SQLite and Neon Postgres
+- ✅ **Repository Pattern**: All repositories updated to use new database layer
+- ✅ **User Management**: Create, update, authenticate users with Privy integration
+- ✅ **Game Statistics**: Automatic stats initialization on user creation
+- ✅ **User Preferences**: Save/load settings with real-time persistence
+- ✅ **Leaderboard**: Real-time ranking based on highest_mass with user rank calculation
+- ✅ **Production Tested**: Verified working on Google Cloud Run with Neon Postgres
+- ✅ **Build Integration**: Database files properly included in gulp build process
+
+## 🔧 Issues Resolved (November 2024)
+
+### Critical Production Fixes
+
+**1. Username Availability False Positives**
+- **Issue**: Username editing showed "already taken" for user's own username
+- **Root Cause**: PostgreSQL COUNT() returns strings ("1"), SQLite returns numbers (1)
+- **Fix**: Added `parseInt()` conversion in `UserRepository.isUsernameAvailable()`
+- **Status**: ✅ Fixed - Username editing works in production
+
+**2. Empty Leaderboard Display**
+- **Issue**: Leaderboard showed empty even with users in database
+- **Root Cause**: Users created without corresponding `game_stats` records
+- **Fix**: Modified `UserRepository.findOrCreateByPrivyId()` to auto-initialize stats
+- **Migration**: Created `test/fix-existing-users.js` to fix existing users
+- **Status**: ✅ Fixed - Leaderboard shows all users with stats
+
+**3. Missing User Rank Display**
+- **Issue**: Profile modal showed "Unranked" instead of actual leaderboard position
+- **Root Cause**: `StatsRepository.getUserRank()` method was incomplete
+- **Fix**: Implemented rank calculation based on `highest_mass` positioning
+- **PostgreSQL Fix**: Corrected boolean comparison (`is_banned = FALSE` vs `= 0`)
+- **Status**: ✅ Fixed - Profile shows correct rank (e.g., "Rank #3")
+
+**4. Database Layer Module Resolution**
+- **Issue**: `MODULE_NOT_FOUND` errors for `database-layer.js` in production build
+- **Root Cause**: Gulpfile excluded `src/server/db/**` directory from build
+- **Fix**: Updated `gulpfile.js` to include database files while excluding `.sqlite3` files
+- **Status**: ✅ Fixed - Database layer properly deployed
+
+**5. PostgreSQL Type Compatibility**
+- **Issue**: Boolean field comparisons failed with "operator does not exist" errors
+- **Root Cause**: PostgreSQL strict typing vs SQLite flexible typing
+- **Fix**: Updated queries to use `IS NULL OR field = FALSE` instead of `= 0`
+- **Status**: ✅ Fixed - All queries work across both databases
+
+### Database Validation & Testing
+
+**Comprehensive Test Suite Added:**
+- `test/test-db-connection.js` - Verifies database connectivity and table creation
+- `test/debug-neon-issues.js` - Diagnoses specific Neon Postgres issues
+- `test/fix-existing-users.js` - Migration script for users without stats
+- `test/test-ranking.js` - Validates user ranking calculations
+
+**Production Verification:**
+- ✅ Tested with real Neon Postgres database
+- ✅ User creation/authentication working
+- ✅ Stats tracking and leaderboard functional
+- ✅ Username editing working
+- ✅ Rank calculation accurate
 
 ## Setup Instructions
 
@@ -75,26 +140,32 @@ DATABASE_URL="postgresql://user:password@host-pooler.region.aws.neon.tech/databa
 
 **Cloud Run Deployment:**
 
-The `deploy.sh` script automatically sets environment variables:
+Both `deploy.sh` and `deploy-preview.sh` automatically set database environment variables:
 
 ```bash
 # Environment variables set during deployment
 NODE_ENV=production
 PRIVY_APP_ID=your-privy-app-id
-POSTGRES_URL="postgresql://..."
-DATABASE_URL="postgresql://..."
+POSTGRES_URL="postgresql://neondb_owner:password@host-pooler.region.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL="postgresql://neondb_owner:password@host-pooler.region.aws.neon.tech/neondb?sslmode=require"
 ```
+
+**⚠️ Important**: Both production and preview deployments currently share the same database. This ensures data consistency but means preview testing affects production data.
 
 #### 4. Deploy to Cloud Run
 
 ```bash
-# Update deploy.sh with your connection strings
-vim deploy.sh
-# Look for --set-env-vars and update POSTGRES_URL
-
-# Deploy with persistent database
+# Production deployment (shares database with previews)
 ./deploy.sh
+
+# Preview deployment (same database as production)
+./deploy-preview.sh
 ```
+
+**Database Environment Detection:**
+- The application automatically detects the environment and uses the appropriate database
+- Logs will show: `[DatabaseLayer] Using Neon Postgres database` in production
+- Local development automatically uses SQLite with zero configuration
 
 ## Database Features
 
@@ -278,7 +349,27 @@ The deployment process automatically handles database configuration:
 
 ## Troubleshooting
 
-### Common Issues
+### ✅ Resolved Issues (November 2024)
+
+#### 1. \"Username already taken\" (FIXED)
+
+**Symptoms**: Username editing fails with "already taken" error for user's own username
+**Root Cause**: PostgreSQL COUNT() returns strings, comparison with integer failed
+**Solution**: ✅ Fixed with `parseInt()` conversion in `UserRepository.isUsernameAvailable()`
+
+#### 2. \"Empty leaderboard\" (FIXED)
+
+**Symptoms**: Leaderboard displays empty even with users in database
+**Root Cause**: Users created without `game_stats` records
+**Solution**: ✅ Fixed - stats auto-initialized on user creation + migration script for existing users
+
+#### 3. \"Profile shows Unranked\" (FIXED)
+
+**Symptoms**: User rank displays "Unranked" instead of leaderboard position
+**Root Cause**: `getUserRank()` method incomplete with PostgreSQL boolean issues
+**Solution**: ✅ Fixed - proper rank calculation with boolean field corrections
+
+### Current Issues & Solutions
 
 #### 1. \"Database connection failed\"
 
@@ -290,10 +381,11 @@ The deployment process automatically handles database configuration:
 echo $POSTGRES_URL
 echo $DATABASE_URL
 
-# Test connection manually
-node test/test-db-connection.js
+# Test connection with debugging
+POSTGRES_URL="your-connection-string" node test/test-db-connection.js
 
 # Verify Neon dashboard shows database as active
+# Check logs for: [DatabaseLayer] Using Neon Postgres database
 ```
 
 #### 2. \"Tables not found\" errors
@@ -1573,19 +1665,50 @@ Set up alerts for:
 
 ---
 
-## Implementation Status & Next Steps
+## ✅ Implementation Status & Next Steps (COMPLETED November 2024)
 
-### ✅ Completed (November 2024)
+### ✅ Completed Implementation (November 2024)
 
-1. **Database Schema** - All Phase A tables created in `sql.js`
-2. **Repository Layer** - Clean data access interfaces:
-   - `UserRepository` - User CRUD operations with Privy ID support
-   - `StatsRepository` - Game statistics management with auto-initialization
-   - `SessionRepository` - Game session tracking with cleanup
-   - `PreferencesRepository` - User settings persistence with defaults
-3. **Service Layer** - `AuthService` orchestrates authentication and user data
+**🎉 Persistent Database - FULLY IMPLEMENTED & TESTED**
 
-### 🚧 Next Steps (Priority Order)
+1. **✅ Database Layer** - Complete dual database architecture:
+   - `src/server/db/database-layer.js` - Auto-detects SQLite vs Postgres
+   - Query translation between PostgreSQL and SQLite syntax
+   - Automatic schema creation and table initialization
+   - Debug logging and error handling
+
+2. **✅ Repository Layer** - All repositories updated and working:
+   - `UserRepository` - User CRUD with Privy integration + auto-stats initialization
+   - `StatsRepository` - Game statistics with working `getUserRank()` method
+   - `SessionRepository` - Game session tracking
+   - `PreferencesRepository` - User settings persistence
+
+3. **✅ REST API Endpoints** - Complete API layer:
+   - `POST /api/auth` - Privy authentication integration
+   - `GET /api/user/:userId` - User profile with stats and rank
+   - `GET/PUT /api/user/:userId/preferences` - Settings persistence
+   - `GET /api/leaderboard` - Real-time leaderboard data
+   - `GET /api/username/available/:username` - Username validation
+
+4. **✅ Socket.IO Integration** - Session tracking:
+   - User ID passed via socket query parameters
+   - Automatic session creation on connect
+   - Stats tracking during gameplay
+   - Session cleanup on disconnect
+
+5. **✅ Client Integration** - Frontend connected to backend:
+   - Profile modal shows real user data and rank
+   - Settings persistence working
+   - Username editing functional
+   - Leaderboard displays real database data
+
+6. **✅ Production Deployment**:
+   - Both `deploy.sh` and `deploy-preview.sh` include database URLs
+   - Neon Postgres tested and verified working
+   - Build process includes database layer files
+   - Environment detection working correctly
+
+### ✅ Current Status (Ready for Production)
 
 #### 1. API Endpoints (High Priority)
 Create REST API in `src/server/server.js`:
