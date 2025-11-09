@@ -120,6 +120,49 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Win Rate</div>
                             </div>
                         </div>
+
+                        <!-- Preferences Section for Logged-in Users -->
+                        <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                            <h3 style="color: #4a90e2; margin-bottom: 1.5rem;">
+                                <i class="fas fa-cog" style="margin-right: 0.5rem;"></i>
+                                Game Preferences
+                            </h3>
+                            <div id="preferencesSection" style="display: grid; gap: 1rem;">
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
+                                    <span><i class="fas fa-moon" style="margin-right: 0.5rem;"></i>Dark Mode</span>
+                                    <input type="checkbox" id="pref-darkMode" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                                </label>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
+                                    <span><i class="fas fa-weight" style="margin-right: 0.5rem;"></i>Show Mass</span>
+                                    <input type="checkbox" id="pref-showMass" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                                </label>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
+                                    <span><i class="fas fa-border-style" style="margin-right: 0.5rem;"></i>Show Border</span>
+                                    <input type="checkbox" id="pref-showBorder" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                                </label>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
+                                    <span><i class="fas fa-tachometer-alt" style="margin-right: 0.5rem;"></i>Show FPS</span>
+                                    <input type="checkbox" id="pref-showFps" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                                </label>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
+                                    <span><i class="fas fa-th" style="margin-right: 0.5rem;"></i>Show Grid</span>
+                                    <input type="checkbox" id="pref-showGrid" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                                </label>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
+                                    <span><i class="fas fa-arrows-alt" style="margin-right: 0.5rem;"></i>Continuity</span>
+                                    <input type="checkbox" id="pref-continuity" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                                </label>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; cursor: pointer;">
+                                    <span><i class="fas fa-circle" style="margin-right: 0.5rem;"></i>Round Food</span>
+                                    <input type="checkbox" id="pref-roundFood" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                                </label>
+                            </div>
+                            <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 8px; font-size: 0.85rem; color: var(--text-secondary);">
+                                <i class="fas fa-info-circle" style="color: var(--primary-green); margin-right: 0.5rem;"></i>
+                                Preferences are automatically saved and will be applied when you start the game.
+                            </div>
+                        </div>
+
                         <div style="text-align: center; margin-top: 2rem;">
                             <button class="modal-button logout-btn" style="padding: 0.75rem 2rem; font-size: 1rem; background: rgba(244, 67, 54, 0.8); border: none;">
                                 <i class="fas fa-sign-out-alt" style="margin-right: 0.5rem;"></i>
@@ -394,6 +437,74 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Update the nav items to remove active state
                         elements.navItems.forEach(nav => nav.classList.remove('active'));
                     });
+                }
+
+                // Handle preferences toggles if user is authenticated
+                const prefToggles = document.querySelectorAll('.pref-toggle');
+                if (prefToggles.length > 0) {
+                    // Load current preferences from server
+                    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+                    if (userData && userData.dbUserId) {
+                        // Fetch current preferences
+                        fetch(`/api/user/${userData.dbUserId}/preferences`)
+                            .then(response => response.json())
+                            .then(prefs => {
+                                // Set checkbox states based on server preferences
+                                document.getElementById('pref-darkMode').checked = prefs.dark_mode === 1;
+                                document.getElementById('pref-showMass').checked = prefs.show_mass === 1;
+                                document.getElementById('pref-showBorder').checked = prefs.show_border === 1;
+                                document.getElementById('pref-showFps').checked = prefs.show_fps === 1;
+                                document.getElementById('pref-showGrid').checked = prefs.show_grid === 1;
+                                document.getElementById('pref-continuity').checked = prefs.continuity === 1;
+                                document.getElementById('pref-roundFood').checked = prefs.round_food === 1;
+                            })
+                            .catch(error => {
+                                console.warn('Failed to load preferences:', error);
+                            });
+
+                        // Add change listeners to save preferences
+                        prefToggles.forEach(toggle => {
+                            toggle.addEventListener('change', function() {
+                                const prefName = this.id.replace('pref-', '');
+                                const value = this.checked ? 1 : 0;
+
+                                // Map frontend names to database column names
+                                const prefMap = {
+                                    'darkMode': 'dark_mode',
+                                    'showMass': 'show_mass',
+                                    'showBorder': 'show_border',
+                                    'showFps': 'show_fps',
+                                    'showGrid': 'show_grid',
+                                    'continuity': 'continuity',
+                                    'roundFood': 'round_food'
+                                };
+
+                                const dbPrefName = prefMap[prefName];
+                                if (!dbPrefName) return;
+
+                                // Save preference to server
+                                const preferences = {};
+                                preferences[dbPrefName] = value;
+
+                                fetch(`/api/user/${userData.dbUserId}/preferences`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify(preferences)
+                                })
+                                .then(response => {
+                                    if (!response.ok) throw new Error('Failed to save preference');
+                                    console.log(`Preference ${dbPrefName} saved:`, value);
+                                })
+                                .catch(error => {
+                                    console.error('Failed to save preference:', error);
+                                    // Optionally revert the checkbox
+                                    this.checked = !this.checked;
+                                });
+                            });
+                        });
+                    }
                 }
             }, 100);
         });

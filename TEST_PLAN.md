@@ -73,14 +73,18 @@ JSON.parse(localStorage.getItem('userData'))
 
 **Steps:**
 1. Sign in with Privy
-2. Start a game
-3. Change settings using checkboxes or chat commands:
-   - Toggle dark mode checkbox
-   - Type `-mass` to toggle mass display
-   - Type `-border` to toggle border
-   - Type `-fps` to toggle FPS counter
-4. Refresh the page
-5. Start a new game
+2. Click on your profile icon to open the Profile modal
+3. In the "Game Preferences" section, toggle various settings:
+   - Toggle Dark Mode checkbox
+   - Toggle Show Mass checkbox
+   - Toggle Show Border checkbox
+   - Toggle Show FPS checkbox
+   - Toggle Show Grid checkbox
+   - Toggle Continuity checkbox
+   - Toggle Round Food checkbox
+4. Close the modal and refresh the page
+5. Open the Profile modal again
+6. Start a game and verify settings are applied
 
 **Expected Results:**
 - ✅ Settings save immediately (check Network tab for PUT requests to `/api/user/[id]/preferences`)
