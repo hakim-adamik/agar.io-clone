@@ -447,7 +447,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const prefToggles = document.querySelectorAll('.pref-toggle');
                 if (prefToggles.length > 0) {
                     // Load current preferences from server
-                    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+                    const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
                     if (userData && userData.dbUserId) {
                         // Use the correct API URL
                         const apiBase = window.location.port === '8080' ? '' : 'http://localhost:8080';
@@ -469,13 +469,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const continuityEl = document.getElementById('pref-continuity');
                                 const roundFoodEl = document.getElementById('pref-roundFood');
 
-                                if (darkModeEl) darkModeEl.checked = prefs.dark_mode === 1;
-                                if (showMassEl) showMassEl.checked = prefs.show_mass === 1;
-                                if (showBorderEl) showBorderEl.checked = prefs.show_border === 1;
-                                if (showFpsEl) showFpsEl.checked = prefs.show_fps === 1;
-                                if (showGridEl) showGridEl.checked = prefs.show_grid === 1;
-                                if (continuityEl) continuityEl.checked = prefs.continuity === 1;
-                                if (roundFoodEl) roundFoodEl.checked = prefs.round_food === 1;
+                                if (darkModeEl) darkModeEl.checked = prefs.darkMode === true;
+                                if (showMassEl) showMassEl.checked = prefs.showMass === true;
+                                if (showBorderEl) showBorderEl.checked = prefs.showBorder === true;
+                                if (showFpsEl) showFpsEl.checked = prefs.showFps === true;
+                                if (showGridEl) showGridEl.checked = prefs.showGrid === true;
+                                if (continuityEl) continuityEl.checked = prefs.continuity === true;
+                                if (roundFoodEl) roundFoodEl.checked = prefs.roundFood === true;
                             })
                             .catch(error => {
                                 console.warn('Failed to load preferences, using defaults:', error);
