@@ -445,8 +445,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Load current preferences from server
                     const userData = JSON.parse(localStorage.getItem('userData') || '{}');
                     if (userData && userData.dbUserId) {
+                        // Use the correct API URL
+                        const apiBase = window.location.port === '8080' ? '' : 'http://localhost:8080';
+
                         // Fetch current preferences
-                        fetch(`/api/user/${userData.dbUserId}/preferences`)
+                        fetch(`${apiBase}/api/user/${userData.dbUserId}/preferences`)
                             .then(response => {
                                 if (!response.ok) throw new Error('Failed to load preferences');
                                 return response.json();
@@ -517,11 +520,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                     statusEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Saving...';
                                 }
 
+                                // Get the correct API URL again
+                                const saveApiBase = window.location.port === '8080' ? '' : 'http://localhost:8080';
+
                                 // Save preference to server
                                 const preferences = {};
                                 preferences[dbPrefName] = value;
 
-                                fetch(`/api/user/${userData.dbUserId}/preferences`, {
+                                fetch(`${saveApiBase}/api/user/${userData.dbUserId}/preferences`, {
                                     method: 'PUT',
                                     headers: {
                                         'Content-Type': 'application/json'

@@ -38,7 +38,12 @@ function PrivyAuthComponent() {
 
             // Call database API to create/update user
             try {
-                const response = await fetch('/api/auth', {
+                // Use the same origin as the current page or fallback to localhost:8080
+                const apiUrl = window.location.port === '8080'
+                    ? '/api/auth'
+                    : 'http://localhost:8080/api/auth';
+
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
