@@ -140,32 +140,130 @@ DATABASE_URL="postgresql://user:password@host-pooler.region.aws.neon.tech/databa
 
 **Cloud Run Deployment:**
 
-Both `deploy.sh` and `deploy-preview.sh` automatically set database environment variables:
+`deploy.sh` and `deploy-preview.sh` use **separate databases** for proper environment isolation:
 
 ```bash
-# Environment variables set during deployment
+# Production deployment environment variables (deploy.sh)
 NODE_ENV=production
 PRIVY_APP_ID=your-privy-app-id
-POSTGRES_URL="postgresql://neondb_owner:password@host-pooler.region.aws.neon.tech/neondb?sslmode=require"
-DATABASE_URL="postgresql://neondb_owner:password@host-pooler.region.aws.neon.tech/neondb?sslmode=require"
+POSTGRES_URL="postgresql://neondb_owner:password@prod-host-pooler.region.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL="postgresql://neondb_owner:password@prod-host-pooler.region.aws.neon.tech/neondb?sslmode=require"
+
+# Preview deployment environment variables (deploy-preview.sh)
+NODE_ENV=production
+PRIVY_APP_ID=your-privy-app-id
+POSTGRES_URL="postgresql://neondb_owner:password@preview-host-pooler.region.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL="postgresql://neondb_owner:password@preview-host-pooler.region.aws.neon.tech/neondb?sslmode=require"
 ```
 
-**⚠️ Important**: Both production and preview deployments currently share the same database. This ensures data consistency but means preview testing affects production data.
+**✅ Benefits of Separate Databases:**
+- **Safe Testing**: Preview deployments don't affect production users
+- **Data Isolation**: Production data stays pristine during testing
+- **Migration Safety**: Test database changes before applying to production
+- **User Testing**: Stakeholders can test features without impacting live data
 
 #### 4. Deploy to Cloud Run
 
 ```bash
-# Production deployment (shares database with previews)
-./deploy.sh
-
-# Preview deployment (same database as production)
+# Preview deployment (agar-io-preview database)
 ./deploy-preview.sh
+
+# Production deployment (agar-io-main database)
+./deploy.sh
 ```
 
 **Database Environment Detection:**
 - The application automatically detects the environment and uses the appropriate database
-- Logs will show: `[DatabaseLayer] Using Neon Postgres database` in production
+- Logs show: `[DatabaseLayer] Using Neon Postgres database` with URL prefix in production
 - Local development automatically uses SQLite with zero configuration
+
+## 🛡️ Database Environment Safety (November 2024)
+
+### Environment Isolation Architecture
+
+The application now uses **three separate database environments** for maximum safety:
+
+| Environment | Database | Usage | Safety Level |
+|-------------|----------|-------|--------------|
+| **Local Development** | SQLite (`src/server/db/db.sqlite3`) | Development work | ✅ **Safest** - Offline, isolated |
+| **Preview/Staging** | Neon Postgres (`agar-io-preview`) | Testing, UAT | ✅ **Safe** - Isolated from production |
+| **Production** | Neon Postgres (`agar-io-main`) | Live users | ⚠️ **Protected** - Separate from testing |
+
+### Safety Features
+
+**Default Local Development (Safest):**
+- No environment variables needed
+- Uses SQLite automatically
+- Works offline
+- Zero risk to production data
+
+**Environment Variables (.env):**
+```bash
+# Production database (protected)
+POSTGRES_URL_PROD="postgresql://...prod-host..."
+
+# Preview database (safe for testing)
+POSTGRES_URL_PREVIEW="postgresql://...preview-host..."
+
+# Default: SQLite (commented out remote databases for safety)
+# POSTGRES_URL="${POSTGRES_URL_PROD}"  # Commented = SQLite
+```
+
+### Database Environment Tools
+
+**Environment Check Script:**
+```bash
+./scripts/check-db-env.sh
+```
+
+**Sample Output:**
+```
+🔍 Database Environment Check
+==============================
+
+📊 Current Configuration:
+✅ Local Development: SQLite database
+   File: src/server/db/db.sqlite3
+   Status: Zero configuration, works offline
+
+🚀 Deployment Targets:
+   Preview:     ./deploy-preview.sh  →  agar-io-preview DB
+   Production:  ./deploy.sh          →  agar-io-main DB
+```
+
+### Safe Testing Commands
+
+```bash
+# ✅ Local development (SQLite, safest)
+npm start
+
+# 🧪 Test with preview database (safe for testing)
+POSTGRES_URL="$POSTGRES_URL_PREVIEW" npm start
+
+# ⚠️ Test with production database (use carefully!)
+POSTGRES_URL="$POSTGRES_URL_PROD" npm start
+
+# 🔍 Check current database environment
+./scripts/check-db-env.sh
+```
+
+### Deployment Safety
+
+**Preview Deployment (Safe Testing):**
+```bash
+./deploy-preview.sh
+# ✅ Uses agar-io-preview database
+# ✅ Safe to test features
+# ✅ No impact on live users
+```
+
+**Production Deployment (Live Data):**
+```bash
+./deploy.sh
+# ⚠️ Uses agar-io-main database
+# ⚠️ Affects live users
+# ✅ Protected from testing/preview changes
+```
 
 ## Database Features
 
@@ -371,21 +469,48 @@ The deployment process automatically handles database configuration:
 
 ### Current Issues & Solutions
 
-#### 1. \"Database connection failed\"
+#### 1. \"Which database am I using?\" (Environment Confusion)
+
+**Solution**: Use the environment check tool
+```bash
+# Quick environment check
+./scripts/check-db-env.sh
+
+# Shows exactly which database you're connected to:
+# - SQLite (local, safe)
+# - agar-io-preview (safe testing)
+# - agar-io-main (production, careful!)
+```
+
+#### 2. \"Database connection failed\"
 
 **Cause**: Invalid connection string or network issues
 
 **Solutions:**
 ```bash
-# Check environment variables
-echo $POSTGRES_URL
-echo $DATABASE_URL
+# 1. Check current environment
+./scripts/check-db-env.sh
 
-# Test connection with debugging
-POSTGRES_URL="your-connection-string" node test/test-db-connection.js
+# 2. Test specific database connections
+POSTGRES_URL="$POSTGRES_URL_PREVIEW" node test/test-db-connection.js   # Preview DB
+POSTGRES_URL="$POSTGRES_URL_PROD" node test/test-db-connection.js      # Production DB
 
-# Verify Neon dashboard shows database as active
-# Check logs for: [DatabaseLayer] Using Neon Postgres database
+# 3. Verify Neon dashboard shows database as active
+# 4. Check logs for: [DatabaseLayer] Using Neon Postgres database
+```
+
+#### 3. \"I accidentally affected production data\"
+
+**Prevention**: Use the safety features
+```bash
+# ✅ Default safe development (SQLite)
+npm start
+
+# ✅ Safe remote testing (preview database)
+POSTGRES_URL="$POSTGRES_URL_PREVIEW" npm start
+
+# ⚠️ Production testing (only when necessary)
+POSTGRES_URL="$POSTGRES_URL_PROD" npm start
 ```
 
 #### 2. \"Tables not found\" errors
@@ -1703,12 +1828,20 @@ Set up alerts for:
    - Leaderboard displays real database data
 
 6. **✅ Production Deployment**:
-   - Both `deploy.sh` and `deploy-preview.sh` include database URLs
-   - Neon Postgres tested and verified working
+   - `deploy.sh` uses production database (agar-io-main)
+   - `deploy-preview.sh` uses preview database (agar-io-preview)
+   - Both Neon Postgres databases tested and verified working
    - Build process includes database layer files
    - Environment detection working correctly
 
-### ✅ Current Status (Ready for Production)
+7. **✅ Environment Safety & Tools**:
+   - Three-tier database architecture (Local SQLite, Preview Postgres, Production Postgres)
+   - Default local development uses SQLite (safest option)
+   - Environment check script (`./scripts/check-db-env.sh`)
+   - Clear warnings and safety guards in configuration
+   - Safe testing commands for all environments
+
+### ✅ Current Status (Production Ready with Full Environment Isolation)
 
 #### 1. API Endpoints (High Priority)
 Create REST API in `src/server/server.js`:
