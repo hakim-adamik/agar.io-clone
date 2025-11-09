@@ -2,6 +2,7 @@
 'use strict';
 
 const db = require('../db/database-layer');
+const StatsRepository = require('./stats-repository');
 
 class UserRepository {
     /**
@@ -39,7 +40,18 @@ class UserRepository {
                         now
                     ]
                 );
-                return result.rows[0];
+                const newUser = result.rows[0];
+
+                // Initialize game stats for new user
+                try {
+                    await StatsRepository.initializeStats(newUser.id);
+                    console.log(`[UserRepository] Initialized stats for new user: ${newUser.username} (ID: ${newUser.id})`);
+                } catch (statsError) {
+                    console.error(`[UserRepository] Failed to initialize stats for user ${newUser.id}:`, statsError);
+                    // Don't fail user creation if stats initialization fails
+                }
+
+                return newUser;
             }
         } catch (err) {
             console.error('Error in findOrCreateByPrivyId:', err);
@@ -125,7 +137,9 @@ class UserRepository {
             }
 
             const result = await db.get(query, params);
-            return result.count === 0;
+            // Convert to number since Postgres returns strings, SQLite returns numbers
+            const count = parseInt(result.count) || 0;
+            return count === 0;
         } catch (err) {
             console.error('Error in isUsernameAvailable:', err);
             throw err;

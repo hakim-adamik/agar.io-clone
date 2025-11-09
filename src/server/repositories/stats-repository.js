@@ -1,25 +1,25 @@
 /*jslint node: true */
 'use strict';
 
-const db = require('../sql');
+const db = require('../db/database-layer');
 
 class StatsRepository {
     /**
      * Initialize stats for a new user
      */
     static async initializeStats(userId) {
-        return new Promise((resolve, reject) => {
-            db.run(
+        try {
+            await db.run(
                 `INSERT INTO game_stats (user_id, games_played, total_mass_eaten, total_players_eaten,
                  total_playtime, highest_mass, longest_survival, updated_at)
-                 VALUES (?, 0, 0, 0, 0, 0, 0, ?)`,
-                [userId, Date.now()],
-                (err) => {
-                    if (err) return reject(err);
-                    resolve(true);
-                }
+                 VALUES ($1, 0, 0, 0, 0, 0, 0, $2)`,
+                [userId, Date.now()]
             );
-        });
+            return true;
+        } catch (err) {
+            console.error('Error initializing stats:', err);
+            throw err;
+        }
     }
 
     /**

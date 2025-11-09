@@ -11,6 +11,12 @@ class DatabaseLayer {
     this.db = null;
     this.connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
 
+    // Log which database is being used
+    console.log(`[DatabaseLayer] Using ${this.isVercel ? 'Neon Postgres' : 'SQLite'} database`);
+    if (this.isVercel) {
+      console.log(`[DatabaseLayer] Postgres URL: ${this.connectionString?.substring(0, 30)}...`);
+    }
+
     if (!this.isVercel) {
       this.initSqlite();
     }
