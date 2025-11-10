@@ -131,8 +131,7 @@ function applyUserPreferences(prefs, settings) {
 
 // Apply default settings from config
 function applyConfigDefaults(settings) {
-    var config = window.gameConfig || {};
-    var defaults = config.getSettings ? config.getSettings() : {};
+    var defaults = window.DEFAULT_PREFERENCES || {};
 
     // Apply each default setting if defined
     if (defaults.darkMode !== undefined) {
