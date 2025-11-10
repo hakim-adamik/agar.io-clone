@@ -14,6 +14,8 @@ const mapUtils = require("./map/map");
 const { getPosition } = require("./lib/entityUtils");
 const chatRepository = require("./repositories/chat-repository");
 const loggingRepository = require("./repositories/logging-repository");
+const AuthService = require("./services/auth-service");
+const SessionRepository = require("./repositories/session-repository");
 
 const Vector = SAT.Vector;
 
@@ -174,7 +176,24 @@ class Arena {
         });
 
         // Disconnect handler
-        socket.on("disconnect", () => {
+        socket.on("disconnect", async () => {
+            // End game session if authenticated user
+            if (socket.sessionId && socket.userId) {
+                try {
+                    const finalStats = {
+                        userId: socket.userId,
+                        final_score: currentPlayer.massTotal || 0,
+                        final_mass: currentPlayer.massTotal || 0,
+                        mass_eaten: currentPlayer.massEaten || 0,
+                        players_eaten: currentPlayer.playersEaten || 0
+                    };
+                    await AuthService.endGameSession(socket.sessionId, finalStats);
+                    console.log(`[ARENA ${this.id}] Ended session ${socket.sessionId} for user ${socket.userId}`);
+                } catch (error) {
+                    console.error('[ARENA] Failed to end game session:', error);
+                }
+            }
+
             this.map.players.removePlayerByID(currentPlayer.id);
             delete this.sockets[socket.id];
             console.log(

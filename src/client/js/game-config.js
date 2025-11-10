@@ -1,15 +1,17 @@
 // Centralized game configuration
-// This can be overridden by user profile settings when implemented
+// This uses the shared default preferences and can be overridden by user profile settings
 
 window.gameConfig = {
-    // Default settings for new players
-    defaultSettings: {
-        darkMode: true,        // Enable dark theme by default
-        showMass: true,        // Display cell mass values
-        showBorder: true,      // Show game area borders
-        continuity: true,      // Continue moving when mouse leaves screen
-        showFps: false,        // Hide FPS counter for cleaner UI
-        roundFood: true        // Use round food particles
+    // Default settings for new players (from shared configuration)
+    defaultSettings: window.DEFAULT_PREFERENCES || {
+        // Fallback if shared config doesn't load
+        darkMode: true,
+        showMass: true,
+        showBorder: true,
+        showGrid: true,
+        continuity: true,
+        showFps: false,
+        roundFood: true
     },
 
     // Future: User profile overrides will go here

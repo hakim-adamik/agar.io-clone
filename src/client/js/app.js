@@ -42,6 +42,95 @@ function applyDefaultGameSettings() {
     }
     var settings = window.chat;
 
+    // Try to load user preferences from server if authenticated
+    var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
+    if (privyUser && privyUser.dbUserId) {
+        console.log('Loading preferences for user:', privyUser.dbUserId);
+        loadUserPreferences(privyUser.dbUserId, settings);
+    } else {
+        // Fall back to default settings if not authenticated
+        applyConfigDefaults(settings);
+    }
+}
+
+// Load user preferences from server
+function loadUserPreferences(userId, settings) {
+    fetch("/api/user/" + userId + "/preferences")
+        .then(function(response) {
+            if (!response.ok) throw new Error("Failed to load preferences");
+            return response.json();
+        })
+        .then(function(prefs) {
+            applyUserPreferences(prefs, settings);
+        })
+        .catch(function(error) {
+            console.warn("Failed to load user preferences, using defaults:", error);
+            applyConfigDefaults(settings);
+        });
+}
+
+// Apply user preferences from server
+function applyUserPreferences(prefs, settings) {
+    console.log('Applying user preferences:', prefs);
+
+    // Apply dark mode
+    if (prefs.darkMode !== undefined) {
+        var shouldEnable = prefs.darkMode === true;
+        var isEnabled = global.backgroundColor === "#181818";
+        if (shouldEnable !== isEnabled) {
+            settings.toggleDarkMode();
+        }
+    }
+
+    // Apply show mass
+    if (prefs.showMass !== undefined) {
+        var shouldShow = prefs.showMass === true;
+        var isShowing = global.toggleMassState === 1;
+        if (shouldShow !== isShowing) {
+            settings.toggleMass();
+        }
+    }
+
+    // Apply show border
+    if (prefs.showBorder !== undefined) {
+        var shouldShow = prefs.showBorder === true;
+        if (shouldShow !== global.borderDraw) {
+            settings.toggleBorder();
+        }
+    }
+
+    // Apply continuity
+    if (prefs.continuity !== undefined) {
+        var shouldEnable = prefs.continuity === true;
+        if (shouldEnable !== global.continuity) {
+            settings.toggleContinuity();
+        }
+    }
+
+    // Apply show FPS
+    if (prefs.showFps !== undefined) {
+        var shouldShow = prefs.showFps === true;
+        if (shouldShow !== global.showFpsCounter) {
+            settings.toggleFpsDisplay();
+        }
+    }
+
+    // Apply round food
+    if (prefs.roundFood !== undefined) {
+        global.roundFood = prefs.roundFood === true;
+    }
+
+    // Apply show grid
+    if (prefs.showGrid !== undefined) {
+        global.showGrid = prefs.showGrid === true;
+    }
+
+    // Sync checkbox states
+    syncSettingsCheckboxes();
+}
+
+// Apply default settings from config
+function applyConfigDefaults(settings) {
     var config = window.gameConfig || {};
     var defaults = config.getSettings ? config.getSettings() : {};
 
@@ -124,6 +213,17 @@ function startGame(type) {
         .substring(0, 25);
     global.playerType = type;
 
+    // Load user preferences when starting the game
+    var settings = window.chat || new ChatClient();
+    var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
+    if (privyUser && privyUser.dbUserId) {
+        console.log('Loading user preferences for game start, userId:', privyUser.dbUserId);
+        loadUserPreferences(privyUser.dbUserId, settings);
+    } else {
+        console.log('No authenticated user, applying default settings');
+        applyConfigDefaults(settings);
+    }
+
     global.screen.width = window.innerWidth;
     global.screen.height = window.innerHeight;
 
@@ -145,8 +245,31 @@ function startGame(type) {
     }
 
     if (!socket) {
-        // Include arena ID in connection query for respawns
-        const query = `type=${type}${global.arenaId ? '&arenaId=' + global.arenaId : ''}`;
+        // Get user data from localStorage (if authenticated)
+        let userData = null;
+        try {
+            const privyUserStr = localStorage.getItem('privy_user');
+            if (privyUserStr) {
+                userData = JSON.parse(privyUserStr);
+            }
+        } catch (e) {
+            console.error('[Socket] Failed to parse user data:', e);
+        }
+
+        // Build query params including user data
+        const queryParams = {
+            type: type,
+            arenaId: global.arenaId || null,
+            userId: userData?.dbUserId || null,
+            playerName: playerNameInput.value || userData?.username || `Guest_${Math.floor(Math.random() * 10000)}`
+        };
+
+        // Convert to query string
+        const query = Object.keys(queryParams)
+            .filter(key => queryParams[key] !== null)
+            .map(key => `${key}=${encodeURIComponent(queryParams[key])}`)
+            .join('&');
+
         socket = io({ query });
         setupSocket(socket);
     }
@@ -1053,7 +1176,10 @@ function gameLoop() {
         graph.fillStyle = global.backgroundColor;
         graph.fillRect(0, 0, global.screen.width, global.screen.height);
 
-        render.drawGrid(global, player, global.screen, graph);
+        // Only draw grid if user preference allows it
+        if (global.showGrid) {
+            render.drawGrid(global, player, global.screen, graph);
+        }
 
         // Client-side viewport culling for food
         foods.forEach((food) => {

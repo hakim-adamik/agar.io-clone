@@ -5,8 +5,10 @@
 const cfg = require('../../../config');
 
 exports.validNick = function (nickname) {
-    var regex = /^\w*$/;
-    return regex.exec(nickname) !== null;
+    // Allow letters, numbers, spaces, dots, dashes, underscores
+    // Must be 1-25 characters and not just whitespace
+    var regex = /^[\w\s.\-]{1,25}$/;
+    return regex.test(nickname) && nickname.trim().length > 0;
 };
 
 // determine mass from radius of circle
