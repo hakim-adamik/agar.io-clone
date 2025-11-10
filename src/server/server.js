@@ -36,15 +36,16 @@ app.get('/', (req, res) => {
             res.status(500).send('Error loading page');
             return;
         }
-        
-        // Inject environment variables into the HTML
+
+        // Inject environment variables and config into the HTML
         const envScript = `
         <script>
             window.ENV = {
-                PRIVY_APP_ID: '${process.env.PRIVY_APP_ID || ''}'
+                PRIVY_APP_ID: '${process.env.PRIVY_APP_ID || ''}',
+                DEBUG_SHOW_CELL_MASS: ${process.env.DEBUG_SHOW_CELL_MASS || false}
             };
         </script>`;
-        
+
         // Insert the script before the closing </head> tag
         const modifiedHtml = data.replace('</head>', `${envScript}\n    </head>`);
         res.send(modifiedHtml);
@@ -61,7 +62,7 @@ app.get('/api/arenas', (req, res) => {
 io.on('connection', function (socket) {
     let type = socket.handshake.query.type;
     console.log('[SERVER] User connected: ', type);
-    
+
     switch (type) {
         case 'player':
             addPlayerToArena(socket);
@@ -80,19 +81,19 @@ io.on('connection', function (socket) {
 const addPlayerToArena = (socket) => {
     // Check if player is respawning (has preferred arena)
     const preferredArenaId = socket.handshake.query.arenaId || null;
-    
+
     // Find or create arena
     const arena = arenaManager.findAvailableArena(preferredArenaId);
-    
+
     // Store arena ID on socket BEFORE joining room
     socket.arenaId = arena.id;
-    
+
     // Join Socket.io room
     socket.join(arena.id);
-    
+
     // Delegate to arena (this will set up all event handlers)
     arena.addPlayer(socket);
-    
+
     // Log global stats (use actual current count, not getPlayerCount which might be stale)
     const stats = arenaManager.getStats();
     console.log(
@@ -108,12 +109,12 @@ const addSpectatorToArena = (socket) => {
     // Spectators join any active arena (prefer first one)
     const arena =
         arenaManager.arenas.values().next().value || arenaManager.createArena();
-    
+
     socket.join(arena.id);
     socket.arenaId = arena.id;
-    
+
     arena.addSpectator(socket);
-    
+
     console.log(`[SERVER] Spectator joined ${arena.id}`);
 };
 

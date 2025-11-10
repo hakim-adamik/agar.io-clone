@@ -51,7 +51,7 @@ exports.Map = class {
                         y: cell.y,
                         mass: cell.mass,
                         radius: cell.radius,
-                        score: cell.score // Keep full precision, no rounding
+                        score: player.getCellScore(cell) // Calculate score dynamically
                     })),
                     massTotal: Math.round(player.massTotal),
                     hue: player.hue,

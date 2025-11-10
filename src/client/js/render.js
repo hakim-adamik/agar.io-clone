@@ -144,18 +144,18 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph, exitCou
                 // Round to 2 decimals for display, remove trailing zeros
                 var displayScore = parseFloat(score.toFixed(2));
 
-                if (window.gameConfig && window.gameConfig.debug && window.gameConfig.debug.showCellMass) {
-                    // Debug display of mass
-                    graph.strokeText("Score: " + displayScore, cell.x, cell.y + fontSize);
-                    graph.fillText("Score: " + displayScore, cell.x, cell.y + fontSize);
+                 if (window.ENV && window.ENV.DEBUG_SHOW_CELL_MASS) {
+                     // Debug display of mass (enabled in server config.js)
+                     graph.strokeText("Score: " + displayScore, cell.x, cell.y + fontSize);
+                     graph.fillText("Score: " + displayScore, cell.x, cell.y + fontSize);
 
-                    var displayMass = Math.round(cell.mass);
-                    graph.strokeText("Mass: " + displayMass, cell.x, cell.y + fontSize + smallFontSize);
-                    graph.fillText("Mass: " + displayMass, cell.x, cell.y + fontSize + smallFontSize);
-                } else {
-                    graph.strokeText(displayScore, cell.x, cell.y + fontSize);
-                    graph.fillText(displayScore, cell.x, cell.y + fontSize);
-                }
+                     var displayMass = Math.round(cell.mass);
+                     graph.strokeText("Mass: " + displayMass, cell.x, cell.y + fontSize + smallFontSize);
+                     graph.fillText("Mass: " + displayMass, cell.x, cell.y + fontSize + smallFontSize);
+                 } else {
+                     graph.strokeText(displayScore, cell.x, cell.y + fontSize);
+                     graph.fillText(displayScore, cell.x, cell.y + fontSize);
+                 }
             }
         }
     }
