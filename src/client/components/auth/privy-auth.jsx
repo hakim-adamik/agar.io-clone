@@ -31,9 +31,6 @@ function PrivyAuthComponent() {
             const user = authData.user;
             const isNewUser = authData.isNewUser;
 
-            // Log the full user object to debug structure
-            console.log('[Privy Auth] Full auth data:', authData);
-            console.log('[Privy Auth] Actual user object:', user);
 
             // Extract linked account data (Google, Discord, etc.)
             const linkedAccount = user.linkedAccounts?.[0];
@@ -47,13 +44,6 @@ function PrivyAuthComponent() {
                 provider: providerType
             };
 
-            // Log Privy user data for debugging
-            console.log('[Privy Auth] User authenticated:', {
-                privyId: user.id,
-                email: userData.email,
-                name: userData.name,
-                provider: userData.provider
-            });
 
             // Skip API call if no Privy ID
             if (!user.id) {
@@ -81,7 +71,6 @@ function PrivyAuthComponent() {
                     avatarUrl: linkedAccount?.profilePictureUrl || linkedAccount?.avatarUrl || null
                 };
 
-                console.log('[Auth] Sending to /api/auth:', requestBody, 'URL:', apiUrl);
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
@@ -100,7 +89,6 @@ function PrivyAuthComponent() {
                     userData.stats = dbUser.stats;
                     userData.preferences = dbUser.preferences;
 
-                    console.log('[Auth] Database user created/updated:', dbUser);
                 } else {
                     const errorText = await response.text();
                     console.error('[Auth] Failed to sync with database. Status:', response.status, 'Response:', errorText);
