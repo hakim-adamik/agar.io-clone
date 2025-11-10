@@ -3,6 +3,7 @@
 
 const pool = require('../sql');
 const StatsRepository = require('./stats-repository');
+const PreferencesRepository = require('./preferences-repository');
 
 class UserRepository {
     /**
@@ -50,6 +51,15 @@ class UserRepository {
                 } catch (statsError) {
                     console.error(`[UserRepository] Failed to initialize stats for user ${newUser.id}:`, statsError);
                     // Don't fail user creation if stats initialization fails
+                }
+
+                // Initialize default preferences for new user
+                try {
+                    await PreferencesRepository.createDefaultPreferences(newUser.id);
+                    console.log(`[UserRepository] Initialized preferences for new user: ${newUser.username} (ID: ${newUser.id})`);
+                } catch (prefsError) {
+                    console.error(`[UserRepository] Failed to initialize preferences for user ${newUser.id}:`, prefsError);
+                    // Don't fail user creation if preferences initialization fails
                 }
 
                 return newUser;
