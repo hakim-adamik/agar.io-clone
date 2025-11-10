@@ -32,17 +32,33 @@ The `src/server/sql.js` provides direct PostgreSQL connectivity:
 
 ### ✅ Implementation Status
 
-**Current State (December 2024):**
+**Current State (November 2024):**
 - ✅ **PostgreSQL-Only**: Simplified architecture eliminates dual database complexity
 - ✅ **Direct Repository Usage**: All repositories use PostgreSQL pool directly
 - ✅ **User Management**: Create, update, authenticate users with Privy integration
 - ✅ **Game Statistics**: Automatic stats initialization on user creation
-- ✅ **User Preferences**: Save/load settings with real-time persistence
+- ✅ **User Preferences**: Fixed boolean handling, save/load settings with real-time persistence
 - ✅ **Leaderboard**: Real-time ranking based on highest_mass with user rank calculation
 - ✅ **Production Tested**: Verified working on Google Cloud Run with Neon Postgres
 - ✅ **Environment Isolation**: Preview database for local dev, production for deployment
+- ✅ **Migration System**: Database schema versioning and automated migrations
+- ⚠️ **Session Tracking**: Temporarily disabled due to socket disconnect issues
 
-## 🔄 Architecture Simplification (December 2024)
+### ⚠️ Known Issues (November 2024)
+
+**Session Tracking Temporarily Disabled:**
+- Game session creation/ending temporarily disabled in `src/server/server.js` and `src/server/arena.js`
+- Issue: Session tracking causes immediate socket disconnects for authenticated users
+- Impact: Stats tracking during gameplay is not currently working
+- Priority: High - needs investigation in future PR
+- Workaround: Game functions normally for all users, just without session-based stats
+
+**Root Cause Investigation Needed:**
+- Why does `AuthService.startGameSession()` cause socket disconnects?
+- Potentially related to database connection timing or transaction locks
+- May require async/await refactoring in socket handlers
+
+## 🔄 Architecture Simplification (November 2024)
 
 ### Migration from Dual Database to PostgreSQL-Only
 
@@ -67,7 +83,19 @@ Based on feedback from Hakim Adamik on PR12, we simplified the database architec
 
 ### Critical Production Fixes
 
-**1. Username Availability False Positives**
+**1. Black Screen for Authenticated Users (November 2024)**
+- **Issue**: Logged-in users experienced black screen instead of game canvas
+- **Root Cause**: Preferences API compared PostgreSQL booleans against integer 1, causing all preferences (including showGrid) to return false
+- **Fix**: Changed `preferences.dark_mode === 1` to `!!preferences.dark_mode` for proper boolean conversion
+- **Status**: ✅ Fixed - Game now works for both guest and authenticated users
+
+**2. Socket Disconnect Issues (November 2024)**
+- **Issue**: Game session tracking caused immediate socket disconnects for authenticated users
+- **Root Cause**: Session creation interfered with socket connection stability
+- **Fix**: Temporarily disabled session tracking with TODO comments for future investigation
+- **Status**: ⚠️ Temporarily resolved - Session tracking disabled until root cause identified
+
+**3. Username Availability False Positives**
 - **Issue**: Username editing showed "already taken" for user's own username
 - **Root Cause**: PostgreSQL COUNT() returns strings ("1"), SQLite returns numbers (1)
 - **Fix**: Added `parseInt()` conversion in `UserRepository.isUsernameAvailable()`
@@ -2061,5 +2089,5 @@ DATABASE_URL="${DATABASE_URL_PREVIEW}"                 # Active (uses preview fo
 - Application starts successfully with PostgreSQL
 - Database connections working correctly
 
-_Last Updated: December 2024_
-_Status: PostgreSQL-Only Architecture Complete & Tested_
+_Last Updated: November 2024_
+_Status: PostgreSQL-Only Architecture Complete & Tested, Authentication Issues Resolved_
