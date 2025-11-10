@@ -9,7 +9,10 @@
     "start": "gulp run",
     "start:prod": "node bin/server/server.js",
     "watch": "gulp watch",
-    "test": "gulp test"
+    "test": "gulp test",
+    "migration:create": "node scripts/create-migration.js",
+    "setup-hooks": "git config core.hooksPath .githooks",
+    "check-schema": "node scripts/check-schema-changes.js"
   },
   "repository": {
     "type": "git",

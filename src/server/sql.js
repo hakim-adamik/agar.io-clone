@@ -15,6 +15,18 @@ async function initializeTables() {
     try {
         console.log('[DATABASE] Connected to PostgreSQL database');
 
+        // 🚨 WARNING: SCHEMA MODIFICATION PROTECTION 🚨
+        // This function should NEVER be modified for schema changes in production!
+        // ALL schema modifications must go through migrations in src/server/db/migrations/
+        //
+        // If you need to change the database schema:
+        // 1. Run: npm run migration:create your_change_name
+        // 2. Edit the generated migration file
+        // 3. Restart server - migration runs automatically
+        //
+        // Editing this file for schema changes will cause deployment issues!
+        console.log('[DATABASE] ⚠️  Schema changes must use migrations - NOT this file!');
+
         // Existing tables
         await client.query(`CREATE TABLE IF NOT EXISTS failed_login_attempts (
             username TEXT,
@@ -147,6 +159,12 @@ async function initializeTables() {
         await client.query(`CREATE INDEX IF NOT EXISTS idx_leaderboard_period ON leaderboard(period_type, period_start, score DESC)`);
 
         console.log('[DATABASE] All tables initialized successfully');
+
+        // Run database migrations after initial table setup
+        console.log('[DATABASE] Running database migrations...');
+        const MigrationRunner = require('./db/migrations/runner');
+        await MigrationRunner.runPendingMigrations();
+
     } catch (err) {
         console.error('[DATABASE] Error initializing tables:', err);
         throw err;
