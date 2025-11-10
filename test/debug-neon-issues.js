@@ -1,13 +1,23 @@
-const dbLayer = require('../src/server/db/database-layer');
+const { Pool } = require('pg');
+
+// Create pool with same configuration as sql.js
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+});
 
 async function debugDatabaseIssues() {
-    console.log('🔍 Debugging Neon Database Issues...\n');
-    console.log('Database Type:', dbLayer.isVercel ? 'Neon Postgres ✅' : 'SQLite');
+    console.log('🔍 Debugging PostgreSQL Database Issues...\n');
+    console.log('Database Type: PostgreSQL (Neon) ✅');
+    console.log('Database URL:', process.env.DATABASE_URL ? '✅ Set' : '❌ Missing');
 
     try {
         // Test 1: Check users table
-        console.log('1️⃣  Checking users in database:');
-        const users = await dbLayer.query('SELECT id, username, privy_id FROM users');
+        console.log('\n1️⃣  Checking users in database:');
+        const users = await pool.query('SELECT id, username, privy_id FROM users');
         console.log(`   Found ${users.rows.length} users:`);
         users.rows.forEach(user => {
             console.log(`   - ID: ${user.id}, Username: ${user.username}`);
@@ -16,8 +26,8 @@ async function debugDatabaseIssues() {
         // Test 2: Check COUNT query format
         console.log('\n2️⃣  Testing COUNT query (username availability):');
         const testUsername = users.rows.length > 0 ? users.rows[0].username : 'testuser';
-        const countResult = await dbLayer.get(`SELECT COUNT(*) as count FROM users WHERE username = $1`, [testUsername]);
-        console.log(`   COUNT result for "${testUsername}":`, countResult);
+        const countResult = await pool.query(`SELECT COUNT(*) as count FROM users WHERE username = $1`, [testUsername]);
+        console.log(`   COUNT result for "${testUsername}":`, countResult.rows[0]);
         console.log(`   Type of count:`, typeof countResult.count);
         console.log(`   Count value:`, countResult.count);
         console.log(`   Is zero?:`, countResult.count === 0, '(strict)');
@@ -26,7 +36,7 @@ async function debugDatabaseIssues() {
 
         // Test 3: Check game_stats table
         console.log('\n3️⃣  Checking game_stats for leaderboard:');
-        const stats = await dbLayer.query('SELECT user_id, highest_mass FROM game_stats WHERE highest_mass > 0');
+        const stats = await pool.query('SELECT user_id, highest_mass FROM game_stats WHERE highest_mass > 0');
         console.log(`   Found ${stats.rows.length} users with stats`);
 
         // Test 4: Check leaderboard query
@@ -42,7 +52,7 @@ async function debugDatabaseIssues() {
             ORDER BY gs.highest_mass DESC NULLS LAST
             LIMIT 10
         `;
-        const leaderboard = await dbLayer.query(leaderboardQuery);
+        const leaderboard = await pool.query(leaderboardQuery);
         console.log(`   Leaderboard entries: ${leaderboard.rows.length}`);
         leaderboard.rows.forEach((entry, idx) => {
             console.log(`   ${idx + 1}. ${entry.username}: ${entry.highest_mass} mass (${entry.games_played} games)`);
@@ -50,7 +60,7 @@ async function debugDatabaseIssues() {
 
         // Test 5: Check if stats are being initialized
         console.log('\n5️⃣  Checking if game_stats rows exist for users:');
-        const userStatsCheck = await dbLayer.query(`
+        const userStatsCheck = await pool.query(`
             SELECT u.id, u.username,
                    CASE WHEN gs.user_id IS NULL THEN 'No stats' ELSE 'Has stats' END as status
             FROM users u
@@ -63,7 +73,7 @@ async function debugDatabaseIssues() {
     } catch (error) {
         console.error('❌ Error during debugging:', error);
     } finally {
-        dbLayer.close();
+        await pool.end();
         process.exit(0);
     }
 }

@@ -1,7 +1,7 @@
 /*jslint node: true */
 'use strict';
 
-const db = require('../db/database-layer');
+const pool = require('../sql');
 const StatsRepository = require('./stats-repository');
 
 class UserRepository {
@@ -11,14 +11,15 @@ class UserRepository {
     static async findOrCreateByPrivyId(privyId, userData) {
         try {
             // First, try to find existing user
-            const user = await db.get(
+            const result = await pool.query(
                 'SELECT * FROM users WHERE privy_id = $1',
                 [privyId]
             );
+            const user = result.rows[0];
 
             if (user) {
                 // Update last_seen
-                await db.run(
+                await pool.query(
                     'UPDATE users SET last_seen = $1 WHERE id = $2',
                     [Date.now(), user.id]
                 );
@@ -26,7 +27,7 @@ class UserRepository {
             } else {
                 // Create new user
                 const now = Date.now();
-                const result = await db.query(
+                const insertResult = await pool.query(
                     `INSERT INTO users (privy_id, username, email, auth_provider, avatar_url, created_at, last_seen)
                      VALUES ($1, $2, $3, $4, $5, $6, $7)
                      RETURNING *`,
@@ -40,7 +41,7 @@ class UserRepository {
                         now
                     ]
                 );
-                const newUser = result.rows[0];
+                const newUser = insertResult.rows[0];
 
                 // Initialize game stats for new user
                 try {
@@ -64,10 +65,11 @@ class UserRepository {
      */
     static async findById(userId) {
         try {
-            return await db.get(
+            const result = await pool.query(
                 'SELECT * FROM users WHERE id = $1',
                 [userId]
             );
+            return result.rows[0];
         } catch (err) {
             console.error('Error in findById:', err);
             throw err;
@@ -79,10 +81,11 @@ class UserRepository {
      */
     static async findByUsername(username) {
         try {
-            return await db.get(
+            const result = await pool.query(
                 'SELECT * FROM users WHERE username = $1',
                 [username]
             );
+            return result.rows[0];
         } catch (err) {
             console.error('Error in findByUsername:', err);
             throw err;
@@ -112,7 +115,7 @@ class UserRepository {
 
             values.push(userId);
 
-            await db.run(
+            await pool.query(
                 `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
                 values
             );
@@ -136,9 +139,9 @@ class UserRepository {
                 params.push(excludeUserId);
             }
 
-            const result = await db.get(query, params);
-            // Convert to number since Postgres returns strings, SQLite returns numbers
-            const count = parseInt(result.count) || 0;
+            const result = await pool.query(query, params);
+            // Convert to number since Postgres returns strings
+            const count = parseInt(result.rows[0].count) || 0;
             return count === 0;
         } catch (err) {
             console.error('Error in isUsernameAvailable:', err);

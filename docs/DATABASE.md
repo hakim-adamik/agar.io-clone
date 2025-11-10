@@ -8,39 +8,60 @@ This document outlines the database architecture for user data persistence, auth
 
 ## ✅ Persistent Database Setup (November 2024 - IMPLEMENTED)
 
-### Why Persistent Database?
+### Why PostgreSQL-Only Architecture?
 
-Google Cloud Run containers have ephemeral storage - SQLite databases get wiped on container restarts. To maintain persistent user data, preferences, and game statistics across deployments, we implemented a persistent database solution using **Neon Postgres**.
+Following Hakim Adamik's feedback on PR12, we simplified the codebase by removing the dual database approach and adopting PostgreSQL exclusively. This eliminates complexity, potential bugs, and maintenance overhead while providing consistent behavior across all environments.
 
-### ✅ Dual Database Architecture (Working)
+### ✅ PostgreSQL-Only Architecture (Simplified - December 2024)
 
-The application **automatically detects** and uses the appropriate database:
+The application uses **PostgreSQL exclusively** across all environments:
 
-- **Local Development**: SQLite (`src/server/db/db.sqlite3`) - Zero configuration
-- **Cloud Production**: Neon Postgres (via environment variables) - Persistent across deployments
+- **Local Development**: Neon Postgres Preview Database - Safe testing without affecting production data
+- **Cloud Production**: Neon Postgres Production Database - Live user data
 
-### ✅ Database Layer Implementation (Completed)
+### ✅ Simplified Database Implementation (December 2024)
 
-The `src/server/db/database-layer.js` provides a unified API that:
+The `src/server/sql.js` provides direct PostgreSQL connectivity:
 
-- **✅ Auto-Detection**: Checks for `POSTGRES_URL` or `DATABASE_URL` environment variables
-- **✅ Unified Interface**: Same methods work with both SQLite and PostgreSQL
+- **✅ Single Database Type**: PostgreSQL only - no dual compatibility needed
+- **✅ Direct Pool Usage**: Repositories use PostgreSQL pool directly for better performance
 - **✅ Automatic Schema**: Creates all tables on first connection
-- **✅ Query Translation**: Converts PostgreSQL syntax to SQLite automatically
-- **✅ Debug Logging**: Console shows which database type is being used
-- **✅ Error Handling**: Graceful fallback and detailed error messages
+- **✅ Environment Isolation**: Preview database for local dev, production database for deployment
+- **✅ Native PostgreSQL Features**: Boolean types, proper indexing, and constraints
+- **✅ Connection Pooling**: Efficient database connection management
 
 ### ✅ Implementation Status
 
-**Current State (November 2024):**
-- ✅ **Database Layer**: Complete and tested with both SQLite and Neon Postgres
-- ✅ **Repository Pattern**: All repositories updated to use new database layer
+**Current State (December 2024):**
+- ✅ **PostgreSQL-Only**: Simplified architecture eliminates dual database complexity
+- ✅ **Direct Repository Usage**: All repositories use PostgreSQL pool directly
 - ✅ **User Management**: Create, update, authenticate users with Privy integration
 - ✅ **Game Statistics**: Automatic stats initialization on user creation
 - ✅ **User Preferences**: Save/load settings with real-time persistence
 - ✅ **Leaderboard**: Real-time ranking based on highest_mass with user rank calculation
 - ✅ **Production Tested**: Verified working on Google Cloud Run with Neon Postgres
-- ✅ **Build Integration**: Database files properly included in gulp build process
+- ✅ **Environment Isolation**: Preview database for local dev, production for deployment
+
+## 🔄 Architecture Simplification (December 2024)
+
+### Migration from Dual Database to PostgreSQL-Only
+
+Based on feedback from Hakim Adamik on PR12, we simplified the database architecture by removing SQLite entirely and adopting PostgreSQL exclusively. This change eliminates complexity and potential bugs while maintaining data safety.
+
+**Changes Made:**
+- ✅ **Removed**: `src/server/db/database-layer.js` abstraction layer
+- ✅ **Removed**: SQLite dependency and `db.sqlite3` files
+- ✅ **Simplified**: `src/server/sql.js` to use PostgreSQL Pool directly
+- ✅ **Updated**: All repositories to use `pool.query()` directly instead of abstraction
+- ✅ **Configured**: Local development to use preview database instead of SQLite
+- ✅ **Maintained**: Environment isolation between preview and production
+
+**Benefits of Simplified Architecture:**
+- **Consistency**: Same database type across all environments
+- **Performance**: Direct PostgreSQL pool usage, no abstraction overhead
+- **Maintainability**: Single database implementation to maintain
+- **Native Features**: Full PostgreSQL feature set available everywhere
+- **Type Safety**: Consistent data types and behavior across environments
 
 ## 🔧 Issues Resolved (November 2024)
 
@@ -95,15 +116,11 @@ The `src/server/db/database-layer.js` provides a unified API that:
 
 ## Setup Instructions
 
-### 1. Local Development (SQLite)
+### PostgreSQL-Only Setup (Simplified)
 
-**No setup required!** The application automatically:
+The application now uses PostgreSQL exclusively across all environments. You need to configure database connections for both local development and production deployment.
 
-- Creates `src/server/db/db.sqlite3` on first run
-- Initializes all tables with proper schema
-- Works offline without any configuration
-
-### 2. Cloud Production (Neon Postgres)
+### 1. Database Creation (Neon Postgres)
 
 #### Option A: Vercel Dashboard (Recommended)
 
@@ -128,14 +145,23 @@ The `src/server/db/database-layer.js` provides a unified API that:
    - Navigate to "Dashboard" → "Connection Details"
    - Copy the connection string with pooling enabled
 
-#### 3. Environment Configuration
+#### 2. Environment Configuration (Hybrid Approach)
 
-**Local Testing (.env file):**
+**Local Development (.env file):**
+
+The application now uses the **preview database** for local development to ensure consistency while maintaining safety:
 
 ```bash
-# Copy .env.example to .env and fill in your values
-POSTGRES_URL="postgresql://user:password@host-pooler.region.aws.neon.tech/database?sslmode=require"
-DATABASE_URL="postgresql://user:password@host-pooler.region.aws.neon.tech/database?sslmode=require"
+# Copy .env.example to .env and configure preview database for local dev
+POSTGRES_URL="${POSTGRES_URL_PREVIEW}"
+DATABASE_URL="${DATABASE_URL_PREVIEW}"
+
+# Database connection strings (get from Neon console)
+POSTGRES_URL_PREVIEW="postgresql://neondb_owner:password@preview-host-pooler.region.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL_PREVIEW="postgresql://neondb_owner:password@preview-host-pooler.region.aws.neon.tech/neondb?sslmode=require"
+
+POSTGRES_URL_PROD="postgresql://neondb_owner:password@prod-host-pooler.region.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL_PROD="postgresql://neondb_owner:password@prod-host-pooler.region.aws.neon.tech/neondb?sslmode=require"
 ```
 
 **Cloud Run Deployment:**
@@ -172,41 +198,40 @@ DATABASE_URL="postgresql://neondb_owner:password@preview-host-pooler.region.aws.
 ./deploy.sh
 ```
 
-**Database Environment Detection:**
-- The application automatically detects the environment and uses the appropriate database
-- Logs show: `[DatabaseLayer] Using Neon Postgres database` with URL prefix in production
-- Local development automatically uses SQLite with zero configuration
+**PostgreSQL-Only Environment:**
+- The application uses PostgreSQL exclusively across all environments
+- Logs show: `[DATABASE] Connected to PostgreSQL database` on startup
+- Local development uses preview database for safe testing
+- No SQLite fallback - consistent PostgreSQL behavior everywhere
 
 ## 🛡️ Database Environment Safety (November 2024)
 
-### Environment Isolation Architecture
+### Environment Isolation Architecture (PostgreSQL-Only)
 
-The application now uses **three separate database environments** for maximum safety:
+The application uses **two separate PostgreSQL database environments** with simplified architecture:
 
 | Environment | Database | Usage | Safety Level |
 |-------------|----------|-------|--------------|
-| **Local Development** | SQLite (`src/server/db/db.sqlite3`) | Development work | ✅ **Safest** - Offline, isolated |
-| **Preview/Staging** | Neon Postgres (`agar-io-preview`) | Testing, UAT | ✅ **Safe** - Isolated from production |
+| **Local Development** | Neon Postgres (`agar-io-preview`) | Development work, testing | ✅ **Safe** - Uses preview database |
+| **Preview/Staging** | Neon Postgres (`agar-io-preview`) | Testing, UAT, development | ✅ **Safe** - Isolated from production |
 | **Production** | Neon Postgres (`agar-io-main`) | Live users | ⚠️ **Protected** - Separate from testing |
 
 ### Safety Features
 
-**Default Local Development (Safest):**
-- No environment variables needed
-- Uses SQLite automatically
-- Works offline
-- Zero risk to production data
+**Simplified Local Development:**
+- Uses preview database for consistency with deployment environments
+- All PostgreSQL features available during development
+- No SQLite/PostgreSQL compatibility issues
+- Safe testing without affecting production data
 
 **Environment Variables (.env):**
 ```bash
-# Production database (protected)
-POSTGRES_URL_PROD="postgresql://...prod-host..."
+# Database connection strings (get from Neon console)
+DATABASE_URL_PROD="postgresql://...prod-host..."
+DATABASE_URL_PREVIEW="postgresql://...preview-host..."
 
-# Preview database (safe for testing)
-POSTGRES_URL_PREVIEW="postgresql://...preview-host..."
-
-# Default: SQLite (commented out remote databases for safety)
-# POSTGRES_URL="${POSTGRES_URL_PROD}"  # Commented = SQLite
+# Active database connection (what the application actually uses)
+DATABASE_URL="${DATABASE_URL_PREVIEW}"  # Uses preview for safe local development
 ```
 
 ### Database Environment Tools
@@ -1998,5 +2023,43 @@ Server automatically:
    - Stats fetched from `/api/user/:userId` endpoint
    - Updates on modal open
 
-_Last Updated: November 2024_
-_Status: Phase A Infrastructure Complete - Ready for Testing_
+---
+
+## 🔄 Recent Architecture Simplification (December 2024)
+
+### PostgreSQL-Only Implementation
+
+Following feedback from Hakim Adamik on PR12, the database architecture was simplified to eliminate complexity and potential bugs:
+
+**✅ Changes Completed:**
+- **Removed**: SQLite support and dual database approach
+- **Removed**: `src/server/db/database-layer.js` abstraction layer
+- **Simplified**: `src/server/sql.js` to use PostgreSQL Pool directly
+- **Updated**: All repositories to use `pool.query()` directly
+- **Configured**: Local development to use preview database for safety
+- **Updated**: All test files to use simplified PostgreSQL approach
+- **Standardized**: Environment variables to use only `DATABASE_URL`
+
+**✅ Benefits Achieved:**
+- **Consistency**: Same database type across all environments
+- **Performance**: Direct PostgreSQL pool usage, no abstraction overhead
+- **Maintainability**: Single database implementation to maintain
+- **Safety**: Production data protected via environment isolation
+- **Simplicity**: Cleaner codebase with fewer moving parts
+
+**✅ Environment Configuration:**
+```bash
+# .env file (simplified)
+DATABASE_URL_PROD="postgresql://...prod-host..."      # Production database
+DATABASE_URL_PREVIEW="postgresql://...preview-host..."  # Preview database
+DATABASE_URL="${DATABASE_URL_PREVIEW}"                 # Active (uses preview for local dev)
+```
+
+**✅ Testing Status:**
+- All test files updated and passing
+- Repository functionality verified
+- Application starts successfully with PostgreSQL
+- Database connections working correctly
+
+_Last Updated: December 2024_
+_Status: PostgreSQL-Only Architecture Complete & Tested_

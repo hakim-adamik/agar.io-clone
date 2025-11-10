@@ -9,11 +9,11 @@ const StatsRepository = require('../src/server/repositories/stats-repository');
 async function testRepositoryConsistency() {
     console.log('🧪 Testing Repository Method Consistency\n');
 
-    const dbType = process.env.POSTGRES_URL ? 'Neon Postgres' : 'SQLite';
-    const dbHost = process.env.POSTGRES_URL ?
-        (process.env.POSTGRES_URL.includes('ep-tiny-night') ? '(PRODUCTION)' :
-         process.env.POSTGRES_URL.includes('ep-wild-bar') ? '(PREVIEW)' : '(UNKNOWN)') :
-        '(Local)';
+    const dbType = 'PostgreSQL (Neon)';
+    const dbHost = process.env.DATABASE_URL ?
+        (process.env.DATABASE_URL.includes('ep-tiny-night') ? '(PRODUCTION)' :
+         process.env.DATABASE_URL.includes('ep-wild-bar') ? '(PREVIEW)' : '(UNKNOWN)') :
+        '(Not configured)';
 
     console.log(`Database: ${dbType} ${dbHost}`);
     console.log('=' .repeat(50));

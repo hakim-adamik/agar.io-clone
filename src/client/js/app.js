@@ -131,7 +131,6 @@ function applyUserPreferences(prefs, settings) {
 
 // Apply default settings from config
 function applyConfigDefaults(settings) {
-<<<<<<< HEAD
     var defaults = window.DEFAULT_PREFERENCES || {};
 
     // Apply each default setting if defined
