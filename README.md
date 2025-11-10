@@ -38,6 +38,8 @@ You can check out how to play on our [wiki](https://github.com/owenashurst/agar.
 ---
 
 ## Latest Changes
+- **Database Migration**: Moved from SQLite to PostgreSQL (Neon) with migration system
+- **Fixed Authentication Issues**: Resolved black screen bug for logged-in users (boolean handling in preferences API)
 - **Multi-Arena System**: Supports 500+ concurrent players across independent arenas (10 players each)
 - **Scalable Architecture**: Auto-creates arenas on demand, intelligent player distribution
 - **Arena Monitoring**: Real-time statistics via GET /api/arenas endpoint
