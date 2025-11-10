@@ -14,11 +14,6 @@ window.gameConfig = {
         roundFood: true
     },
 
-    // Debug settings
-    debug: {
-        showCellMass: false    // Show mass debug display on cells (in addition to score)
-    },
-
     // Future: User profile overrides will go here
     // userSettings: null,  // Will be populated from user profile
 
