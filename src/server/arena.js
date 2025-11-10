@@ -177,6 +177,8 @@ class Arena {
 
         // Disconnect handler
         socket.on("disconnect", async () => {
+            // TODO: Re-enable session tracking once disconnect issue is fixed
+            /*
             // End game session if authenticated user
             if (socket.sessionId && socket.userId) {
                 try {
@@ -193,6 +195,7 @@ class Arena {
                     console.error('[ARENA] Failed to end game session:', error);
                 }
             }
+            */
 
             this.map.players.removePlayerByID(currentPlayer.id);
             delete this.sockets[socket.id];
