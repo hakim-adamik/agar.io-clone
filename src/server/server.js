@@ -43,15 +43,16 @@ app.get('/', (req, res) => {
             res.status(500).send('Error loading page');
             return;
         }
-        
-        // Inject environment variables into the HTML
+
+        // Inject environment variables and config into the HTML
         const envScript = `
         <script>
             window.ENV = {
-                PRIVY_APP_ID: '${process.env.PRIVY_APP_ID || ''}'
+                PRIVY_APP_ID: '${process.env.PRIVY_APP_ID || ''}',
+                DEBUG_SHOW_CELL_MASS: ${process.env.DEBUG_SHOW_CELL_MASS || false}
             };
         </script>`;
-        
+
         // Insert the script before the closing </head> tag
         const modifiedHtml = data.replace('</head>', `${envScript}\n    </head>`);
         res.send(modifiedHtml);
@@ -222,7 +223,7 @@ app.put('/api/user/:userId/profile', async (req, res) => {
 io.on('connection', function (socket) {
     let type = socket.handshake.query.type;
     console.log('[SERVER] User connected: ', type);
-    
+
     switch (type) {
         case 'player':
             addPlayerToArena(socket);
@@ -243,7 +244,6 @@ const addPlayerToArena = async (socket) => {
     const preferredArenaId = socket.handshake.query.arenaId || null;
     const userId = socket.handshake.query.userId || null;
     const playerName = socket.handshake.query.playerName || `Guest_${Math.floor(Math.random() * 10000)}`;
-
     // Find or create arena
     const arena = arenaManager.findAvailableArena(preferredArenaId);
 
@@ -284,12 +284,12 @@ const addSpectatorToArena = (socket) => {
     // Spectators join any active arena (prefer first one)
     const arena =
         arenaManager.arenas.values().next().value || arenaManager.createArena();
-    
+
     socket.join(arena.id);
     socket.arenaId = arena.id;
-    
+
     arena.addSpectator(socket);
-    
+
     console.log(`[SERVER] Spectator joined ${arena.id}`);
 };
 
