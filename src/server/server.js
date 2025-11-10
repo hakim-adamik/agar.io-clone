@@ -159,13 +159,13 @@ app.get('/api/user/:userId/preferences', async (req, res) => {
         const preferences = await PreferencesRepository.getPreferences(userId);
 
         res.json({
-            darkMode: preferences.dark_mode === 1,
-            showMass: preferences.show_mass === 1,
-            showBorder: preferences.show_border === 1,
-            showFps: preferences.show_fps === 1,
-            showGrid: preferences.show_grid === 1,
-            continuity: preferences.continuity === 1,
-            roundFood: preferences.round_food === 1,
+            darkMode: !!preferences.dark_mode,
+            showMass: !!preferences.show_mass,
+            showBorder: !!preferences.show_border,
+            showFps: !!preferences.show_fps,
+            showGrid: !!preferences.show_grid,
+            continuity: !!preferences.continuity,
+            roundFood: !!preferences.round_food,
             skinId: preferences.skin_id
         });
     } catch (error) {
