@@ -15,3 +15,6 @@ src/server/db/*.sqlite3
 src/server/db/*.db
 *.sqlite3
 *.db
+
+# Log files
+*.log
