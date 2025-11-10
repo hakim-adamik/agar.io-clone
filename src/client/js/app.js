@@ -562,6 +562,7 @@ var viruses = [];
 var fireFood = [];
 var users = [];
 var leaderboard = [];
+var cellsToDraw = []; // Reused each frame to reduce GC pressure
 var target = { x: player.x, y: player.y };
 global.target = target;
 
@@ -1183,40 +1184,46 @@ function gameLoop() {
 
         // Client-side viewport culling for food
         foods.forEach((food) => {
-            let position = getPosition(food, player, global.screen);
+            // Inline position calculation to avoid object allocation (GC pressure reduction)
+            let posX = food.x - player.x + global.screen.width / 2;
+            let posY = food.y - player.y + global.screen.height / 2;
             if (
                 isEntityVisible(
-                    { x: position.x, y: position.y, radius: food.radius },
+                    { x: posX, y: posY, radius: food.radius },
                     global.screen
                 )
             ) {
-                render.drawFood(position, food, graph);
+                render.drawFood({ x: posX, y: posY }, food, graph);
             }
         });
 
         // Client-side viewport culling for fireFood
         fireFood.forEach((fireFood) => {
-            let position = getPosition(fireFood, player, global.screen);
+            // Inline position calculation to avoid object allocation (GC pressure reduction)
+            let posX = fireFood.x - player.x + global.screen.width / 2;
+            let posY = fireFood.y - player.y + global.screen.height / 2;
             if (
                 isEntityVisible(
-                    { x: position.x, y: position.y, radius: fireFood.radius },
+                    { x: posX, y: posY, radius: fireFood.radius },
                     global.screen
                 )
             ) {
-                render.drawFireFood(position, fireFood, playerConfig, graph);
+                render.drawFireFood({ x: posX, y: posY }, fireFood, playerConfig, graph);
             }
         });
 
         // Client-side viewport culling for viruses
         viruses.forEach((virus) => {
-            let position = getPosition(virus, player, global.screen);
+            // Inline position calculation to avoid object allocation (GC pressure reduction)
+            let posX = virus.x - player.x + global.screen.width / 2;
+            let posY = virus.y - player.y + global.screen.height / 2;
             if (
                 isEntityVisible(
-                    { x: position.x, y: position.y, radius: virus.radius },
+                    { x: posX, y: posY, radius: virus.radius },
                     global.screen
                 )
             ) {
-                render.drawVirus(position, virus, graph);
+                render.drawVirus({ x: posX, y: posY }, virus, graph);
             }
         });
 
@@ -1231,7 +1238,8 @@ function gameLoop() {
             render.drawBorder(borders, graph);
         }
 
-        var cellsToDraw = [];
+        // Clear array instead of creating new one each frame (reduce GC pressure)
+        cellsToDraw.length = 0;
         for (var i = 0; i < users.length; i++) {
             let color = "hsl(" + users[i].hue + ", 100%, 50%)";
             let borderColor = "hsl(" + users[i].hue + ", 100%, 45%)";
