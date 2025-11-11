@@ -937,9 +937,24 @@ function setupSocket(socket) {
 
                     // Calculate player camera velocity
                     var timeDelta = prediction.current.timestamp - prediction.previous.timestamp;
-                    if (timeDelta > 0) {
-                        prediction.velocity.x = (prediction.current.x - prediction.previous.x) / timeDelta;
-                        prediction.velocity.y = (prediction.current.y - prediction.previous.y) / timeDelta;
+
+                    // Only calculate velocity if updates are far enough apart (prevent extreme velocities)
+                    var minTimeDelta = 5; // ms - ignore updates closer than 5ms apart
+                    if (timeDelta > minTimeDelta) {
+                        var vx = (prediction.current.x - prediction.previous.x) / timeDelta;
+                        var vy = (prediction.current.y - prediction.previous.y) / timeDelta;
+
+                        // Sanity check: cap maximum velocity (prevent glitches from bad data)
+                        var maxVelocity = 5; // pixels per ms (very generous, typical is ~0.5)
+                        var velocityMagnitude = Math.sqrt(vx * vx + vy * vy);
+                        if (velocityMagnitude > maxVelocity) {
+                            var scale = maxVelocity / velocityMagnitude;
+                            vx *= scale;
+                            vy *= scale;
+                        }
+
+                        prediction.velocity.x = vx;
+                        prediction.velocity.y = vy;
 
                         // Calculate velocity for each cell (if cell count matches)
                         if (prediction.current.cells.length === prediction.previous.cells.length) {
@@ -947,9 +962,20 @@ function setupSocket(socket) {
                             for (var i = 0; i < prediction.current.cells.length; i++) {
                                 var currCell = prediction.current.cells[i];
                                 var prevCell = prediction.previous.cells[i];
+                                var cellVx = (currCell.x - prevCell.x) / timeDelta;
+                                var cellVy = (currCell.y - prevCell.y) / timeDelta;
+
+                                // Cap cell velocity too
+                                var cellVelMagnitude = Math.sqrt(cellVx * cellVx + cellVy * cellVy);
+                                if (cellVelMagnitude > maxVelocity) {
+                                    var cellScale = maxVelocity / cellVelMagnitude;
+                                    cellVx *= cellScale;
+                                    cellVy *= cellScale;
+                                }
+
                                 prediction.cellVelocities.push({
-                                    vx: (currCell.x - prevCell.x) / timeDelta,
-                                    vy: (currCell.y - prevCell.y) / timeDelta
+                                    vx: cellVx,
+                                    vy: cellVy
                                 });
                             }
                         } else {
@@ -1011,14 +1037,29 @@ function setupSocket(socket) {
 
                     // Calculate velocity for each cell
                     var timeDelta = playerState.current.timestamp - playerState.previous.timestamp;
-                    if (timeDelta > 0 && playerState.current.cells.length === playerState.previous.cells.length) {
+                    var minTimeDelta = 5; // ms - ignore updates closer than 5ms apart
+
+                    if (timeDelta > minTimeDelta && playerState.current.cells.length === playerState.previous.cells.length) {
                         playerState.velocities = [];
+                        var maxVelocity = 5; // pixels per ms
+
                         for (var j = 0; j < playerState.current.cells.length; j++) {
                             var currCell = playerState.current.cells[j];
                             var prevCell = playerState.previous.cells[j];
+                            var cellVx = (currCell.x - prevCell.x) / timeDelta;
+                            var cellVy = (currCell.y - prevCell.y) / timeDelta;
+
+                            // Cap velocity to prevent glitches
+                            var cellVelMagnitude = Math.sqrt(cellVx * cellVx + cellVy * cellVy);
+                            if (cellVelMagnitude > maxVelocity) {
+                                var cellScale = maxVelocity / cellVelMagnitude;
+                                cellVx *= cellScale;
+                                cellVy *= cellScale;
+                            }
+
                             playerState.velocities.push({
-                                vx: (currCell.x - prevCell.x) / timeDelta,
-                                vy: (currCell.y - prevCell.y) / timeDelta
+                                vx: cellVx,
+                                vy: cellVy
                             });
                         }
                     } else {
@@ -1317,26 +1358,34 @@ function gameLoop() {
             var maxExtrapolation = 50; // ms - about 3 frames at 60fps
             timeSinceUpdate = Math.min(timeSinceUpdate, maxExtrapolation);
 
-            // Extrapolate player camera position
-            prediction.predicted.x = prediction.current.x + prediction.velocity.x * timeSinceUpdate;
-            prediction.predicted.y = prediction.current.y + prediction.velocity.y * timeSinceUpdate;
+            // Only extrapolate if timeSinceUpdate is positive and reasonable
+            if (timeSinceUpdate >= 0 && timeSinceUpdate <= maxExtrapolation) {
+                // Extrapolate player camera position
+                prediction.predicted.x = prediction.current.x + prediction.velocity.x * timeSinceUpdate;
+                prediction.predicted.y = prediction.current.y + prediction.velocity.y * timeSinceUpdate;
 
-            // Extrapolate cell positions
-            if (prediction.cellVelocities.length === prediction.current.cells.length) {
-                prediction.predicted.cells = [];
-                for (var i = 0; i < prediction.current.cells.length; i++) {
-                    var cell = prediction.current.cells[i];
-                    var vel = prediction.cellVelocities[i];
-                    prediction.predicted.cells.push({
-                        x: cell.x + vel.vx * timeSinceUpdate,
-                        y: cell.y + vel.vy * timeSinceUpdate,
-                        mass: cell.mass,
-                        radius: cell.radius,
-                        score: cell.score
-                    });
+                // Extrapolate cell positions
+                if (prediction.cellVelocities.length === prediction.current.cells.length) {
+                    prediction.predicted.cells = [];
+                    for (var i = 0; i < prediction.current.cells.length; i++) {
+                        var cell = prediction.current.cells[i];
+                        var vel = prediction.cellVelocities[i];
+                        prediction.predicted.cells.push({
+                            x: cell.x + vel.vx * timeSinceUpdate,
+                            y: cell.y + vel.vy * timeSinceUpdate,
+                            mass: cell.mass,
+                            radius: cell.radius,
+                            score: cell.score
+                        });
+                    }
+                } else {
+                    // No velocity data (split/merge just happened) - use current state
+                    prediction.predicted.cells = JSON.parse(JSON.stringify(prediction.current.cells));
                 }
             } else {
-                // No velocity data (split/merge just happened) - use current state
+                // Invalid time delta - use current state without extrapolation
+                prediction.predicted.x = prediction.current.x;
+                prediction.predicted.y = prediction.current.y;
                 prediction.predicted.cells = JSON.parse(JSON.stringify(prediction.current.cells));
             }
 
@@ -1357,22 +1406,26 @@ function gameLoop() {
 
                     if (playerState && playerState.velocities.length > 0) {
                         var timeSinceUpdate = now - playerState.current.timestamp;
-                        timeSinceUpdate = Math.min(timeSinceUpdate, maxExtrapolation);
 
-                        if (playerState.velocities.length === playerState.current.cells.length) {
-                            var predictedCells = [];
-                            for (var j = 0; j < playerState.current.cells.length; j++) {
-                                var cell = playerState.current.cells[j];
-                                var vel = playerState.velocities[j];
-                                predictedCells.push({
-                                    x: cell.x + vel.vx * timeSinceUpdate,
-                                    y: cell.y + vel.vy * timeSinceUpdate,
-                                    mass: cell.mass,
-                                    radius: cell.radius,
-                                    score: cell.score
-                                });
+                        // Only extrapolate if time is valid
+                        if (timeSinceUpdate >= 0 && timeSinceUpdate <= maxExtrapolation) {
+                            timeSinceUpdate = Math.min(timeSinceUpdate, maxExtrapolation);
+
+                            if (playerState.velocities.length === playerState.current.cells.length) {
+                                var predictedCells = [];
+                                for (var j = 0; j < playerState.current.cells.length; j++) {
+                                    var cell = playerState.current.cells[j];
+                                    var vel = playerState.velocities[j];
+                                    predictedCells.push({
+                                        x: cell.x + vel.vx * timeSinceUpdate,
+                                        y: cell.y + vel.vy * timeSinceUpdate,
+                                        mass: cell.mass,
+                                        radius: cell.radius,
+                                        score: cell.score
+                                    });
+                                }
+                                users[i].cells = predictedCells;
                             }
-                            users[i].cells = predictedCells;
                         }
                     }
                 }
