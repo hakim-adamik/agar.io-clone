@@ -1052,26 +1052,104 @@ function setupSocket(socket) {
             lastPositionUpdateTime = updateTime;
 
             if (global.playerType == "player") {
-                // Store server authoritative position
-                player.serverX = playerData.x;
-                player.serverY = playerData.y;
-
-                // Initialize visual position if first update
-                if (player.visualX === undefined) {
-                    player.visualX = playerData.x;
-                    player.visualY = playerData.y;
-                    player.x = playerData.x;
-                    player.y = playerData.y;
-                }
-
+                // Update non-position data directly
                 player.hue = playerData.hue;
                 player.massTotal = playerData.massTotal;
-                player.cells = playerData.cells;
-                // Calculate total score from all cells
                 player.score = playerData.cells.reduce(
                     (sum, cell) => sum + (cell.score || 0),
                     0
                 );
+
+                var now = getTime();
+
+                // Client-side prediction: store server states and calculate velocity
+                if (!prediction.enabled) {
+                    // First update - initialize
+                    prediction.previous = {
+                        x: playerData.x,
+                        y: playerData.y,
+                        cells: JSON.parse(JSON.stringify(playerData.cells)),
+                        timestamp: now
+                    };
+                    prediction.current = {
+                        x: playerData.x,
+                        y: playerData.y,
+                        cells: JSON.parse(JSON.stringify(playerData.cells)),
+                        timestamp: now
+                    };
+                    prediction.predicted = {
+                        x: playerData.x,
+                        y: playerData.y,
+                        cells: JSON.parse(JSON.stringify(playerData.cells))
+                    };
+                    player.x = playerData.x;
+                    player.y = playerData.y;
+                    player.cells = playerData.cells;
+                    prediction.enabled = true;
+                } else {
+                    // Subsequent updates - shift states and calculate velocity
+                    prediction.previous = prediction.current;
+                    prediction.current = {
+                        x: playerData.x,
+                        y: playerData.y,
+                        cells: JSON.parse(JSON.stringify(playerData.cells)),
+                        timestamp: now
+                    };
+
+                    // Calculate player camera velocity
+                    var timeDelta = prediction.current.timestamp - prediction.previous.timestamp;
+
+                    // Only calculate velocity if updates are far enough apart (prevent extreme velocities)
+                    var minTimeDelta = 5; // ms - ignore updates closer than 5ms apart
+                    if (timeDelta > minTimeDelta) {
+                        var vx = (prediction.current.x - prediction.previous.x) / timeDelta;
+                        var vy = (prediction.current.y - prediction.previous.y) / timeDelta;
+
+                        // Sanity check: cap maximum velocity (prevent glitches from bad data)
+                        var maxVelocity = 5; // pixels per ms (very generous, typical is ~0.5)
+                        var velocityMagnitude = Math.sqrt(vx * vx + vy * vy);
+                        if (velocityMagnitude > maxVelocity) {
+                            var scale = maxVelocity / velocityMagnitude;
+                            vx *= scale;
+                            vy *= scale;
+                        }
+
+                        prediction.velocity.x = vx;
+                        prediction.velocity.y = vy;
+
+                        // Calculate velocity for each cell (if cell count matches)
+                        if (prediction.current.cells.length === prediction.previous.cells.length) {
+                            prediction.cellVelocities = [];
+                            for (var i = 0; i < prediction.current.cells.length; i++) {
+                                var currCell = prediction.current.cells[i];
+                                var prevCell = prediction.previous.cells[i];
+                                var cellVx = (currCell.x - prevCell.x) / timeDelta;
+                                var cellVy = (currCell.y - prevCell.y) / timeDelta;
+
+                                // Cap cell velocity too
+                                var cellVelMagnitude = Math.sqrt(cellVx * cellVx + cellVy * cellVy);
+                                if (cellVelMagnitude > maxVelocity) {
+                                    var cellScale = maxVelocity / cellVelMagnitude;
+                                    cellVx *= cellScale;
+                                    cellVy *= cellScale;
+                                }
+
+                                prediction.cellVelocities.push({
+                                    vx: cellVx,
+                                    vy: cellVy
+                                });
+                            }
+                        } else {
+                            // Cell count changed (split/merge) - reset velocities
+                            prediction.cellVelocities = [];
+                        }
+                    }
+
+                    // Start predicting from current server state
+                    prediction.predicted.x = prediction.current.x;
+                    prediction.predicted.y = prediction.current.y;
+                    prediction.predicted.cells = JSON.parse(JSON.stringify(prediction.current.cells));
+                }
 
                 // Update player score display with enhanced features
                 updatePlayerScoreDisplay(player);
@@ -1185,6 +1263,44 @@ var fpsTrackingStarted = false;
 // Position update tracking (UPS - Updates Per Second)
 var positionUpdateTimes = [];
 var lastPositionUpdateTime = 0;
+
+// Hybrid client-side prediction with velocity extrapolation and adaptive enabling
+var prediction = {
+    enabled: false,
+    // Adaptive thresholds
+    minLatencyThreshold: 20, // Only enable prediction if latency > 20ms
+
+    // Last two server states to calculate velocity (for current player)
+    previous: { x: 0, y: 0, cells: [], timestamp: 0 },
+    current: { x: 0, y: 0, cells: [], timestamp: 0 },
+
+    // Predicted state (what we render)
+    predicted: { x: 0, y: 0, cells: [] },
+
+    // Calculated velocities
+    velocity: { x: 0, y: 0 },
+    cellVelocities: [],
+
+    // Other players prediction
+    otherPlayers: {
+        // Map of playerId -> { previous, current, velocities }
+        states: {},
+        timestamp: 0
+    }
+};
+
+// Use performance.now() if available, fallback to Date.now()
+var getTime = (function () {
+    if (window.performance && window.performance.now) {
+        return function () {
+            return window.performance.now();
+        };
+    } else {
+        return function () {
+            return Date.now();
+        };
+    }
+})();
 
 // Initialize FPS counter visibility from localStorage
 (function () {
@@ -1337,68 +1453,74 @@ var socketEmitInterval = 16; // ~60fps for socket updates (every ~16ms)
 
 function gameLoop() {
     if (global.gameStart) {
-        // Client-side prediction for smooth movement (only when there's network delay)
+        // Hybrid client-side prediction with adaptive enabling
         // Calculate average network delay from recent updates
         const avgDelay = positionUpdateTimes.length > 0
             ? positionUpdateTimes.reduce((a, b) => a + b, 0) / positionUpdateTimes.length
             : 16;
 
-        // Only use prediction if network delay is significant (>20ms average)
-        const usePrediction = avgDelay > 20;
+        // Adaptive: only use prediction if network delay is significant
+        const usePrediction = avgDelay > prediction.minLatencyThreshold;
 
-        if (usePrediction && player.visualX !== undefined && player.visualY !== undefined && player.massTotal) {
-            // Calculate speed based on mass (same as server)
-            const maxSpeed = 6.25;
-            const baseSpeed = Math.log10(player.massTotal) * -1.75 + maxSpeed;
-            const speed = Math.max(1, baseSpeed);
+        if (usePrediction && prediction.enabled) {
+            var now = getTime();
+            var timeSinceUpdate = now - prediction.current.timestamp;
 
-            // Get mouse target direction
-            const targetX = global.target.x;
-            const targetY = global.target.y;
+            // Limit extrapolation to reasonable time (prevent overshooting if network lags)
+            var maxExtrapolation = 50; // ms - about 3 frames at 60fps
+            timeSinceUpdate = Math.min(timeSinceUpdate, maxExtrapolation);
 
-            // Calculate distance to mouse
-            const distance = Math.sqrt(targetX * targetX + targetY * targetY);
+            // Only extrapolate if timeSinceUpdate is positive and reasonable
+            if (timeSinceUpdate >= 0 && timeSinceUpdate <= maxExtrapolation) {
+                // Extrapolate player camera position using velocity
+                prediction.predicted.x = prediction.current.x + prediction.velocity.x * timeSinceUpdate;
+                prediction.predicted.y = prediction.current.y + prediction.velocity.y * timeSinceUpdate;
 
-            if (distance > 0) {
-                // Normalize and apply speed (client prediction)
-                const normalizedX = targetX / distance;
-                const normalizedY = targetY / distance;
-
-                // Move visual position immediately based on input
-                player.visualX += normalizedX * speed;
-                player.visualY += normalizedY * speed;
-            }
-
-            // Gentle reconciliation with server position
-            if (player.serverX !== undefined && player.serverY !== undefined) {
-                const reconcileSpeed = 0.1; // Slightly faster reconciliation
-                const deltaX = player.serverX - player.visualX;
-                const deltaY = player.serverY - player.visualY;
-                const errorDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-                // Reconcile based on error magnitude
-                if (errorDistance > 10) {
-                    // Large error: snap closer
-                    player.visualX = player.visualX * 0.7 + player.serverX * 0.3;
-                    player.visualY = player.visualY * 0.7 + player.serverY * 0.3;
-                } else if (errorDistance > 2) {
-                    // Small error: gentle correction
-                    player.visualX += deltaX * reconcileSpeed;
-                    player.visualY += deltaY * reconcileSpeed;
+                // Extrapolate cell positions
+                if (prediction.cellVelocities.length === prediction.current.cells.length) {
+                    prediction.predicted.cells = [];
+                    for (var i = 0; i < prediction.current.cells.length; i++) {
+                        var cell = prediction.current.cells[i];
+                        var vel = prediction.cellVelocities[i];
+                        prediction.predicted.cells.push({
+                            x: cell.x + vel.vx * timeSinceUpdate,
+                            y: cell.y + vel.vy * timeSinceUpdate,
+                            mass: cell.mass,
+                            radius: cell.radius,
+                            score: cell.score,
+                            name: cell.name,
+                            color: cell.color
+                        });
+                    }
+                } else {
+                    // No velocity data (split/merge just happened) - use current state
+                    prediction.predicted.cells = JSON.parse(JSON.stringify(prediction.current.cells));
                 }
-                // Very small error: ignore (let client be authoritative)
+            } else {
+                // Invalid time delta - use current state without extrapolation
+                prediction.predicted.x = prediction.current.x;
+                prediction.predicted.y = prediction.current.y;
+                prediction.predicted.cells = JSON.parse(JSON.stringify(prediction.current.cells));
             }
 
-            // Use visual position for camera
-            player.x = player.visualX;
-            player.y = player.visualY;
-        } else if (!usePrediction && player.serverX !== undefined && player.serverY !== undefined) {
+            // Use predicted state for rendering
+            player.x = prediction.predicted.x;
+            player.y = prediction.predicted.y;
+            player.cells = prediction.predicted.cells;
+
+            // Also update predicted cells in users array (for cell rendering)
+            for (var i = 0; i < users.length; i++) {
+                if (users[i].id === player.id) {
+                    // Found current player in users array - replace with predicted cells
+                    users[i].cells = prediction.predicted.cells;
+                    break;
+                }
+            }
+        } else if (!usePrediction && prediction.enabled) {
             // Low latency (local play): use server position directly
-            player.x = player.serverX;
-            player.y = player.serverY;
-            // Keep visual position in sync for when prediction kicks in
-            player.visualX = player.x;
-            player.visualY = player.y;
+            player.x = prediction.current.x;
+            player.y = prediction.current.y;
+            player.cells = prediction.current.cells;
         }
 
         graph.fillStyle = global.backgroundColor;
@@ -1600,6 +1722,15 @@ function cleanupGame() {
     viruses = [];
     fireFood = [];
     users = [];
+
+    // Reset prediction state
+    prediction.enabled = false;
+    prediction.previous = { x: 0, y: 0, cells: [], timestamp: 0 };
+    prediction.current = { x: 0, y: 0, cells: [], timestamp: 0 };
+    prediction.predicted = { x: 0, y: 0, cells: [] };
+    prediction.velocity = { x: 0, y: 0 };
+    prediction.cellVelocities = [];
+    prediction.otherPlayers.states = {};
 
     // Reset player
     player = {
