@@ -186,10 +186,13 @@ div {
     top: 10px;
     right: 10px;
     z-index: 100;
-    min-width: 220px;
+    width: 250px;
+    max-width: 250px;
+    overflow-x: hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     cursor: pointer;
     user-select: none;
+    box-sizing: border-box;
 }
 
 #status:hover {
@@ -201,6 +204,7 @@ div {
 #status.expanded {
     max-height: 400px;
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .leaderboard-header {
@@ -231,16 +235,23 @@ div {
     font-style: italic;
 }
 
+.leaderboard-content {
+    overflow-x: hidden;
+    width: 100%;
+}
+
 .leaderboard-list {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    overflow-x: hidden;
 }
 
 .leaderboard-entry {
     display: flex;
     align-items: center;
     padding: 4px 0;
+    overflow: hidden;
 }
 
 .leaderboard-entry:hover {
@@ -259,12 +270,18 @@ div {
     font-size: 13px;
     margin-left: 8px;
     font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 .leaderboard-entry .score {
     font-size: 13px;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.8);
+    margin-left: 8px;
+    flex-shrink: 0;
 }
 
 .leaderboard-entry.top3 .score {
@@ -483,7 +500,8 @@ div {
         padding: 8px 10px;
         top: 5px;
         right: 5px;
-        min-width: 140px;
+        width: 200px;
+        max-width: 200px;
         cursor: pointer;
         user-select: none;
         -webkit-tap-highlight-color: transparent;
@@ -494,9 +512,9 @@ div {
     }
 
     #status.expanded {
-        min-width: 180px;
         max-height: 300px;
         overflow-y: auto;
+        overflow-x: hidden;
     }
 
     .leaderboard-header {
