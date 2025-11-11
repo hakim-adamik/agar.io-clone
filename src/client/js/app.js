@@ -76,7 +76,7 @@ function applyUserPreferences(prefs, settings) {
     // Apply dark mode
     if (prefs.darkMode !== undefined) {
         var shouldEnable = prefs.darkMode === true;
-        var isEnabled = global.backgroundColor === "#181818";
+        var isEnabled = global.backgroundColor === "#111111";
         if (shouldEnable !== isEnabled) {
             settings.toggleDarkMode();
         }
@@ -136,7 +136,7 @@ function applyConfigDefaults(settings) {
     // Apply each default setting if defined
     if (defaults.darkMode !== undefined) {
         var shouldEnable = defaults.darkMode;
-        var isEnabled = global.backgroundColor === "#181818";
+        var isEnabled = global.backgroundColor === "#111111";
         if (shouldEnable !== isEnabled) {
             settings.toggleDarkMode();
         }
@@ -180,7 +180,7 @@ function syncSettingsCheckboxes() {
     var checkboxSync = [
         {
             ids: ["darkMode", "darkModeGame"],
-            value: global.backgroundColor === "#181818",
+            value: global.backgroundColor === "#111111",
         },
         {
             ids: ["showMass", "showMassGame"],

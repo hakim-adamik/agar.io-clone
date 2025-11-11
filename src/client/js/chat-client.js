@@ -199,7 +199,7 @@ class ChatClient {
 
     toggleDarkMode() {
         var LIGHT = "#f2fbff",
-            DARK = "#181818";
+            DARK = "#111111";
         var LINELIGHT = "#000000",
             LINEDARK = "#ffffff";
 
