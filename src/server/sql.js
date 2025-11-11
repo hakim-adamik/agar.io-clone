@@ -35,20 +35,6 @@ const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CR
         }
       });
 
-      db.run(`CREATE TABLE IF NOT EXISTS chat_messages (
-        username TEXT,
-        message TEXT,
-        ip_address TEXT,
-        timestamp INTEGER
-      )`, (err) => {
-        if (err) {
-          console.error(err);
-        }
-        else {
-          console.log("Created chat_messages table");
-        }
-      });
-
       // Phase A: User Authentication & Profile Tables
 
       // Users table - Core user profiles linked to Privy authentication
@@ -150,7 +136,6 @@ const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CR
         continuity INTEGER DEFAULT 1,
         round_food INTEGER DEFAULT 1,
         show_fps INTEGER DEFAULT 0,
-        chat_enabled INTEGER DEFAULT 1,
         sound_enabled INTEGER DEFAULT 1,
         volume INTEGER DEFAULT 50,
         skin_id INTEGER,

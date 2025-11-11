@@ -12,7 +12,6 @@ const SAT = require("sat");
 const util = require("./lib/util");
 const mapUtils = require("./map/map");
 const { getPosition } = require("./lib/entityUtils");
-const chatRepository = require("./repositories/chat-repository");
 const loggingRepository = require("./repositories/logging-repository");
 const AuthService = require("./services/auth-service");
 const SessionRepository = require("./repositories/session-repository");
@@ -251,47 +250,10 @@ class Arena {
             this.lastActivityAt = Date.now();
         });
 
-        // Chat handler
-        this.setupChatEvents(socket, currentPlayer);
-
         // Admin commands
         this.setupAdminEvents(socket, currentPlayer);
     }
 
-    /**
-     * Setup chat event handlers
-     */
-    setupChatEvents(socket, currentPlayer) {
-        socket.on("playerChat", (data) => {
-            var _sender = data.sender.replace(/(<([^>]+)>)/gi, "");
-            var _message = data.message.replace(/(<([^>]+)>)/gi, "");
-
-            if (this.config.logChat === 1) {
-                console.log(
-                    "[CHAT] [" +
-                        new Date().getHours() +
-                        ":" +
-                        new Date().getMinutes() +
-                        "] " +
-                        _sender +
-                        ": " +
-                        _message
-                );
-            }
-
-            // Broadcast only to THIS arena
-            this.broadcastToArena("serverSendPlayerChat", {
-                sender: currentPlayer.name,
-                message: _message.substring(0, 35),
-            });
-
-            chatRepository
-                .logChatMessage(_sender, _message, currentPlayer.ipAddress)
-                .catch((err) =>
-                    console.error("Error logging chat message", err)
-                );
-        });
-    }
 
     /**
      * Setup admin command handlers
