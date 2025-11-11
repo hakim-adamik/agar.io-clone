@@ -5,7 +5,7 @@ const drawRoundObject = (position, radius, graph) => {
     graph.arc(position.x, position.y, radius, 0, FULL_ANGLE);
     graph.closePath();
     graph.fill();
-    graph.stroke();
+    // graph.stroke(); // Removed cell border
 };
 
 const drawFood = (position, food, graph) => {
@@ -88,7 +88,7 @@ const drawCellWithLines = (cell, borders, graph) => {
     }
     graph.closePath();
     graph.fill();
-    graph.stroke();
+    // graph.stroke(); // Removed cell border
 };
 
 const drawCells = (cells, playerConfig, toggleMassState, borders, graph, exitCountdownActive, exitCountdownValue, player) => {
@@ -96,7 +96,7 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph, exitCou
         // Draw the cell itself
         graph.fillStyle = cell.color;
         graph.strokeStyle = cell.borderColor;
-        graph.lineWidth = 6;
+        graph.lineWidth = 0;
         if (cellTouchingBorders(cell, borders)) {
             // Asssemble the cell from lines
             drawCellWithLines(cell, borders, graph);
@@ -254,7 +254,7 @@ const drawGrid = (global, player, screen, graph) => {
 };
 
 const drawBorder = (borders, graph) => {
-    graph.lineWidth = 1;
+    graph.lineWidth = 8;
     graph.strokeStyle = "#000000";
     graph.beginPath();
     graph.moveTo(borders.left, borders.top);
