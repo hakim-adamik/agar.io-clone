@@ -477,86 +477,57 @@ function initParallax() {
 
 // Enhanced player score display update
 var lastScore = 0;
-var scoreHistory = [];
-var scoreMilestones = [100, 250, 500, 1000, 2500, 5000, 10000];
+var displayedScore = 0;
+var targetScore = 0;
+var scoreAnimationFrame = null;
 
 function updatePlayerScoreDisplay(player) {
-    var score = Math.round(player.score);
+    var score = player.score || 0; // Keep as float for smooth animation
+    targetScore = score;
+
     var scoreValueEl = document.querySelector('.score-value');
-    var changeEl = document.querySelector('.score-change');
 
     if (scoreValueEl) {
-        // Update score with animation
-        var formattedScore = score.toLocaleString('en-US');
-        scoreValueEl.textContent = formattedScore;
-
-        // Show score change indicator
-        if (score !== lastScore && changeEl) {
-            var change = score - lastScore;
-            if (change !== 0) {
-                changeEl.textContent = (change > 0 ? '+' : '') + change;
-                changeEl.className = 'score-change ' + (change > 0 ? 'positive' : 'negative');
-
-                // Add pulse animation to score
-                scoreValueEl.classList.add('pulse');
-                setTimeout(() => scoreValueEl.classList.remove('pulse'), 300);
-
-                // Reset change indicator animation
-                changeEl.style.animation = 'none';
-                setTimeout(() => {
-                    changeEl.style.animation = '';
-                }, 10);
-            }
+        // Start animated counting if not already running
+        if (!scoreAnimationFrame) {
+            animateScore();
         }
-
-        // Update progress bar
-        updateProgressBar(score);
-
-        // Update rank
-        updatePlayerRank();
-
-        // Update mass
-        updatePlayerMass(player.massTotal);
 
         lastScore = score;
     }
 }
 
-function updateProgressBar(score) {
-    var progressFill = document.querySelector('.progress-fill');
-    var nextMilestoneEl = document.querySelector('.next-milestone');
+function animateScore() {
+    var scoreValueEl = document.querySelector('.score-value');
+    if (!scoreValueEl) return;
 
-    if (progressFill && nextMilestoneEl) {
-        // Find next milestone
-        var nextMilestone = scoreMilestones.find(m => m > score) || scoreMilestones[scoreMilestones.length - 1] * 2;
-        var prevMilestone = [...scoreMilestones].reverse().find(m => m <= score) || 0;
+    // Smooth animation towards target
+    var diff = targetScore - displayedScore;
+    var step = diff * 0.15; // Adjust speed of counting
 
-        // Calculate progress
-        var progress = ((score - prevMilestone) / (nextMilestone - prevMilestone)) * 100;
-        progressFill.style.width = progress + '%';
+    // Minimum step to ensure we're always moving
+    if (Math.abs(diff) > 0.01) {
+        displayedScore += step;
 
-        // Update milestone text
-        nextMilestoneEl.textContent = nextMilestone.toLocaleString('en-US');
+        // Add counting class for subtle animation
+        scoreValueEl.classList.add('counting');
+        setTimeout(() => scoreValueEl.classList.remove('counting'), 50);
+    } else {
+        displayedScore = targetScore;
     }
-}
 
-function updatePlayerRank() {
-    var rankEl = document.getElementById('playerRank');
-    if (rankEl && leaderboard.length > 0) {
-        // Find player's rank in leaderboard
-        var playerRank = leaderboard.findIndex(entry => entry.id === player.id);
-        if (playerRank !== -1) {
-            rankEl.textContent = '#' + (playerRank + 1);
-        } else {
-            rankEl.textContent = '-';
-        }
-    }
-}
+    // Format with 2 decimal places, thousand separators, and $ sign
+    var formattedScore = displayedScore.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    scoreValueEl.textContent = formattedScore + '$';
 
-function updatePlayerMass(massTotal) {
-    var massEl = document.getElementById('playerMass');
-    if (massEl && massTotal) {
-        massEl.textContent = Math.round(massTotal);
+    // Continue animation if needed
+    if (Math.abs(targetScore - displayedScore) > 0.01) {
+        scoreAnimationFrame = requestAnimationFrame(animateScore);
+    } else {
+        scoreAnimationFrame = null;
     }
 }
 
@@ -1027,7 +998,7 @@ function setupSocket(socket) {
 
             // Add rank with medals for top 3
             var rank = "";
-            if (i === 0) rank = "👑";
+            if (i === 0) rank = "🥇";
             else if (i === 1) rank = "🥈";
             else if (i === 2) rank = "🥉";
             else rank = (i + 1);
