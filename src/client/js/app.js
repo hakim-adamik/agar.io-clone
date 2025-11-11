@@ -1052,8 +1052,18 @@ function setupSocket(socket) {
             lastPositionUpdateTime = updateTime;
 
             if (global.playerType == "player") {
-                player.x = playerData.x;
-                player.y = playerData.y;
+                // Store server authoritative position
+                player.serverX = playerData.x;
+                player.serverY = playerData.y;
+
+                // Initialize visual position if first update
+                if (player.visualX === undefined) {
+                    player.visualX = playerData.x;
+                    player.visualY = playerData.y;
+                    player.x = playerData.x;
+                    player.y = playerData.y;
+                }
+
                 player.hue = playerData.hue;
                 player.massTotal = playerData.massTotal;
                 player.cells = playerData.cells;
@@ -1327,6 +1337,70 @@ var socketEmitInterval = 16; // ~60fps for socket updates (every ~16ms)
 
 function gameLoop() {
     if (global.gameStart) {
+        // Client-side prediction for smooth movement (only when there's network delay)
+        // Calculate average network delay from recent updates
+        const avgDelay = positionUpdateTimes.length > 0
+            ? positionUpdateTimes.reduce((a, b) => a + b, 0) / positionUpdateTimes.length
+            : 16;
+
+        // Only use prediction if network delay is significant (>20ms average)
+        const usePrediction = avgDelay > 20;
+
+        if (usePrediction && player.visualX !== undefined && player.visualY !== undefined && player.massTotal) {
+            // Calculate speed based on mass (same as server)
+            const maxSpeed = 6.25;
+            const baseSpeed = Math.log10(player.massTotal) * -1.75 + maxSpeed;
+            const speed = Math.max(1, baseSpeed);
+
+            // Get mouse target direction
+            const targetX = global.target.x;
+            const targetY = global.target.y;
+
+            // Calculate distance to mouse
+            const distance = Math.sqrt(targetX * targetX + targetY * targetY);
+
+            if (distance > 0) {
+                // Normalize and apply speed (client prediction)
+                const normalizedX = targetX / distance;
+                const normalizedY = targetY / distance;
+
+                // Move visual position immediately based on input
+                player.visualX += normalizedX * speed;
+                player.visualY += normalizedY * speed;
+            }
+
+            // Gentle reconciliation with server position
+            if (player.serverX !== undefined && player.serverY !== undefined) {
+                const reconcileSpeed = 0.1; // Slightly faster reconciliation
+                const deltaX = player.serverX - player.visualX;
+                const deltaY = player.serverY - player.visualY;
+                const errorDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+                // Reconcile based on error magnitude
+                if (errorDistance > 10) {
+                    // Large error: snap closer
+                    player.visualX = player.visualX * 0.7 + player.serverX * 0.3;
+                    player.visualY = player.visualY * 0.7 + player.serverY * 0.3;
+                } else if (errorDistance > 2) {
+                    // Small error: gentle correction
+                    player.visualX += deltaX * reconcileSpeed;
+                    player.visualY += deltaY * reconcileSpeed;
+                }
+                // Very small error: ignore (let client be authoritative)
+            }
+
+            // Use visual position for camera
+            player.x = player.visualX;
+            player.y = player.visualY;
+        } else if (!usePrediction && player.serverX !== undefined && player.serverY !== undefined) {
+            // Low latency (local play): use server position directly
+            player.x = player.serverX;
+            player.y = player.serverY;
+            // Keep visual position in sync for when prediction kicks in
+            player.visualX = player.x;
+            player.visualY = player.y;
+        }
+
         graph.fillStyle = global.backgroundColor;
         graph.fillRect(0, 0, global.screen.width, global.screen.height);
 
