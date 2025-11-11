@@ -475,6 +475,91 @@ function initParallax() {
 
 */
 
+// Enhanced player score display update
+var lastScore = 0;
+var scoreHistory = [];
+var scoreMilestones = [100, 250, 500, 1000, 2500, 5000, 10000];
+
+function updatePlayerScoreDisplay(player) {
+    var score = Math.round(player.score);
+    var scoreValueEl = document.querySelector('.score-value');
+    var changeEl = document.querySelector('.score-change');
+
+    if (scoreValueEl) {
+        // Update score with animation
+        var formattedScore = score.toLocaleString('en-US');
+        scoreValueEl.textContent = formattedScore;
+
+        // Show score change indicator
+        if (score !== lastScore && changeEl) {
+            var change = score - lastScore;
+            if (change !== 0) {
+                changeEl.textContent = (change > 0 ? '+' : '') + change;
+                changeEl.className = 'score-change ' + (change > 0 ? 'positive' : 'negative');
+
+                // Add pulse animation to score
+                scoreValueEl.classList.add('pulse');
+                setTimeout(() => scoreValueEl.classList.remove('pulse'), 300);
+
+                // Reset change indicator animation
+                changeEl.style.animation = 'none';
+                setTimeout(() => {
+                    changeEl.style.animation = '';
+                }, 10);
+            }
+        }
+
+        // Update progress bar
+        updateProgressBar(score);
+
+        // Update rank
+        updatePlayerRank();
+
+        // Update mass
+        updatePlayerMass(player.massTotal);
+
+        lastScore = score;
+    }
+}
+
+function updateProgressBar(score) {
+    var progressFill = document.querySelector('.progress-fill');
+    var nextMilestoneEl = document.querySelector('.next-milestone');
+
+    if (progressFill && nextMilestoneEl) {
+        // Find next milestone
+        var nextMilestone = scoreMilestones.find(m => m > score) || scoreMilestones[scoreMilestones.length - 1] * 2;
+        var prevMilestone = [...scoreMilestones].reverse().find(m => m <= score) || 0;
+
+        // Calculate progress
+        var progress = ((score - prevMilestone) / (nextMilestone - prevMilestone)) * 100;
+        progressFill.style.width = progress + '%';
+
+        // Update milestone text
+        nextMilestoneEl.textContent = nextMilestone.toLocaleString('en-US');
+    }
+}
+
+function updatePlayerRank() {
+    var rankEl = document.getElementById('playerRank');
+    if (rankEl && leaderboard.length > 0) {
+        // Find player's rank in leaderboard
+        var playerRank = leaderboard.findIndex(entry => entry.id === player.id);
+        if (playerRank !== -1) {
+            rankEl.textContent = '#' + (playerRank + 1);
+        } else {
+            rankEl.textContent = '-';
+        }
+    }
+}
+
+function updatePlayerMass(massTotal) {
+    var massEl = document.getElementById('playerMass');
+    if (massEl && massTotal) {
+        massEl.textContent = Math.round(massTotal);
+    }
+}
+
 // Setup leaderboard toggle for all devices
 function setupLeaderboardToggle() {
     var statusEl = document.getElementById("status");
@@ -992,12 +1077,8 @@ function setupSocket(socket) {
                     0
                 );
 
-                // Update player score display
-                var playerScoreEl = document.getElementById("playerScore");
-                if (playerScoreEl) {
-                    var displayScore = Math.round(player.score).toLocaleString('en-US');
-                    playerScoreEl.innerHTML = '<div class="title">SCORE</div><div class="value">' + displayScore + '</div>';
-                }
+                // Update player score display with enhanced features
+                updatePlayerScoreDisplay(player);
             }
             users = userData;
             foods = foodsList;
