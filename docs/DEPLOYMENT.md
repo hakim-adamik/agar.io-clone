@@ -160,7 +160,7 @@ CMD [ "npm", "run", "start:prod" ]
 #### Environment Variables
 
 ```bash
---set-env-vars NODE_ENV=production,PORT=8080,ADMIN_PASS=your_secure_password
+--set-env-vars NODE_ENV=production,PORT=8080
 ```
 
 #### Custom Domain
@@ -379,7 +379,6 @@ NODE_ENV=production         # Environment mode
 ### Optional Environment Variables
 
 ```bash
-ADMIN_PASS=secure_password  # Admin password for server management
 PRIVY_APP_ID=your_app_id   # Privy authentication app ID
 ```
 
@@ -391,7 +390,6 @@ Update `config.js` for production:
 module.exports = {
     host: "0.0.0.0",
     port: process.env.PORT || 8080,
-    adminPass: process.env.ADMIN_PASS || "CHANGE_THIS_IN_PRODUCTION",
 
     // Database configuration for production
     sqlinfo: {
