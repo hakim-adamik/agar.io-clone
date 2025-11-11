@@ -466,8 +466,28 @@ function initParallax() {
 
 */
 
+// Setup leaderboard toggle for all devices
+function setupLeaderboardToggle() {
+    var statusEl = document.getElementById("status");
+    if (!statusEl) return;
+
+    // Add click listener using event delegation
+    statusEl.addEventListener("click", function(e) {
+        // Toggle expanded class
+        this.classList.toggle("expanded");
+
+        // Re-render leaderboard with current data
+        if (window.lastLeaderboardData) {
+            renderLeaderboard(window.lastLeaderboardData);
+        }
+    });
+}
+
 window.onload = function () {
     // Landing page is handled by landing.js
+
+    // Set up leaderboard click handler for mobile
+    setupLeaderboardToggle();
 
     // Hidden start button for auto-start
     var btn = document.getElementById("startButton"),
@@ -853,25 +873,61 @@ function setupSocket(socket) {
         // Player join notification removed (chat feature removed)
     });
 
-    socket.on("leaderboard", (data) => {
+    function renderLeaderboard(data) {
         leaderboard = data.leaderboard;
-        var status = '<span class="title">Leaderboard</span>';
-        for (var i = 0; i < leaderboard.length; i++) {
-            status += "<br />";
-            var displayName = leaderboard[i].name.length !== 0 ? leaderboard[i].name : "An unnamed cell";
-            var score = leaderboard[i].score || 0;
-            // Format score with 2 decimals, removing trailing zeros
-            var displayScore = parseFloat(score.toFixed(2));
-            var entry = (i + 1) + ". " + displayName + " - " + displayScore;
+        var statusEl = document.getElementById("status");
+        if (!statusEl) return;
 
-            if (leaderboard[i].id == player.id) {
-                status += '<span class="me">' + entry + "</span>";
-            } else {
-                status += entry;
+        var isExpanded = statusEl.classList.contains("expanded");
+
+        var status = '<div class="leaderboard-header">';
+        status += 'LEADERBOARD';
+        status += '<span class="expand-icon">' + (isExpanded ? '▼' : '▶') + '</span>';
+        status += '</div>';
+        status += '<div class="leaderboard-list">';
+
+        // Show only first player when collapsed (both mobile and desktop)
+        var itemsToShow = !isExpanded ? 1 : leaderboard.length;
+
+        for (var i = 0; i < itemsToShow && i < leaderboard.length; i++) {
+            var displayName = leaderboard[i].name.length !== 0 ? leaderboard[i].name : "An unnamed cell";
+            // Truncate long names
+            if (displayName.length > 12) {
+                displayName = displayName.substring(0, 10) + "...";
             }
+
+            var score = leaderboard[i].score || 0;
+            var displayScore = score.toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+            // Add rank with medals for top 3
+            var rank = "";
+            if (i === 0) rank = "👑";
+            else if (i === 1) rank = "🥈";
+            else if (i === 2) rank = "🥉";
+            else rank = (i + 1);
+
+            var entryClass = leaderboard[i].id == player.id ? "me" : "";
+            if (i < 3) entryClass += " top3";
+
+            status += '<div class="leaderboard-entry ' + entryClass + '">';
+            status += '<span class="rank">' + rank + '</span>';
+            status += '<span class="name">' + displayName + '</span>';
+            status += '<span class="score">' + displayScore + '</span>';
+            status += '</div>';
         }
-        //status += '<br />Players: ' + data.players;
-        document.getElementById("status").innerHTML = status;
+
+        // Show collapsed indicator when collapsed
+        if (!isExpanded && leaderboard.length > 1) {
+            status += '<div class="leaderboard-more">+' + (leaderboard.length - 1) + ' more</div>';
+        }
+
+        status += '</div>';
+        statusEl.innerHTML = status;
+    }
+
+    socket.on("leaderboard", (data) => {
+        window.lastLeaderboardData = data;
+        renderLeaderboard(data);
     });
 
     // Chat feature removed
@@ -903,8 +959,8 @@ function setupSocket(socket) {
                 // Update player score display
                 var playerScoreEl = document.getElementById("playerScore");
                 if (playerScoreEl) {
-                    var displayScore = parseFloat(player.score.toFixed(2));
-                    playerScoreEl.innerHTML = '<span class="title">Score</span><br />' + displayScore;
+                    var displayScore = Math.round(player.score).toLocaleString('en-US');
+                    playerScoreEl.innerHTML = '<div class="title">SCORE</div><div class="value">' + displayScore + '</div>';
                 }
             }
             users = userData;
