@@ -1,6 +1,5 @@
 var io = require("socket.io-client");
 var render = require("./render");
-var ChatClient = require("./chat-client");
 var Canvas = require("./canvas");
 var global = require("./global");
 
@@ -36,88 +35,76 @@ window.startSeamlessGame = function () {
 
 // Apply default game settings based on configuration
 function applyDefaultGameSettings() {
-    // Ensure chat/settings is initialized first
-    if (!window.chat) {
-        window.chat = new ChatClient();
-    }
-    var settings = window.chat;
-
     // Try to load user preferences from server if authenticated
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
         console.log('Loading preferences for user:', privyUser.dbUserId);
-        loadUserPreferences(privyUser.dbUserId, settings);
+        loadUserPreferences(privyUser.dbUserId);
     } else {
         // Fall back to default settings if not authenticated
-        applyConfigDefaults(settings);
+        applyConfigDefaults();
     }
 }
 
 // Load user preferences from server
-function loadUserPreferences(userId, settings) {
+function loadUserPreferences(userId) {
     fetch("/api/user/" + userId + "/preferences")
         .then(function(response) {
             if (!response.ok) throw new Error("Failed to load preferences");
             return response.json();
         })
         .then(function(prefs) {
-            applyUserPreferences(prefs, settings);
+            applyUserPreferences(prefs);
         })
         .catch(function(error) {
             console.warn("Failed to load user preferences, using defaults:", error);
-            applyConfigDefaults(settings);
+            applyConfigDefaults();
         });
 }
 
 // Apply user preferences from server
-function applyUserPreferences(prefs, settings) {
+function applyUserPreferences(prefs) {
     console.log('Applying user preferences:', prefs);
+
+    var DARK = "#181818";
+    var LIGHT = "#f2fbff";
+    var LINEDARK = "#ffffff";
+    var LINELIGHT = "#000000";
 
     // Apply dark mode
     if (prefs.darkMode !== undefined) {
-        var shouldEnable = prefs.darkMode === true;
-        var isEnabled = global.backgroundColor === "#181818";
-        if (shouldEnable !== isEnabled) {
-            settings.toggleDarkMode();
+        if (prefs.darkMode === true) {
+            global.backgroundColor = DARK;
+            global.lineColor = LINEDARK;
+        } else {
+            global.backgroundColor = LIGHT;
+            global.lineColor = LINELIGHT;
         }
     }
 
     // Apply show mass
     if (prefs.showMass !== undefined) {
-        var shouldShow = prefs.showMass === true;
-        var isShowing = global.toggleMassState === 1;
-        if (shouldShow !== isShowing) {
-            settings.toggleMass();
-        }
+        global.toggleMassState = prefs.showMass === true ? 1 : 0;
     }
 
     // Apply show border
     if (prefs.showBorder !== undefined) {
-        var shouldShow = prefs.showBorder === true;
-        if (shouldShow !== global.borderDraw) {
-            settings.toggleBorder();
-        }
+        global.borderDraw = prefs.showBorder === true;
     }
 
     // Apply continuity
     if (prefs.continuity !== undefined) {
-        var shouldEnable = prefs.continuity === true;
-        if (shouldEnable !== global.continuity) {
-            settings.toggleContinuity();
-        }
+        global.continuity = prefs.continuity === true;
     }
 
     // Apply show FPS
     if (prefs.showFps !== undefined) {
-        var shouldShow = prefs.showFps === true;
-        if (shouldShow !== global.showFpsCounter) {
-            settings.toggleFpsDisplay();
-        }
+        global.showFpsCounter = prefs.showFps === true;
     }
 
     // Apply round food
     if (prefs.roundFood !== undefined) {
-        global.roundFood = prefs.roundFood === true;
+        global.foodSides = prefs.roundFood === true ? 10 : 5;
     }
 
     // Apply show grid
@@ -130,46 +117,40 @@ function applyUserPreferences(prefs, settings) {
 }
 
 // Apply default settings from config
-function applyConfigDefaults(settings) {
+function applyConfigDefaults() {
     var config = window.gameConfig || {};
     var defaults = config.getSettings ? config.getSettings() : {};
 
+    var DARK = "#181818";
+    var LIGHT = "#f2fbff";
+    var LINEDARK = "#ffffff";
+    var LINELIGHT = "#000000";
+
     // Apply each default setting if defined
     if (defaults.darkMode !== undefined) {
-        var shouldEnable = defaults.darkMode;
-        var isEnabled = global.backgroundColor === "#181818";
-        if (shouldEnable !== isEnabled) {
-            settings.toggleDarkMode();
+        if (defaults.darkMode) {
+            global.backgroundColor = DARK;
+            global.lineColor = LINEDARK;
+        } else {
+            global.backgroundColor = LIGHT;
+            global.lineColor = LINELIGHT;
         }
     }
 
     if (defaults.showMass !== undefined) {
-        var shouldShow = defaults.showMass;
-        var isShowing = global.toggleMassState === 1;
-        if (shouldShow !== isShowing) {
-            settings.toggleMass();
-        }
+        global.toggleMassState = defaults.showMass ? 1 : 0;
     }
 
     if (defaults.showBorder !== undefined) {
-        var shouldShow = defaults.showBorder;
-        if (shouldShow !== global.borderDraw) {
-            settings.toggleBorder();
-        }
+        global.borderDraw = defaults.showBorder;
     }
 
     if (defaults.continuity !== undefined) {
-        var shouldEnable = defaults.continuity;
-        if (shouldEnable !== global.continuity) {
-            settings.toggleContinuity();
-        }
+        global.continuity = defaults.continuity;
     }
 
     if (defaults.showFps !== undefined) {
-        var shouldShow = defaults.showFps;
-        if (shouldShow !== global.showFpsCounter) {
-            settings.toggleFpsDisplay();
-        }
+        global.showFpsCounter = defaults.showFps;
     }
 
     // Sync checkbox states
@@ -214,14 +195,13 @@ function startGame(type) {
     global.playerType = type;
 
     // Load user preferences when starting the game
-    var settings = window.chat || new ChatClient();
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
         console.log('Loading user preferences for game start, userId:', privyUser.dbUserId);
-        loadUserPreferences(privyUser.dbUserId, settings);
+        loadUserPreferences(privyUser.dbUserId);
     } else {
         console.log('No authenticated user, applying default settings');
-        applyConfigDefaults(settings);
+        applyConfigDefaults();
     }
 
     global.screen.width = window.innerWidth;
@@ -275,8 +255,6 @@ function startGame(type) {
     }
     if (!global.animLoopHandle) animloop();
     socket.emit("respawn");
-    window.chat.socket = socket;
-    window.chat.registerFunctions();
     window.canvas.socket = socket;
     global.socket = socket;
 }
@@ -567,34 +545,85 @@ var target = { x: player.x, y: player.y };
 global.target = target;
 
 window.canvas = new Canvas();
-window.chat = new ChatClient();
 
-var settings = window.chat; // Settings functions are in the chat client
+// Toggle functions for settings
+function toggleDarkMode() {
+    var LIGHT = "#f2fbff", DARK = "#181818";
+    var LINELIGHT = "#000000", LINEDARK = "#ffffff";
+
+    if (global.backgroundColor === LIGHT) {
+        global.backgroundColor = DARK;
+        global.lineColor = LINEDARK;
+    } else {
+        global.backgroundColor = LIGHT;
+        global.lineColor = LINELIGHT;
+    }
+
+    var darkModeCheckbox = document.getElementById("darkMode");
+    if (darkModeCheckbox) {
+        darkModeCheckbox.checked = (global.backgroundColor === DARK);
+    }
+    var darkModeGameCheckbox = document.getElementById("darkModeGame");
+    if (darkModeGameCheckbox) {
+        darkModeGameCheckbox.checked = (global.backgroundColor === DARK);
+    }
+}
+
+function toggleBorder() {
+    global.borderDraw = !global.borderDraw;
+}
+
+function toggleMass() {
+    global.toggleMassState = global.toggleMassState === 0 ? 1 : 0;
+}
+
+function toggleContinuity() {
+    global.continuity = !global.continuity;
+}
+
+function toggleRoundFood() {
+    global.foodSides = global.foodSides < 10 ? 10 : 5;
+}
+
+function toggleFpsDisplay() {
+    global.showFpsCounter = !global.showFpsCounter;
+    if (global.fpsCounter) {
+        global.fpsCounter.style.display = global.showFpsCounter ? "block" : "none";
+    }
+    var showFpsCheckbox = document.getElementById("showFps");
+    if (showFpsCheckbox) {
+        showFpsCheckbox.checked = global.showFpsCounter;
+    }
+    var showFpsGameCheckbox = document.getElementById("showFpsGame");
+    if (showFpsGameCheckbox) {
+        showFpsGameCheckbox.checked = global.showFpsCounter;
+    }
+}
 
 var visibleBorderSetting = document.getElementById("visBord");
-visibleBorderSetting.onchange = settings.toggleBorder;
+visibleBorderSetting.onchange = toggleBorder;
 
 var showMassSetting = document.getElementById("showMass");
-showMassSetting.onchange = settings.toggleMass;
+showMassSetting.onchange = toggleMass;
 
 var continuitySetting = document.getElementById("continuity");
-continuitySetting.onchange = settings.toggleContinuity;
+continuitySetting.onchange = toggleContinuity;
 
 var roundFoodSetting = document.getElementById("roundFood");
-roundFoodSetting.onchange = settings.toggleRoundFood;
+roundFoodSetting.onchange = toggleRoundFood;
 
 var showFpsSetting = document.getElementById("showFps");
-showFpsSetting.onchange = settings.toggleFpsDisplay;
+showFpsSetting.onchange = toggleFpsDisplay;
 
 var darkModeSetting = document.getElementById("darkMode");
-darkModeSetting.onchange = settings.toggleDarkMode;
+darkModeSetting.onchange = toggleDarkMode;
 
 // Sync game settings modal checkboxes
 var visBordGame = document.getElementById("visBordGame");
 if (visBordGame) {
     visBordGame.onchange = function () {
         visibleBorderSetting.checked = this.checked;
-        settings.toggleBorder();
+        toggleBorder();
     };
 }
 
@@ -602,7 +631,7 @@ var showMassGame = document.getElementById("showMassGame");
 if (showMassGame) {
     showMassGame.onchange = function () {
         showMassSetting.checked = this.checked;
-        settings.toggleMass();
+        toggleMass();
     };
 }
 
@@ -610,7 +639,7 @@ var continuityGame = document.getElementById("continuityGame");
 if (continuityGame) {
     continuityGame.onchange = function () {
         continuitySetting.checked = this.checked;
-        settings.toggleContinuity();
+        toggleContinuity();
     };
 }
 
@@ -618,7 +647,7 @@ var roundFoodGame = document.getElementById("roundFoodGame");
 if (roundFoodGame) {
     roundFoodGame.onchange = function () {
         roundFoodSetting.checked = this.checked;
-        settings.toggleRoundFood();
+        toggleRoundFood();
     };
 }
 
@@ -626,7 +655,7 @@ var darkModeGame = document.getElementById("darkModeGame");
 if (darkModeGame) {
     darkModeGame.onchange = function () {
         darkModeSetting.checked = this.checked;
-        settings.toggleDarkMode();
+        toggleDarkMode();
     };
 }
 
@@ -634,7 +663,7 @@ var showFpsGame = document.getElementById("showFpsGame");
 if (showFpsGame) {
     showFpsGame.onchange = function () {
         showFpsSetting.checked = this.checked;
-        settings.toggleFpsDisplay();
+        toggleFpsDisplay();
     };
 }
 
@@ -786,7 +815,6 @@ function setupSocket(socket) {
     socket.on("pongcheck", function () {
         var latency = Date.now() - global.startPingTime;
         debug("Latency: " + latency + "ms");
-        window.chat.addSystemLine("Ping: " + latency + "ms");
     });
 
     // Handle error.
@@ -801,7 +829,6 @@ function setupSocket(socket) {
         player.screenHeight = global.screen.height;
         player.target = window.canvas.target;
         global.player = player;
-        window.chat.player = player;
         socket.emit("gotit", player);
         global.gameStart = true;
 
@@ -809,16 +836,6 @@ function setupSocket(socket) {
         if (gameSizes.arenaId) {
             global.arenaId = gameSizes.arenaId;
             console.log(`[CLIENT] Joined arena: ${gameSizes.arenaId}`);
-            window.chat.addSystemLine(`Connected to ${gameSizes.arenaId}!`);
-        } else {
-            window.chat.addSystemLine("Connected to the game!");
-        }
-
-        window.chat.addSystemLine("Type <b>-help</b> for a list of commands.");
-        if (global.mobile) {
-            document
-                .getElementById("gameAreaWrapper")
-                .removeChild(document.getElementById("chatbox"));
         }
         c.focus();
         global.game.width = gameSizes.width;
@@ -827,29 +844,15 @@ function setupSocket(socket) {
     });
 
     socket.on("playerDied", (data) => {
-        const player = isUnnamedCell(data.playerEatenName)
-            ? "An unnamed cell"
-            : data.playerEatenName;
-        //const killer = isUnnamedCell(data.playerWhoAtePlayerName) ? 'An unnamed cell' : data.playerWhoAtePlayerName;
-
-        //window.chat.addSystemLine('{GAME} - <b>' + (player) + '</b> was eaten by <b>' + (killer) + '</b>');
-        window.chat.addSystemLine("{GAME} - <b>" + player + "</b> was eaten");
+        // Player death notification removed (chat feature removed)
     });
 
     socket.on("playerDisconnect", (data) => {
-        window.chat.addSystemLine(
-            "{GAME} - <b>" +
-                (isUnnamedCell(data.name) ? "An unnamed cell" : data.name) +
-                "</b> disconnected."
-        );
+        // Player disconnect notification removed (chat feature removed)
     });
 
     socket.on("playerJoin", (data) => {
-        window.chat.addSystemLine(
-            "{GAME} - <b>" +
-                (isUnnamedCell(data.name) ? "An unnamed cell" : data.name) +
-                "</b> joined."
-        );
+        // Player join notification removed (chat feature removed)
     });
 
     socket.on("leaderboard", (data) => {
@@ -873,14 +876,7 @@ function setupSocket(socket) {
         document.getElementById("status").innerHTML = status;
     });
 
-    socket.on("serverMSG", function (data) {
-        window.chat.addSystemLine(data);
-    });
-
-    // Chat.
-    socket.on("serverSendPlayerChat", function (data) {
-        window.chat.addChatLine(data.sender, data.message, false);
-    });
+    // Chat feature removed
 
     // Handle movement.
     socket.on(
