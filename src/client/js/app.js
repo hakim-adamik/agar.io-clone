@@ -1,6 +1,5 @@
 var io = require("socket.io-client");
 var render = require("./render");
-var ChatClient = require("./chat-client");
 var Canvas = require("./canvas");
 var global = require("./global");
 
@@ -36,88 +35,79 @@ window.startSeamlessGame = function () {
 
 // Apply default game settings based on configuration
 function applyDefaultGameSettings() {
-    // Ensure chat/settings is initialized first
-    if (!window.chat) {
-        window.chat = new ChatClient();
-    }
-    var settings = window.chat;
-
     // Try to load user preferences from server if authenticated
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
-        console.log('Loading preferences for user:', privyUser.dbUserId);
-        loadUserPreferences(privyUser.dbUserId, settings);
+        console.log("Loading preferences for user:", privyUser.dbUserId);
+        loadUserPreferences(privyUser.dbUserId);
     } else {
         // Fall back to default settings if not authenticated
-        applyConfigDefaults(settings);
+        applyConfigDefaults();
     }
 }
 
 // Load user preferences from server
-function loadUserPreferences(userId, settings) {
+function loadUserPreferences(userId) {
     fetch("/api/user/" + userId + "/preferences")
-        .then(function(response) {
+        .then(function (response) {
             if (!response.ok) throw new Error("Failed to load preferences");
             return response.json();
         })
-        .then(function(prefs) {
-            applyUserPreferences(prefs, settings);
+        .then(function (prefs) {
+            applyUserPreferences(prefs);
         })
-        .catch(function(error) {
-            console.warn("Failed to load user preferences, using defaults:", error);
-            applyConfigDefaults(settings);
+        .catch(function (error) {
+            console.warn(
+                "Failed to load user preferences, using defaults:",
+                error
+            );
+            applyConfigDefaults();
         });
 }
 
 // Apply user preferences from server
-function applyUserPreferences(prefs, settings) {
-    console.log('Applying user preferences:', prefs);
+function applyUserPreferences(prefs) {
+    console.log("Applying user preferences:", prefs);
+
+    var DARK = "#111111";
+    var LIGHT = "#f2fbff";
+    var LINEDARK = "#ffffff";
+    var LINELIGHT = "#000000";
 
     // Apply dark mode
     if (prefs.darkMode !== undefined) {
-        var shouldEnable = prefs.darkMode === true;
-        var isEnabled = global.backgroundColor === "#111111";
-        if (shouldEnable !== isEnabled) {
-            settings.toggleDarkMode();
+        if (prefs.darkMode === true) {
+            global.backgroundColor = DARK;
+            global.lineColor = LINEDARK;
+        } else {
+            global.backgroundColor = LIGHT;
+            global.lineColor = LINELIGHT;
         }
     }
 
     // Apply show mass
     if (prefs.showMass !== undefined) {
-        var shouldShow = prefs.showMass === true;
-        var isShowing = global.toggleMassState === 1;
-        if (shouldShow !== isShowing) {
-            settings.toggleMass();
-        }
+        global.toggleMassState = prefs.showMass === true ? 1 : 0;
     }
 
     // Apply show border
     if (prefs.showBorder !== undefined) {
-        var shouldShow = prefs.showBorder === true;
-        if (shouldShow !== global.borderDraw) {
-            settings.toggleBorder();
-        }
+        global.borderDraw = prefs.showBorder === true;
     }
 
     // Apply continuity
     if (prefs.continuity !== undefined) {
-        var shouldEnable = prefs.continuity === true;
-        if (shouldEnable !== global.continuity) {
-            settings.toggleContinuity();
-        }
+        global.continuity = prefs.continuity === true;
     }
 
     // Apply show FPS
     if (prefs.showFps !== undefined) {
-        var shouldShow = prefs.showFps === true;
-        if (shouldShow !== global.showFpsCounter) {
-            settings.toggleFpsDisplay();
-        }
+        global.showFpsCounter = prefs.showFps === true;
     }
 
     // Apply round food
     if (prefs.roundFood !== undefined) {
-        global.roundFood = prefs.roundFood === true;
+        global.foodSides = prefs.roundFood === true ? 10 : 5;
     }
 
     // Apply show grid
@@ -133,42 +123,36 @@ function applyUserPreferences(prefs, settings) {
 function applyConfigDefaults(settings) {
     var defaults = window.DEFAULT_PREFERENCES || {};
 
+    var DARK = "#111111";
+    var LIGHT = "#f2fbff";
+    var LINEDARK = "#ffffff";
+    var LINELIGHT = "#000000";
+
     // Apply each default setting if defined
     if (defaults.darkMode !== undefined) {
-        var shouldEnable = defaults.darkMode;
-        var isEnabled = global.backgroundColor === "#111111";
-        if (shouldEnable !== isEnabled) {
-            settings.toggleDarkMode();
+        if (defaults.darkMode) {
+            global.backgroundColor = DARK;
+            global.lineColor = LINEDARK;
+        } else {
+            global.backgroundColor = LIGHT;
+            global.lineColor = LINELIGHT;
         }
     }
 
     if (defaults.showMass !== undefined) {
-        var shouldShow = defaults.showMass;
-        var isShowing = global.toggleMassState === 1;
-        if (shouldShow !== isShowing) {
-            settings.toggleMass();
-        }
+        global.toggleMassState = defaults.showMass ? 1 : 0;
     }
 
     if (defaults.showBorder !== undefined) {
-        var shouldShow = defaults.showBorder;
-        if (shouldShow !== global.borderDraw) {
-            settings.toggleBorder();
-        }
+        global.borderDraw = defaults.showBorder;
     }
 
     if (defaults.continuity !== undefined) {
-        var shouldEnable = defaults.continuity;
-        if (shouldEnable !== global.continuity) {
-            settings.toggleContinuity();
-        }
+        global.continuity = defaults.continuity;
     }
 
     if (defaults.showFps !== undefined) {
-        var shouldShow = defaults.showFps;
-        if (shouldShow !== global.showFpsCounter) {
-            settings.toggleFpsDisplay();
-        }
+        global.showFpsCounter = defaults.showFps;
     }
 
     // Sync checkbox states
@@ -213,14 +197,16 @@ function startGame(type) {
     global.playerType = type;
 
     // Load user preferences when starting the game
-    var settings = window.chat || new ChatClient();
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
-        console.log('Loading user preferences for game start, userId:', privyUser.dbUserId);
-        loadUserPreferences(privyUser.dbUserId, settings);
+        console.log(
+            "Loading user preferences for game start, userId:",
+            privyUser.dbUserId
+        );
+        loadUserPreferences(privyUser.dbUserId);
     } else {
-        console.log('No authenticated user, applying default settings');
-        applyConfigDefaults(settings);
+        console.log("No authenticated user, applying default settings");
+        applyConfigDefaults();
     }
 
     global.screen.width = window.innerWidth;
@@ -247,12 +233,12 @@ function startGame(type) {
         // Get user data from localStorage (if authenticated)
         let userData = null;
         try {
-            const privyUserStr = localStorage.getItem('privy_user');
+            const privyUserStr = localStorage.getItem("privy_user");
             if (privyUserStr) {
                 userData = JSON.parse(privyUserStr);
             }
         } catch (e) {
-            console.error('[Socket] Failed to parse user data:', e);
+            console.error("[Socket] Failed to parse user data:", e);
         }
 
         // Build query params including user data
@@ -260,22 +246,23 @@ function startGame(type) {
             type: type,
             arenaId: global.arenaId || null,
             userId: userData?.dbUserId || null,
-            playerName: playerNameInput.value || userData?.username || `Guest_${Math.floor(Math.random() * 10000)}`
+            playerName:
+                playerNameInput.value ||
+                userData?.username ||
+                `Guest_${Math.floor(Math.random() * 10000)}`,
         };
 
         // Convert to query string
         const query = Object.keys(queryParams)
-            .filter(key => queryParams[key] !== null)
-            .map(key => `${key}=${encodeURIComponent(queryParams[key])}`)
-            .join('&');
+            .filter((key) => queryParams[key] !== null)
+            .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
+            .join("&");
 
         socket = io({ query });
         setupSocket(socket);
     }
     if (!global.animLoopHandle) animloop();
     socket.emit("respawn");
-    window.chat.socket = socket;
-    window.chat.registerFunctions();
     window.canvas.socket = socket;
     global.socket = socket;
 }
@@ -565,34 +552,89 @@ var target = { x: player.x, y: player.y };
 global.target = target;
 
 window.canvas = new Canvas();
-window.chat = new ChatClient();
 
-var settings = window.chat; // Settings functions are in the chat client
+// Toggle functions for settings
+function toggleDarkMode() {
+    var LIGHT = "#f2fbff",
+        DARK = "#181818";
+    var LINELIGHT = "#000000",
+        LINEDARK = "#ffffff";
+
+    if (global.backgroundColor === LIGHT) {
+        global.backgroundColor = DARK;
+        global.lineColor = LINEDARK;
+    } else {
+        global.backgroundColor = LIGHT;
+        global.lineColor = LINELIGHT;
+    }
+
+    var darkModeCheckbox = document.getElementById("darkMode");
+    if (darkModeCheckbox) {
+        darkModeCheckbox.checked = global.backgroundColor === DARK;
+    }
+    var darkModeGameCheckbox = document.getElementById("darkModeGame");
+    if (darkModeGameCheckbox) {
+        darkModeGameCheckbox.checked = global.backgroundColor === DARK;
+    }
+}
+
+function toggleBorder() {
+    global.borderDraw = !global.borderDraw;
+}
+
+function toggleMass() {
+    global.toggleMassState = global.toggleMassState === 0 ? 1 : 0;
+}
+
+function toggleContinuity() {
+    global.continuity = !global.continuity;
+}
+
+function toggleRoundFood() {
+    global.foodSides = global.foodSides < 10 ? 10 : 5;
+}
+
+function toggleFpsDisplay() {
+    global.showFpsCounter = !global.showFpsCounter;
+    if (global.fpsCounter) {
+        global.fpsCounter.style.display = global.showFpsCounter
+            ? "block"
+            : "none";
+    }
+    var showFpsCheckbox = document.getElementById("showFps");
+    if (showFpsCheckbox) {
+        showFpsCheckbox.checked = global.showFpsCounter;
+    }
+    var showFpsGameCheckbox = document.getElementById("showFpsGame");
+    if (showFpsGameCheckbox) {
+        showFpsGameCheckbox.checked = global.showFpsCounter;
+    }
+}
 
 var visibleBorderSetting = document.getElementById("visBord");
-visibleBorderSetting.onchange = settings.toggleBorder;
+visibleBorderSetting.onchange = toggleBorder;
 
 var showMassSetting = document.getElementById("showMass");
-showMassSetting.onchange = settings.toggleMass;
+showMassSetting.onchange = toggleMass;
 
 var continuitySetting = document.getElementById("continuity");
-continuitySetting.onchange = settings.toggleContinuity;
+continuitySetting.onchange = toggleContinuity;
 
 var roundFoodSetting = document.getElementById("roundFood");
-roundFoodSetting.onchange = settings.toggleRoundFood;
+roundFoodSetting.onchange = toggleRoundFood;
 
 var showFpsSetting = document.getElementById("showFps");
-showFpsSetting.onchange = settings.toggleFpsDisplay;
+showFpsSetting.onchange = toggleFpsDisplay;
 
 var darkModeSetting = document.getElementById("darkMode");
-darkModeSetting.onchange = settings.toggleDarkMode;
+darkModeSetting.onchange = toggleDarkMode;
 
 // Sync game settings modal checkboxes
 var visBordGame = document.getElementById("visBordGame");
 if (visBordGame) {
     visBordGame.onchange = function () {
         visibleBorderSetting.checked = this.checked;
-        settings.toggleBorder();
+        toggleBorder();
     };
 }
 
@@ -600,7 +642,7 @@ var showMassGame = document.getElementById("showMassGame");
 if (showMassGame) {
     showMassGame.onchange = function () {
         showMassSetting.checked = this.checked;
-        settings.toggleMass();
+        toggleMass();
     };
 }
 
@@ -608,7 +650,7 @@ var continuityGame = document.getElementById("continuityGame");
 if (continuityGame) {
     continuityGame.onchange = function () {
         continuitySetting.checked = this.checked;
-        settings.toggleContinuity();
+        toggleContinuity();
     };
 }
 
@@ -616,7 +658,7 @@ var roundFoodGame = document.getElementById("roundFoodGame");
 if (roundFoodGame) {
     roundFoodGame.onchange = function () {
         roundFoodSetting.checked = this.checked;
-        settings.toggleRoundFood();
+        toggleRoundFood();
     };
 }
 
@@ -624,7 +666,7 @@ var darkModeGame = document.getElementById("darkModeGame");
 if (darkModeGame) {
     darkModeGame.onchange = function () {
         darkModeSetting.checked = this.checked;
-        settings.toggleDarkMode();
+        toggleDarkMode();
     };
 }
 
@@ -632,7 +674,7 @@ var showFpsGame = document.getElementById("showFpsGame");
 if (showFpsGame) {
     showFpsGame.onchange = function () {
         showFpsSetting.checked = this.checked;
-        settings.toggleFpsDisplay();
+        toggleFpsDisplay();
     };
 }
 
@@ -665,23 +707,31 @@ $("#exit").on("click touchstart", function (e) {
 });
 
 // Directional pad control - touch anywhere on screen
-(function() {
-    var canvas = document.getElementById('cvs');
-    var touchCenterIndicator = document.getElementById('touchCenter');
+(function () {
+    var canvas = document.getElementById("cvs");
+    var touchCenterIndicator = document.getElementById("touchCenter");
     var touchCenterX = 0;
     var touchCenterY = 0;
     var isMoving = false;
     var movingTouchId = null;
 
     if (canvas) {
-        canvas.addEventListener('touchstart', function(e) {
+        canvas.addEventListener("touchstart", function (e) {
             // Check if this touch is on a button
             var touch = e.touches[0];
-            var element = document.elementFromPoint(touch.clientX, touch.clientY);
+            var element = document.elementFromPoint(
+                touch.clientX,
+                touch.clientY
+            );
 
             if (element) {
-                var isButton = element.id === 'split' || element.id === 'feed' || element.id === 'exit' ||
-                               element.closest('#split') || element.closest('#feed') || element.closest('#exit');
+                var isButton =
+                    element.id === "split" ||
+                    element.id === "feed" ||
+                    element.id === "exit" ||
+                    element.closest("#split") ||
+                    element.closest("#feed") ||
+                    element.closest("#exit");
 
                 if (isButton) {
                     return; // Let button handle this
@@ -698,13 +748,13 @@ $("#exit").on("click touchstart", function (e) {
 
             // Show visual indicator at touch center
             if (touchCenterIndicator) {
-                touchCenterIndicator.style.left = touchCenterX + 'px';
-                touchCenterIndicator.style.top = touchCenterY + 'px';
-                touchCenterIndicator.style.display = 'block';
+                touchCenterIndicator.style.left = touchCenterX + "px";
+                touchCenterIndicator.style.top = touchCenterY + "px";
+                touchCenterIndicator.style.display = "block";
             }
         });
 
-        canvas.addEventListener('touchmove', function(e) {
+        canvas.addEventListener("touchmove", function (e) {
             e.preventDefault();
 
             if (isMoving) {
@@ -728,7 +778,7 @@ $("#exit").on("click touchstart", function (e) {
             }
         });
 
-        canvas.addEventListener('touchend', function(e) {
+        canvas.addEventListener("touchend", function (e) {
             e.preventDefault();
 
             // Check if the moving touch has ended
@@ -750,12 +800,12 @@ $("#exit").on("click touchstart", function (e) {
 
                 // Hide visual indicator
                 if (touchCenterIndicator) {
-                    touchCenterIndicator.style.display = 'none';
+                    touchCenterIndicator.style.display = "none";
                 }
             }
         });
 
-        canvas.addEventListener('touchcancel', function(e) {
+        canvas.addEventListener("touchcancel", function (e) {
             e.preventDefault();
             isMoving = false;
             movingTouchId = null;
@@ -764,7 +814,7 @@ $("#exit").on("click touchstart", function (e) {
 
             // Hide visual indicator
             if (touchCenterIndicator) {
-                touchCenterIndicator.style.display = 'none';
+                touchCenterIndicator.style.display = "none";
             }
         });
     }
@@ -784,7 +834,6 @@ function setupSocket(socket) {
     socket.on("pongcheck", function () {
         var latency = Date.now() - global.startPingTime;
         debug("Latency: " + latency + "ms");
-        window.chat.addSystemLine("Ping: " + latency + "ms");
     });
 
     // Handle error.
@@ -799,7 +848,6 @@ function setupSocket(socket) {
         player.screenHeight = global.screen.height;
         player.target = window.canvas.target;
         global.player = player;
-        window.chat.player = player;
         socket.emit("gotit", player);
         global.gameStart = true;
 
@@ -807,16 +855,6 @@ function setupSocket(socket) {
         if (gameSizes.arenaId) {
             global.arenaId = gameSizes.arenaId;
             console.log(`[CLIENT] Joined arena: ${gameSizes.arenaId}`);
-            window.chat.addSystemLine(`Connected to ${gameSizes.arenaId}!`);
-        } else {
-            window.chat.addSystemLine("Connected to the game!");
-        }
-
-        window.chat.addSystemLine("Type <b>-help</b> for a list of commands.");
-        if (global.mobile) {
-            document
-                .getElementById("gameAreaWrapper")
-                .removeChild(document.getElementById("chatbox"));
         }
         c.focus();
         global.game.width = gameSizes.width;
@@ -825,29 +863,15 @@ function setupSocket(socket) {
     });
 
     socket.on("playerDied", (data) => {
-        const player = isUnnamedCell(data.playerEatenName)
-            ? "An unnamed cell"
-            : data.playerEatenName;
-        //const killer = isUnnamedCell(data.playerWhoAtePlayerName) ? 'An unnamed cell' : data.playerWhoAtePlayerName;
-
-        //window.chat.addSystemLine('{GAME} - <b>' + (player) + '</b> was eaten by <b>' + (killer) + '</b>');
-        window.chat.addSystemLine("{GAME} - <b>" + player + "</b> was eaten");
+        // Player death notification removed (chat feature removed)
     });
 
     socket.on("playerDisconnect", (data) => {
-        window.chat.addSystemLine(
-            "{GAME} - <b>" +
-                (isUnnamedCell(data.name) ? "An unnamed cell" : data.name) +
-                "</b> disconnected."
-        );
+        // Player disconnect notification removed (chat feature removed)
     });
 
     socket.on("playerJoin", (data) => {
-        window.chat.addSystemLine(
-            "{GAME} - <b>" +
-                (isUnnamedCell(data.name) ? "An unnamed cell" : data.name) +
-                "</b> joined."
-        );
+        // Player join notification removed (chat feature removed)
     });
 
     socket.on("leaderboard", (data) => {
@@ -855,11 +879,14 @@ function setupSocket(socket) {
         var status = '<span class="title">Leaderboard</span>';
         for (var i = 0; i < leaderboard.length; i++) {
             status += "<br />";
-            var displayName = leaderboard[i].name.length !== 0 ? leaderboard[i].name : "An unnamed cell";
+            var displayName =
+                leaderboard[i].name.length !== 0
+                    ? leaderboard[i].name
+                    : "An unnamed cell";
             var score = leaderboard[i].score || 0;
             // Format score with 2 decimals, removing trailing zeros
             var displayScore = parseFloat(score.toFixed(2));
-            var entry = (i + 1) + ". " + displayName + " - " + displayScore;
+            var entry = i + 1 + ". " + displayName + " - " + displayScore;
 
             if (leaderboard[i].id == player.id) {
                 status += '<span class="me">' + entry + "</span>";
@@ -871,14 +898,7 @@ function setupSocket(socket) {
         document.getElementById("status").innerHTML = status;
     });
 
-    socket.on("serverMSG", function (data) {
-        window.chat.addSystemLine(data);
-    });
-
-    // Chat.
-    socket.on("serverSendPlayerChat", function (data) {
-        window.chat.addChatLine(data.sender, data.message, false);
-    });
+    // Chat feature removed
 
     // Handle movement.
     socket.on(
@@ -902,13 +922,17 @@ function setupSocket(socket) {
                 player.massTotal = playerData.massTotal;
                 player.cells = playerData.cells;
                 // Calculate total score from all cells
-                player.score = playerData.cells.reduce((sum, cell) => sum + (cell.score || 0), 0);
+                player.score = playerData.cells.reduce(
+                    (sum, cell) => sum + (cell.score || 0),
+                    0
+                );
 
                 // Update player score display
                 var playerScoreEl = document.getElementById("playerScore");
                 if (playerScoreEl) {
                     var displayScore = parseFloat(player.score.toFixed(2));
-                    playerScoreEl.innerHTML = '<span class="title">Score</span><br />' + displayScore;
+                    playerScoreEl.innerHTML =
+                        '<span class="title">Score</span><br />' + displayScore;
                 }
             }
             users = userData;
@@ -957,7 +981,8 @@ function setupSocket(socket) {
             } else {
                 // Fallback to old menu if landing page not found
                 document.getElementById("gameAreaWrapper").style.opacity = 0;
-                document.getElementById("startMenuWrapper").style.maxHeight = "1000px";
+                document.getElementById("startMenuWrapper").style.maxHeight =
+                    "1000px";
                 if (global.animLoopHandle) {
                     window.cancelAnimationFrame(global.animLoopHandle);
                     global.animLoopHandle = undefined;
@@ -1037,7 +1062,6 @@ var lastPositionUpdateTime = 0;
         // Ignore localStorage errors
     }
 })();
-
 
 // Use performance.now() if available, fallback to Date.now()
 var getTime = (function () {
@@ -1234,7 +1258,7 @@ function gameLoop() {
         for (var i = 0; i < users.length; i++) {
             let color = "hsl(" + users[i].hue + ", 100%, 50%)";
             let borderColor = "hsl(" + users[i].hue + ", 100%, 45%)";
-            let isCurrentPlayer = (users[i].id === player.id);
+            let isCurrentPlayer = users[i].id === player.id;
             for (var j = 0; j < users[i].cells.length; j++) {
                 let screenX =
                     users[i].cells[j].x - player.x + global.screen.width / 2;
@@ -1329,7 +1353,7 @@ function exitGame() {
     exitCountdownValue = 5;
 
     // Start countdown timer
-    exitCountdownTimer = setInterval(function() {
+    exitCountdownTimer = setInterval(function () {
         exitCountdownValue--;
 
         if (exitCountdownValue <= 0) {
@@ -1379,7 +1403,7 @@ function cleanupGame() {
         y: global.screen.height / 2,
         screenWidth: global.screen.width,
         screenHeight: global.screen.height,
-        target: {x: global.screen.width / 2, y: global.screen.height / 2}
+        target: { x: global.screen.width / 2, y: global.screen.height / 2 },
     };
 }
 
@@ -1408,36 +1432,36 @@ function saveLastScore(score) {
     try {
         // Round to 2 decimals for display consistency
         var preciseScore = Math.round(score * 100) / 100;
-        localStorage.setItem('lastScore', preciseScore);
+        localStorage.setItem("lastScore", preciseScore);
     } catch (e) {
-        console.log('Could not save last score:', e);
+        console.log("Could not save last score:", e);
     }
 }
 
 // Display last score on landing page
 function displayLastScore() {
     try {
-        var lastScore = localStorage.getItem('lastScore');
-        var lastScoreBox = document.getElementById('lastScoreBox');
-        var lastScoreValue = document.getElementById('lastScoreValue');
+        var lastScore = localStorage.getItem("lastScore");
+        var lastScoreBox = document.getElementById("lastScoreBox");
+        var lastScoreValue = document.getElementById("lastScoreValue");
 
         if (lastScoreValue && lastScoreBox) {
             if (lastScore) {
                 // Format score to remove trailing zeros
                 var formattedScore = parseFloat(lastScore);
                 lastScoreValue.textContent = formattedScore;
-                lastScoreBox.style.display = 'flex';
+                lastScoreBox.style.display = "flex";
             } else {
-                lastScoreBox.style.display = 'none';
+                lastScoreBox.style.display = "none";
             }
         }
     } catch (e) {
-        console.log('Could not display last score:', e);
+        console.log("Could not display last score:", e);
     }
 }
 
 // Initialize exit functionality - Keyboard ESC key trigger
-document.addEventListener("keydown", function(event) {
+document.addEventListener("keydown", function (event) {
     // Check if ESC key is pressed and game is active
     if (event.key === "Escape" && global.gameStart) {
         event.preventDefault();
@@ -1446,8 +1470,8 @@ document.addEventListener("keydown", function(event) {
 });
 
 // Display last score when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', displayLastScore);
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", displayLastScore);
 } else {
     displayLastScore();
 }
