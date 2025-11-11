@@ -1044,10 +1044,10 @@ function setupSocket(socket) {
             var updateTime = getTime();
             if (lastPositionUpdateTime > 0) {
                 var timeSinceLastUpdate = updateTime - lastPositionUpdateTime;
-                positionUpdateTimes.push(timeSinceLastUpdate);
-                if (positionUpdateTimes.length > 30) {
-                    positionUpdateTimes.shift(); // Keep only last 30 updates
-                }
+                // Use circular buffer instead of shift() to avoid GC
+                positionUpdateTimes[positionUpdateIndex] = timeSinceLastUpdate;
+                positionUpdateIndex = (positionUpdateIndex + 1) % 30;
+                if (positionUpdateCount < 30) positionUpdateCount++;
             }
             lastPositionUpdateTime = updateTime;
 
@@ -1064,37 +1064,55 @@ function setupSocket(socket) {
 
                 // Client-side prediction: store server states and calculate velocity
                 if (!prediction.enabled) {
-                    // First update - initialize
-                    prediction.previous = {
-                        x: playerData.x,
-                        y: playerData.y,
-                        cells: JSON.parse(JSON.stringify(playerData.cells)),
-                        timestamp: now
-                    };
-                    prediction.current = {
-                        x: playerData.x,
-                        y: playerData.y,
-                        cells: JSON.parse(JSON.stringify(playerData.cells)),
-                        timestamp: now
-                    };
-                    prediction.predicted = {
-                        x: playerData.x,
-                        y: playerData.y,
-                        cells: JSON.parse(JSON.stringify(playerData.cells))
-                    };
+                    // First update - initialize without deep cloning
+                    prediction.previous.x = playerData.x;
+                    prediction.previous.y = playerData.y;
+                    prediction.previous.timestamp = now;
+                    prediction.previous.cellCount = playerData.cells.length;
+
+                    prediction.current.x = playerData.x;
+                    prediction.current.y = playerData.y;
+                    prediction.current.timestamp = now;
+                    prediction.current.cellCount = playerData.cells.length;
+
+                    prediction.predicted.x = playerData.x;
+                    prediction.predicted.y = playerData.y;
+                    prediction.predicted.cellCount = playerData.cells.length;
+
+                    // Copy cells without creating new objects
+                    for (var i = 0; i < playerData.cells.length; i++) {
+                        var cell = playerData.cells[i];
+                        prediction.previous.cells[i] = { x: cell.x, y: cell.y, mass: cell.mass, radius: cell.radius, score: cell.score, name: cell.name || "", color: cell.color || "" };
+                        prediction.current.cells[i] = { x: cell.x, y: cell.y, mass: cell.mass, radius: cell.radius, score: cell.score, name: cell.name || "", color: cell.color || "" };
+                        prediction.predicted.cells[i] = { x: cell.x, y: cell.y, mass: cell.mass, radius: cell.radius, score: cell.score, name: cell.name || "", color: cell.color || "" };
+                    }
+
                     player.x = playerData.x;
                     player.y = playerData.y;
                     player.cells = playerData.cells;
                     prediction.enabled = true;
                 } else {
-                    // Subsequent updates - shift states and calculate velocity
+                    // Subsequent updates - swap references instead of creating new objects
+                    var tempState = prediction.previous;
                     prediction.previous = prediction.current;
-                    prediction.current = {
-                        x: playerData.x,
-                        y: playerData.y,
-                        cells: JSON.parse(JSON.stringify(playerData.cells)),
-                        timestamp: now
-                    };
+                    prediction.current = tempState;
+
+                    prediction.current.x = playerData.x;
+                    prediction.current.y = playerData.y;
+                    prediction.current.timestamp = now;
+                    prediction.current.cellCount = playerData.cells.length;
+
+                    // Copy cells without deep cloning
+                    for (var i = 0; i < playerData.cells.length; i++) {
+                        var cell = playerData.cells[i];
+                        prediction.current.cells[i].x = cell.x;
+                        prediction.current.cells[i].y = cell.y;
+                        prediction.current.cells[i].mass = cell.mass;
+                        prediction.current.cells[i].radius = cell.radius;
+                        prediction.current.cells[i].score = cell.score;
+                        prediction.current.cells[i].name = cell.name || "";
+                        prediction.current.cells[i].color = cell.color || "";
+                    }
 
                     // Calculate player camera velocity
                     var timeDelta = prediction.current.timestamp - prediction.previous.timestamp;
@@ -1118,9 +1136,8 @@ function setupSocket(socket) {
                         prediction.velocity.y = vy;
 
                         // Calculate velocity for each cell (if cell count matches)
-                        if (prediction.current.cells.length === prediction.previous.cells.length) {
-                            prediction.cellVelocities = [];
-                            for (var i = 0; i < prediction.current.cells.length; i++) {
+                        if (prediction.current.cellCount === prediction.previous.cellCount) {
+                            for (var i = 0; i < prediction.current.cellCount; i++) {
                                 var currCell = prediction.current.cells[i];
                                 var prevCell = prediction.previous.cells[i];
                                 var cellVx = (currCell.x - prevCell.x) / timeDelta;
@@ -1134,21 +1151,33 @@ function setupSocket(socket) {
                                     cellVy *= cellScale;
                                 }
 
-                                prediction.cellVelocities.push({
-                                    vx: cellVx,
-                                    vy: cellVy
-                                });
+                                // Update pre-allocated velocity object
+                                prediction.cellVelocities[i].vx = cellVx;
+                                prediction.cellVelocities[i].vy = cellVy;
                             }
                         } else {
-                            // Cell count changed (split/merge) - reset velocities
-                            prediction.cellVelocities = [];
+                            // Cell count changed (split/merge) - reset velocities to zero
+                            for (var i = 0; i < MAX_CELLS; i++) {
+                                prediction.cellVelocities[i].vx = 0;
+                                prediction.cellVelocities[i].vy = 0;
+                            }
                         }
                     }
 
                     // Start predicting from current server state
                     prediction.predicted.x = prediction.current.x;
                     prediction.predicted.y = prediction.current.y;
-                    prediction.predicted.cells = JSON.parse(JSON.stringify(prediction.current.cells));
+                    prediction.predicted.cellCount = prediction.current.cellCount;
+                    // Copy cells without deep cloning
+                    for (var i = 0; i < prediction.current.cellCount; i++) {
+                        prediction.predicted.cells[i].x = prediction.current.cells[i].x;
+                        prediction.predicted.cells[i].y = prediction.current.cells[i].y;
+                        prediction.predicted.cells[i].mass = prediction.current.cells[i].mass;
+                        prediction.predicted.cells[i].radius = prediction.current.cells[i].radius;
+                        prediction.predicted.cells[i].score = prediction.current.cells[i].score;
+                        prediction.predicted.cells[i].name = prediction.current.cells[i].name;
+                        prediction.predicted.cells[i].color = prediction.current.cells[i].color;
+                    }
                 }
 
                 // Update player score display with enhanced features
@@ -1261,8 +1290,21 @@ var lastFrameTime = 0;
 var fpsTrackingStarted = false;
 
 // Position update tracking (UPS - Updates Per Second)
-var positionUpdateTimes = [];
+// Use circular buffer to avoid shift() GC pressure
+var positionUpdateTimes = new Float32Array(30);
+var positionUpdateIndex = 0;
+var positionUpdateCount = 0;
 var lastPositionUpdateTime = 0;
+
+// Pre-allocate cell arrays to reduce GC pressure
+var MAX_CELLS = 16;
+function createCellArray() {
+    var cells = new Array(MAX_CELLS);
+    for (var i = 0; i < MAX_CELLS; i++) {
+        cells[i] = { x: 0, y: 0, mass: 0, radius: 0, score: 0, name: "", color: "" };
+    }
+    return cells;
+}
 
 // Hybrid client-side prediction with velocity extrapolation and adaptive enabling
 var prediction = {
@@ -1271,15 +1313,15 @@ var prediction = {
     minLatencyThreshold: 20, // Only enable prediction if latency > 20ms
 
     // Last two server states to calculate velocity (for current player)
-    previous: { x: 0, y: 0, cells: [], timestamp: 0 },
-    current: { x: 0, y: 0, cells: [], timestamp: 0 },
+    previous: { x: 0, y: 0, cells: createCellArray(), timestamp: 0, cellCount: 0 },
+    current: { x: 0, y: 0, cells: createCellArray(), timestamp: 0, cellCount: 0 },
 
     // Predicted state (what we render)
-    predicted: { x: 0, y: 0, cells: [] },
+    predicted: { x: 0, y: 0, cells: createCellArray(), cellCount: 0 },
 
-    // Calculated velocities
+    // Calculated velocities (pre-allocated)
     velocity: { x: 0, y: 0 },
-    cellVelocities: [],
+    cellVelocities: new Array(MAX_CELLS),
 
     // Other players prediction
     otherPlayers: {
@@ -1288,6 +1330,11 @@ var prediction = {
         timestamp: 0
     }
 };
+
+// Initialize cell velocities
+for (var i = 0; i < MAX_CELLS; i++) {
+    prediction.cellVelocities[i] = { vx: 0, vy: 0 };
+}
 
 // Use performance.now() if available, fallback to Date.now()
 var getTime = (function () {
@@ -1454,10 +1501,12 @@ var socketEmitInterval = 16; // ~60fps for socket updates (every ~16ms)
 function gameLoop() {
     if (global.gameStart) {
         // Hybrid client-side prediction with adaptive enabling
-        // Calculate average network delay from recent updates
-        const avgDelay = positionUpdateTimes.length > 0
-            ? positionUpdateTimes.reduce((a, b) => a + b, 0) / positionUpdateTimes.length
-            : 16;
+        // Calculate average network delay from recent updates (avoid reduce for GC)
+        var sumDelay = 0;
+        for (var i = 0; i < positionUpdateCount; i++) {
+            sumDelay += positionUpdateTimes[i];
+        }
+        const avgDelay = positionUpdateCount > 0 ? sumDelay / positionUpdateCount : 16;
 
         // Adaptive: only use prediction if network delay is significant
         const usePrediction = avgDelay > prediction.minLatencyThreshold;
@@ -1477,42 +1526,48 @@ function gameLoop() {
                 prediction.predicted.y = prediction.current.y + prediction.velocity.y * timeSinceUpdate;
 
                 // Extrapolate cell positions
-                if (prediction.cellVelocities.length === prediction.current.cells.length) {
-                    prediction.predicted.cells = [];
-                    for (var i = 0; i < prediction.current.cells.length; i++) {
-                        var cell = prediction.current.cells[i];
-                        var vel = prediction.cellVelocities[i];
-                        prediction.predicted.cells.push({
-                            x: cell.x + vel.vx * timeSinceUpdate,
-                            y: cell.y + vel.vy * timeSinceUpdate,
-                            mass: cell.mass,
-                            radius: cell.radius,
-                            score: cell.score,
-                            name: cell.name,
-                            color: cell.color
-                        });
-                    }
-                } else {
-                    // No velocity data (split/merge just happened) - use current state
-                    prediction.predicted.cells = JSON.parse(JSON.stringify(prediction.current.cells));
+                prediction.predicted.cellCount = prediction.current.cellCount;
+                for (var i = 0; i < prediction.current.cellCount; i++) {
+                    var cell = prediction.current.cells[i];
+                    var vel = prediction.cellVelocities[i];
+                    var predCell = prediction.predicted.cells[i];
+
+                    predCell.x = cell.x + vel.vx * timeSinceUpdate;
+                    predCell.y = cell.y + vel.vy * timeSinceUpdate;
+                    predCell.mass = cell.mass;
+                    predCell.radius = cell.radius;
+                    predCell.score = cell.score;
+                    predCell.name = cell.name;
+                    predCell.color = cell.color;
                 }
             } else {
                 // Invalid time delta - use current state without extrapolation
                 prediction.predicted.x = prediction.current.x;
                 prediction.predicted.y = prediction.current.y;
-                prediction.predicted.cells = JSON.parse(JSON.stringify(prediction.current.cells));
+                prediction.predicted.cellCount = prediction.current.cellCount;
+                // Copy without deep cloning
+                for (var i = 0; i < prediction.current.cellCount; i++) {
+                    prediction.predicted.cells[i].x = prediction.current.cells[i].x;
+                    prediction.predicted.cells[i].y = prediction.current.cells[i].y;
+                    prediction.predicted.cells[i].mass = prediction.current.cells[i].mass;
+                    prediction.predicted.cells[i].radius = prediction.current.cells[i].radius;
+                    prediction.predicted.cells[i].score = prediction.current.cells[i].score;
+                    prediction.predicted.cells[i].name = prediction.current.cells[i].name;
+                    prediction.predicted.cells[i].color = prediction.current.cells[i].color;
+                }
             }
 
             // Use predicted state for rendering
             player.x = prediction.predicted.x;
             player.y = prediction.predicted.y;
-            player.cells = prediction.predicted.cells;
+            // Create a view of only active cells
+            player.cells = prediction.predicted.cells.slice(0, prediction.predicted.cellCount);
 
             // Also update predicted cells in users array (for cell rendering)
             for (var i = 0; i < users.length; i++) {
                 if (users[i].id === player.id) {
-                    // Found current player in users array - replace with predicted cells
-                    users[i].cells = prediction.predicted.cells;
+                    // Found current player in users array - use slice to get only active cells
+                    users[i].cells = prediction.predicted.cells.slice(0, prediction.predicted.cellCount);
                     break;
                 }
             }
@@ -1520,7 +1575,7 @@ function gameLoop() {
             // Low latency (local play): use server position directly
             player.x = prediction.current.x;
             player.y = prediction.current.y;
-            player.cells = prediction.current.cells;
+            player.cells = prediction.current.cells.slice(0, prediction.current.cellCount);
         }
 
         graph.fillStyle = global.backgroundColor;
@@ -1725,12 +1780,28 @@ function cleanupGame() {
 
     // Reset prediction state
     prediction.enabled = false;
-    prediction.previous = { x: 0, y: 0, cells: [], timestamp: 0 };
-    prediction.current = { x: 0, y: 0, cells: [], timestamp: 0 };
-    prediction.predicted = { x: 0, y: 0, cells: [] };
-    prediction.velocity = { x: 0, y: 0 };
-    prediction.cellVelocities = [];
+    prediction.previous.x = 0;
+    prediction.previous.y = 0;
+    prediction.previous.timestamp = 0;
+    prediction.previous.cellCount = 0;
+    prediction.current.x = 0;
+    prediction.current.y = 0;
+    prediction.current.timestamp = 0;
+    prediction.current.cellCount = 0;
+    prediction.predicted.x = 0;
+    prediction.predicted.y = 0;
+    prediction.predicted.cellCount = 0;
+    prediction.velocity.x = 0;
+    prediction.velocity.y = 0;
+    for (var i = 0; i < MAX_CELLS; i++) {
+        prediction.cellVelocities[i].vx = 0;
+        prediction.cellVelocities[i].vy = 0;
+    }
     prediction.otherPlayers.states = {};
+
+    // Reset position tracking
+    positionUpdateIndex = 0;
+    positionUpdateCount = 0;
 
     // Reset player
     player = {
