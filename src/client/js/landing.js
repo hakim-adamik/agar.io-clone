@@ -633,7 +633,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             .catch(error => {
                                 console.warn('Failed to load preferences, using defaults:', error);
                                 // Set default values from game config
-                                const defaults = window.gameConfig ? window.gameConfig.defaultSettings : {};
+                                const defaults = window.DEFAULT_PREFERENCES || {};
                                 const darkModeEl = document.getElementById('pref-darkMode');
                                 const showMassEl = document.getElementById('pref-showMass');
                                 const showBorderEl = document.getElementById('pref-showBorder');

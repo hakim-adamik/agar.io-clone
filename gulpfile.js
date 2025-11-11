@@ -30,7 +30,7 @@ function runServer(done) {
 }
 
 function buildServer() {
-    let task = gulp.src(['src/server/**/*.*', 'src/server/**/*.js', '!src/server/db/**']);
+    let task = gulp.src(['src/server/**/*.*', 'src/server/**/*.js']);
     if (!process.env.IS_DEV) {
         task = task.pipe(babel())
     }
@@ -43,7 +43,7 @@ function copyClientResources() {
 }
 
 function buildClientJS() {
-    return gulp.src(['src/client/js/app.js', 'src/client/js/game-config.js', 'src/client/js/landing.js'])
+    return gulp.src(['src/client/js/app.js', 'src/client/js/landing.js'])
         .pipe(webpack(getWebpackConfig()))
         .pipe(gulp.dest('bin/client/js/'));
 }
@@ -55,7 +55,7 @@ function buildPrivyAuth() {
 }
 
 function copyClientJS() {
-    return gulp.src(['src/client/js/game-config.js', 'src/client/js/landing.js'])
+    return gulp.src(['src/client/js/landing.js'])
         .pipe(gulp.dest('bin/client/js/'));
 }
 

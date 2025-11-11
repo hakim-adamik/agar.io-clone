@@ -1,159 +1,163 @@
 /*jslint node: true */
 'use strict';
 
-const db = require('../sql');
+const pool = require('../sql');
 
 class SessionRepository {
     /**
      * Create a new game session
      */
     static async createSession(userId, arenaId, playerName) {
-        return new Promise((resolve, reject) => {
+        try {
             const now = Date.now();
-            db.run(
-                `INSERT INTO game_sessions (user_id, arena_id, player_name, start_time,
-                 mass_eaten, players_eaten, final_score, final_mass, time_played)
-                 VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0)`,
-                [userId, arenaId, playerName, now],
-                function(err) {
-                    if (err) return reject(err);
-                    resolve(this.lastID);
-                }
+            const result = await pool.query(
+                `INSERT INTO game_sessions (user_id, arena_id, player_name, started_at,
+                 mass_eaten, players_eaten, final_score, final_mass, duration)
+                 VALUES ($1, $2, $3, $4, 0, 0, 0, 0, 0)
+                 RETURNING id`,
+                [userId, arenaId, playerName, now]
             );
-        });
+            return result.rows[0].id;
+        } catch (err) {
+            console.error('Error creating session:', err);
+            throw err;
+        }
     }
 
     /**
      * Update session during gameplay
      */
     static async updateSession(sessionId, updates) {
-        const updateFields = [];
-        const values = [];
+        try {
+            const updateFields = [];
+            const values = [];
+            let paramIndex = 1;
 
-        const allowedFields = ['mass_eaten', 'players_eaten', 'final_score', 'final_mass'];
+            const allowedFields = ['mass_eaten', 'players_eaten', 'final_score', 'final_mass'];
 
-        for (const field of allowedFields) {
-            if (updates[field] !== undefined) {
-                updateFields.push(`${field} = ?`);
-                values.push(updates[field]);
-            }
-        }
-
-        if (updateFields.length === 0) {
-            return Promise.resolve(true);
-        }
-
-        values.push(sessionId);
-
-        return new Promise((resolve, reject) => {
-            db.run(
-                `UPDATE game_sessions SET ${updateFields.join(', ')} WHERE id = ?`,
-                values,
-                (err) => {
-                    if (err) return reject(err);
-                    resolve(true);
+            for (const field of allowedFields) {
+                if (updates[field] !== undefined) {
+                    updateFields.push(`${field} = $${paramIndex++}`);
+                    values.push(updates[field]);
                 }
+            }
+
+            if (updateFields.length === 0) {
+                return true;
+            }
+
+            values.push(sessionId);
+
+            await pool.query(
+                `UPDATE game_sessions SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
+                values
             );
-        });
+            return true;
+        } catch (err) {
+            console.error('Error updating session:', err);
+            throw err;
+        }
     }
 
     /**
      * End a game session
      */
     static async endSession(sessionId, finalData) {
-        return new Promise((resolve, reject) => {
-            db.get(
-                'SELECT start_time FROM game_sessions WHERE id = ?',
-                [sessionId],
-                (err, session) => {
-                    if (err) return reject(err);
-                    if (!session) return reject(new Error('Session not found'));
-
-                    const timePlayed = Math.floor((Date.now() - session.start_time) / 1000);
-
-                    db.run(
-                        `UPDATE game_sessions SET
-                         end_time = ?, time_played = ?, final_score = ?, final_mass = ?,
-                         mass_eaten = ?, players_eaten = ?
-                         WHERE id = ?`,
-                        [
-                            Date.now(),
-                            timePlayed,
-                            finalData.final_score || 0,
-                            finalData.final_mass || 0,
-                            finalData.mass_eaten || 0,
-                            finalData.players_eaten || 0,
-                            sessionId
-                        ],
-                        (updateErr) => {
-                            if (updateErr) return reject(updateErr);
-                            resolve({
-                                time_played: timePlayed,
-                                ...finalData
-                            });
-                        }
-                    );
-                }
+        try {
+            const result = await pool.query(
+                'SELECT started_at FROM game_sessions WHERE id = $1',
+                [sessionId]
             );
-        });
+            const session = result.rows[0];
+
+            if (!session) {
+                throw new Error('Session not found');
+            }
+
+            const timePlayed = Math.floor((Date.now() - session.started_at) / 1000);
+
+            await pool.query(
+                `UPDATE game_sessions SET
+                 ended_at = $1, duration = $2, final_score = $3, final_mass = $4,
+                 mass_eaten = $5, players_eaten = $6
+                 WHERE id = $7`,
+                [
+                    Date.now(),
+                    timePlayed,
+                    finalData.final_score || 0,
+                    finalData.final_mass || 0,
+                    finalData.mass_eaten || 0,
+                    finalData.players_eaten || 0,
+                    sessionId
+                ]
+            );
+
+            return {
+                time_played: timePlayed,
+                ...finalData
+            };
+        } catch (err) {
+            console.error('Error ending session:', err);
+            throw err;
+        }
     }
 
     /**
      * Get recent sessions for a user
      */
     static async getUserSessions(userId, limit = 10) {
-        return new Promise((resolve, reject) => {
-            db.all(
+        try {
+            const result = await pool.query(
                 `SELECT * FROM game_sessions
-                 WHERE user_id = ?
-                 ORDER BY start_time DESC
-                 LIMIT ?`,
-                [userId, limit],
-                (err, sessions) => {
-                    if (err) return reject(err);
-                    resolve(sessions);
-                }
+                 WHERE user_id = $1
+                 ORDER BY started_at DESC
+                 LIMIT $2`,
+                [userId, limit]
             );
-        });
+            return result.rows;
+        } catch (err) {
+            console.error('Error getting user sessions:', err);
+            throw err;
+        }
     }
 
     /**
      * Get active session for a user
      */
     static async getActiveSession(userId) {
-        return new Promise((resolve, reject) => {
-            db.get(
+        try {
+            const result = await pool.query(
                 `SELECT * FROM game_sessions
-                 WHERE user_id = ? AND end_time IS NULL
-                 ORDER BY start_time DESC
+                 WHERE user_id = $1 AND ended_at IS NULL
+                 ORDER BY started_at DESC
                  LIMIT 1`,
-                [userId],
-                (err, session) => {
-                    if (err) return reject(err);
-                    resolve(session);
-                }
+                [userId]
             );
-        });
+            return result.rows[0];
+        } catch (err) {
+            console.error('Error getting active session:', err);
+            throw err;
+        }
     }
 
     /**
      * Clean up stale sessions (older than 1 hour with no end time)
      */
     static async cleanupStaleSessions() {
-        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        try {
+            const oneHourAgo = Date.now() - (60 * 60 * 1000);
 
-        return new Promise((resolve, reject) => {
-            db.run(
+            const result = await pool.query(
                 `UPDATE game_sessions
-                 SET end_time = start_time + 3600000, time_played = 3600
-                 WHERE end_time IS NULL AND start_time < ?`,
-                [oneHourAgo],
-                function(err) {
-                    if (err) return reject(err);
-                    resolve(this.changes);
-                }
+                 SET ended_at = started_at + 3600000, duration = 3600
+                 WHERE ended_at IS NULL AND started_at < $1`,
+                [oneHourAgo]
             );
-        });
+            return result.rowCount;
+        } catch (err) {
+            console.error('Error cleaning up stale sessions:', err);
+            throw err;
+        }
     }
 }
 
