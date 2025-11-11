@@ -473,12 +473,18 @@ function setupLeaderboardToggle() {
 
     // Add click listener using event delegation
     statusEl.addEventListener("click", function(e) {
+        // Prevent event bubbling for better performance
+        e.stopPropagation();
+
         // Toggle expanded class
         this.classList.toggle("expanded");
 
         // Re-render leaderboard with current data
         if (window.lastLeaderboardData) {
-            renderLeaderboard(window.lastLeaderboardData);
+            // Use requestAnimationFrame for smoother visual update
+            requestAnimationFrame(function() {
+                renderLeaderboard(window.lastLeaderboardData);
+            });
         }
     });
 }
@@ -880,11 +886,14 @@ function setupSocket(socket) {
 
         var isExpanded = statusEl.classList.contains("expanded");
 
-        var status = '<div class="leaderboard-header">';
-        status += 'LEADERBOARD';
-        status += '<span class="expand-icon">' + (isExpanded ? '▼' : '▶') + '</span>';
-        status += '</div>';
-        status += '<div class="leaderboard-list">';
+        // Use array join for better string concatenation performance
+        var statusParts = [];
+        statusParts.push('<div class="leaderboard-header">');
+        statusParts.push('LEADERBOARD');
+        statusParts.push('<span class="expand-icon">' + (isExpanded ? '▼' : '▶') + '</span>');
+        statusParts.push('</div>');
+        statusParts.push('<div class="leaderboard-content">');
+        statusParts.push('<div class="leaderboard-list">');
 
         // Show only first player when collapsed (both mobile and desktop)
         var itemsToShow = !isExpanded ? 1 : leaderboard.length;
@@ -909,20 +918,23 @@ function setupSocket(socket) {
             var entryClass = leaderboard[i].id == player.id ? "me" : "";
             if (i < 3) entryClass += " top3";
 
-            status += '<div class="leaderboard-entry ' + entryClass + '">';
-            status += '<span class="rank">' + rank + '</span>';
-            status += '<span class="name">' + displayName + '</span>';
-            status += '<span class="score">' + displayScore + '</span>';
-            status += '</div>';
+            statusParts.push('<div class="leaderboard-entry ' + entryClass + '">');
+            statusParts.push('<span class="rank">' + rank + '</span>');
+            statusParts.push('<span class="name">' + displayName + '</span>');
+            statusParts.push('<span class="score">' + displayScore + '</span>');
+            statusParts.push('</div>');
         }
 
         // Show collapsed indicator when collapsed
         if (!isExpanded && leaderboard.length > 1) {
-            status += '<div class="leaderboard-more">+' + (leaderboard.length - 1) + ' more</div>';
+            statusParts.push('<div class="leaderboard-more">+' + (leaderboard.length - 1) + ' more</div>');
         }
 
-        status += '</div>';
-        statusEl.innerHTML = status;
+        statusParts.push('</div>');
+        statusParts.push('</div>');
+
+        // Single DOM update for best performance
+        statusEl.innerHTML = statusParts.join('');
     }
 
     socket.on("leaderboard", (data) => {

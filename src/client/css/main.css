@@ -510,7 +510,6 @@ div {
     .expand-icon {
         font-size: 10px;
         margin-left: 8px;
-        transition: transform 0.2s ease;
     }
 
     .leaderboard-more {
