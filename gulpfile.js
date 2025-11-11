@@ -30,7 +30,7 @@ function runServer(done) {
 }
 
 function buildServer() {
-    let task = gulp.src(['src/server/**/*.*', 'src/server/**/*.js', '!src/server/**/*.sqlite3']);
+    let task = gulp.src(['src/server/**/*.*', 'src/server/**/*.js']);
     if (!process.env.IS_DEV) {
         task = task.pipe(babel())
     }
