@@ -971,6 +971,62 @@ function setupSocket(socket) {
                     playerScoreEl.innerHTML = '<span class="title">Score</span><br />' + displayScore;
                 }
             }
+            // Store other players' data and calculate their velocities
+            var now = getTime();
+            prediction.otherPlayers.timestamp = now;
+
+            // Create a set of current player IDs for cleanup
+            var currentPlayerIds = {};
+            for (var i = 0; i < userData.length; i++) {
+                currentPlayerIds[userData[i].id] = true;
+            }
+
+            // Remove disconnected players from prediction states
+            for (var playerId in prediction.otherPlayers.states) {
+                if (!currentPlayerIds[playerId] && playerId != player.id) {
+                    delete prediction.otherPlayers.states[playerId];
+                }
+            }
+
+            for (var i = 0; i < userData.length; i++) {
+                var user = userData[i];
+                if (user.id === player.id) continue; // Skip current player
+
+                var playerId = user.id;
+                if (!prediction.otherPlayers.states[playerId]) {
+                    // First time seeing this player - initialize
+                    prediction.otherPlayers.states[playerId] = {
+                        previous: { cells: [], timestamp: now },
+                        current: { cells: JSON.parse(JSON.stringify(user.cells)), timestamp: now },
+                        velocities: []
+                    };
+                } else {
+                    // Update states and calculate velocity
+                    var playerState = prediction.otherPlayers.states[playerId];
+                    playerState.previous = playerState.current;
+                    playerState.current = {
+                        cells: JSON.parse(JSON.stringify(user.cells)),
+                        timestamp: now
+                    };
+
+                    // Calculate velocity for each cell
+                    var timeDelta = playerState.current.timestamp - playerState.previous.timestamp;
+                    if (timeDelta > 0 && playerState.current.cells.length === playerState.previous.cells.length) {
+                        playerState.velocities = [];
+                        for (var j = 0; j < playerState.current.cells.length; j++) {
+                            var currCell = playerState.current.cells[j];
+                            var prevCell = playerState.previous.cells[j];
+                            playerState.velocities.push({
+                                vx: (currCell.x - prevCell.x) / timeDelta,
+                                vy: (currCell.y - prevCell.y) / timeDelta
+                            });
+                        }
+                    } else {
+                        playerState.velocities = [];
+                    }
+                }
+            }
+
             users = userData;
             foods = foodsList;
             viruses = virusList;
@@ -1083,14 +1139,21 @@ var lastPositionUpdateTime = 0;
 // Client-side prediction with velocity extrapolation
 var prediction = {
     enabled: false,
-    // Last two server states to calculate velocity
+    // Last two server states to calculate velocity (for current player)
     previous: { x: 0, y: 0, cells: [], timestamp: 0 },
     current: { x: 0, y: 0, cells: [], timestamp: 0 },
     // Predicted state (what we render)
     predicted: { x: 0, y: 0, cells: [] },
     // Calculated velocities
     velocity: { x: 0, y: 0 },
-    cellVelocities: []
+    cellVelocities: [],
+
+    // Other players prediction
+    otherPlayers: {
+        // Map of playerId -> { previous, current, velocities }
+        states: {},
+        timestamp: 0
+    }
 };
 
 // Initialize FPS counter visibility from localStorage
@@ -1287,7 +1350,31 @@ function gameLoop() {
                 if (users[i].id === player.id) {
                     // Found current player in users array - replace with predicted cells
                     users[i].cells = prediction.predicted.cells;
-                    break;
+                } else {
+                    // Other player - extrapolate their cells too
+                    var playerId = users[i].id;
+                    var playerState = prediction.otherPlayers.states[playerId];
+
+                    if (playerState && playerState.velocities.length > 0) {
+                        var timeSinceUpdate = now - playerState.current.timestamp;
+                        timeSinceUpdate = Math.min(timeSinceUpdate, maxExtrapolation);
+
+                        if (playerState.velocities.length === playerState.current.cells.length) {
+                            var predictedCells = [];
+                            for (var j = 0; j < playerState.current.cells.length; j++) {
+                                var cell = playerState.current.cells[j];
+                                var vel = playerState.velocities[j];
+                                predictedCells.push({
+                                    x: cell.x + vel.vx * timeSinceUpdate,
+                                    y: cell.y + vel.vy * timeSinceUpdate,
+                                    mass: cell.mass,
+                                    radius: cell.radius,
+                                    score: cell.score
+                                });
+                            }
+                            users[i].cells = predictedCells;
+                        }
+                    }
                 }
             }
         }
@@ -1506,7 +1593,11 @@ function cleanupGame() {
         current: { x: 0, y: 0, cells: [], timestamp: 0 },
         predicted: { x: 0, y: 0, cells: [] },
         velocity: { x: 0, y: 0 },
-        cellVelocities: []
+        cellVelocities: [],
+        otherPlayers: {
+            states: {},
+            timestamp: 0
+        }
     };
 
     // Reset player
