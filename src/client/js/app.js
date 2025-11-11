@@ -565,20 +565,33 @@ function setupLeaderboardToggle() {
     var statusEl = document.getElementById("status");
     if (!statusEl) return;
 
-    // Add click listener using event delegation
+    // Add click listener to entire leaderboard for easy toggling
     statusEl.addEventListener("click", function(e) {
-        // Prevent event bubbling for better performance
+        // Prevent event bubbling
         e.stopPropagation();
 
-        // Toggle expanded class
+        // Toggle expanded class immediately
         this.classList.toggle("expanded");
 
-        // Re-render leaderboard with current data
-        if (window.lastLeaderboardData) {
-            // Use requestAnimationFrame for smoother visual update
-            requestAnimationFrame(function() {
-                renderLeaderboard(window.lastLeaderboardData);
-            });
+        // Just toggle visibility, don't re-render entire HTML
+        var expandIcon = this.querySelector('.expand-icon');
+        var leaderboardEntries = this.querySelectorAll('.leaderboard-entry');
+        var moreIndicator = this.querySelector('.leaderboard-more');
+
+        if (this.classList.contains("expanded")) {
+            // Show all entries
+            if (expandIcon) expandIcon.textContent = '▼';
+            for (var i = 1; i < leaderboardEntries.length; i++) {
+                leaderboardEntries[i].style.display = '';
+            }
+            if (moreIndicator) moreIndicator.style.display = 'none';
+        } else {
+            // Show only first entry
+            if (expandIcon) expandIcon.textContent = '▶';
+            for (var i = 1; i < leaderboardEntries.length; i++) {
+                leaderboardEntries[i].style.display = 'none';
+            }
+            if (moreIndicator) moreIndicator.style.display = '';
         }
     });
 }
@@ -1001,10 +1014,8 @@ function setupSocket(socket) {
         statusParts.push('<div class="leaderboard-content">');
         statusParts.push('<div class="leaderboard-list">');
 
-        // Show only first player when collapsed (both mobile and desktop)
-        var itemsToShow = !isExpanded ? 1 : leaderboard.length;
-
-        for (var i = 0; i < itemsToShow && i < leaderboard.length; i++) {
+        // Always render ALL entries, we'll hide them with CSS
+        for (var i = 0; i < leaderboard.length; i++) {
             var displayName = leaderboard[i].name.length !== 0 ? leaderboard[i].name : "An unnamed cell";
             // Truncate long names
             if (displayName.length > 12) {
@@ -1024,7 +1035,10 @@ function setupSocket(socket) {
             var entryClass = leaderboard[i].id == player.id ? "me" : "";
             if (i < 3) entryClass += " top3";
 
-            statusParts.push('<div class="leaderboard-entry ' + entryClass + '">');
+            // Hide entries after first one when collapsed
+            var style = (!isExpanded && i > 0) ? ' style="display:none"' : '';
+
+            statusParts.push('<div class="leaderboard-entry ' + entryClass + '"' + style + '>');
             statusParts.push('<span class="rank">' + rank + '</span>');
             statusParts.push('<span class="name">' + displayName + '</span>');
             statusParts.push('<span class="score">' + displayScore + '</span>');
@@ -1032,8 +1046,9 @@ function setupSocket(socket) {
         }
 
         // Show collapsed indicator when collapsed
-        if (!isExpanded && leaderboard.length > 1) {
-            statusParts.push('<div class="leaderboard-more">+' + (leaderboard.length - 1) + ' more</div>');
+        var moreStyle = !isExpanded && leaderboard.length > 1 ? '' : ' style="display:none"';
+        if (leaderboard.length > 1) {
+            statusParts.push('<div class="leaderboard-more"' + moreStyle + '>+' + (leaderboard.length - 1) + ' more</div>');
         }
 
         statusParts.push('</div>');
