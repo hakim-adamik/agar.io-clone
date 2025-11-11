@@ -382,7 +382,6 @@ docker run -p 8080:8080 -e PORT=8080 agarioclone
 // config.js adjustments
 host: "0.0.0.0",  // Bind to all interfaces
 port: process.env.PORT || 8080,  // Use environment port (Cloud Run requires 8080)
-adminPass: process.env.ADMIN_PASS || "CHANGE_THIS",  // Secure admin password
 ```
 
 ---

@@ -415,7 +415,6 @@ SELECT name FROM sqlite_master WHERE type='table';
 - `DATABASE_URL_UNPOOLED`: Non-pooled connection for migrations
 - `POSTGRES_URL_NON_POOLING`: Alternative non-pooled connection
 - `PORT`: Server port (default: 3000, Cloud Run: 8080)
-- `ADMIN_PASS`: Admin panel password
 
 ### Connection String Format
 
