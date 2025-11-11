@@ -1,149 +1,162 @@
 /*jslint node: true */
 'use strict';
 
-const db = require('../sql');
+const pool = require('../sql');
+const StatsRepository = require('./stats-repository');
+const PreferencesRepository = require('./preferences-repository');
 
 class UserRepository {
     /**
      * Create a new user or get existing user by Privy ID
      */
     static async findOrCreateByPrivyId(privyId, userData) {
-        return new Promise((resolve, reject) => {
+        try {
             // First, try to find existing user
-            db.get(
-                'SELECT * FROM users WHERE privy_id = ?',
-                [privyId],
-                (err, user) => {
-                    if (err) return reject(err);
-
-                    if (user) {
-                        // Update last_seen
-                        db.run(
-                            'UPDATE users SET last_seen = ? WHERE id = ?',
-                            [Date.now(), user.id],
-                            (updateErr) => {
-                                if (updateErr) return reject(updateErr);
-                                resolve(user);
-                            }
-                        );
-                    } else {
-                        // Create new user
-                        const now = Date.now();
-                        db.run(
-                            `INSERT INTO users (privy_id, username, email, auth_provider, avatar_url, created_at, last_seen)
-                             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                            [
-                                privyId,
-                                userData.username || `user_${Math.floor(Math.random() * 100000)}`,
-                                userData.email || null,
-                                userData.authProvider || 'privy',
-                                userData.avatarUrl || null,
-                                now,
-                                now
-                            ],
-                            function(insertErr) {
-                                if (insertErr) return reject(insertErr);
-
-                                // Return newly created user
-                                db.get(
-                                    'SELECT * FROM users WHERE id = ?',
-                                    [this.lastID],
-                                    (getErr, newUser) => {
-                                        if (getErr) return reject(getErr);
-                                        resolve(newUser);
-                                    }
-                                );
-                            }
-                        );
-                    }
-                }
+            const result = await pool.query(
+                'SELECT * FROM users WHERE privy_id = $1',
+                [privyId]
             );
-        });
+            const user = result.rows[0];
+
+            if (user) {
+                // Update last_seen
+                await pool.query(
+                    'UPDATE users SET last_seen = $1 WHERE id = $2',
+                    [Date.now(), user.id]
+                );
+                return user;
+            } else {
+                // Create new user
+                const now = Date.now();
+                const insertResult = await pool.query(
+                    `INSERT INTO users (privy_id, username, email, auth_provider, avatar_url, created_at, last_seen)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7)
+                     RETURNING *`,
+                    [
+                        privyId,
+                        userData.username || `user_${Math.floor(Math.random() * 100000)}`,
+                        userData.email || null,
+                        userData.authProvider || 'privy',
+                        userData.avatarUrl || null,
+                        now,
+                        now
+                    ]
+                );
+                const newUser = insertResult.rows[0];
+
+                // Initialize game stats for new user
+                try {
+                    await StatsRepository.initializeStats(newUser.id);
+                    console.log(`[UserRepository] Initialized stats for new user: ${newUser.username} (ID: ${newUser.id})`);
+                } catch (statsError) {
+                    console.error(`[UserRepository] Failed to initialize stats for user ${newUser.id}:`, statsError);
+                    // Don't fail user creation if stats initialization fails
+                }
+
+                // Initialize default preferences for new user
+                try {
+                    await PreferencesRepository.createDefaultPreferences(newUser.id);
+                    console.log(`[UserRepository] Initialized preferences for new user: ${newUser.username} (ID: ${newUser.id})`);
+                } catch (prefsError) {
+                    console.error(`[UserRepository] Failed to initialize preferences for user ${newUser.id}:`, prefsError);
+                    // Don't fail user creation if preferences initialization fails
+                }
+
+                return newUser;
+            }
+        } catch (err) {
+            console.error('Error in findOrCreateByPrivyId:', err);
+            throw err;
+        }
     }
 
     /**
      * Find user by ID
      */
     static async findById(userId) {
-        return new Promise((resolve, reject) => {
-            db.get(
-                'SELECT * FROM users WHERE id = ?',
-                [userId],
-                (err, user) => {
-                    if (err) return reject(err);
-                    resolve(user);
-                }
+        try {
+            const result = await pool.query(
+                'SELECT * FROM users WHERE id = $1',
+                [userId]
             );
-        });
+            return result.rows[0];
+        } catch (err) {
+            console.error('Error in findById:', err);
+            throw err;
+        }
     }
 
     /**
      * Find user by username
      */
     static async findByUsername(username) {
-        return new Promise((resolve, reject) => {
-            db.get(
-                'SELECT * FROM users WHERE username = ?',
-                [username],
-                (err, user) => {
-                    if (err) return reject(err);
-                    resolve(user);
-                }
+        try {
+            const result = await pool.query(
+                'SELECT * FROM users WHERE username = $1',
+                [username]
             );
-        });
+            return result.rows[0];
+        } catch (err) {
+            console.error('Error in findByUsername:', err);
+            throw err;
+        }
     }
 
     /**
      * Update user profile
      */
     static async updateProfile(userId, updates) {
-        const allowedFields = ['username', 'bio', 'region', 'avatar_url'];
-        const updateFields = [];
-        const values = [];
+        try {
+            const allowedFields = ['username', 'bio', 'region', 'avatar_url'];
+            const updateFields = [];
+            const values = [];
+            let paramIndex = 1;
 
-        for (const field of allowedFields) {
-            if (updates[field] !== undefined) {
-                updateFields.push(`${field} = ?`);
-                values.push(updates[field]);
-            }
-        }
-
-        if (updateFields.length === 0) {
-            return Promise.resolve(true);
-        }
-
-        values.push(userId);
-
-        return new Promise((resolve, reject) => {
-            db.run(
-                `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`,
-                values,
-                (err) => {
-                    if (err) return reject(err);
-                    resolve(true);
+            for (const field of allowedFields) {
+                if (updates[field] !== undefined) {
+                    updateFields.push(`${field} = $${paramIndex++}`);
+                    values.push(updates[field]);
                 }
+            }
+
+            if (updateFields.length === 0) {
+                return true;
+            }
+
+            values.push(userId);
+
+            await pool.query(
+                `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
+                values
             );
-        });
+            return true;
+        } catch (err) {
+            console.error('Error in updateProfile:', err);
+            throw err;
+        }
     }
 
     /**
      * Check if username is available
      */
     static async isUsernameAvailable(username, excludeUserId = null) {
-        return new Promise((resolve, reject) => {
-            let query = 'SELECT COUNT(*) as count FROM users WHERE username = ?';
+        try {
+            let query = 'SELECT COUNT(*) as count FROM users WHERE username = $1';
             const params = [username];
 
             if (excludeUserId) {
-                query += ' AND id != ?';
+                query += ' AND id != $2';
                 params.push(excludeUserId);
             }
 
-            db.get(query, params, (err, result) => {
-                if (err) return reject(err);
-                resolve(result.count === 0);
-            });
-        });
+            const result = await pool.query(query, params);
+            // Convert to number since Postgres returns strings
+            const count = parseInt(result.rows[0].count) || 0;
+            return count === 0;
+        } catch (err) {
+            console.error('Error in isUsernameAvailable:', err);
+            throw err;
+        }
     }
 }
 

@@ -159,13 +159,13 @@ app.get('/api/user/:userId/preferences', async (req, res) => {
         const preferences = await PreferencesRepository.getPreferences(userId);
 
         res.json({
-            darkMode: preferences.dark_mode === 1,
-            showMass: preferences.show_mass === 1,
-            showBorder: preferences.show_border === 1,
-            showFps: preferences.show_fps === 1,
-            showGrid: preferences.show_grid === 1,
-            continuity: preferences.continuity === 1,
-            roundFood: preferences.round_food === 1,
+            darkMode: !!preferences.dark_mode,
+            showMass: !!preferences.show_mass,
+            showBorder: !!preferences.show_border,
+            showFps: !!preferences.show_fps,
+            showGrid: !!preferences.show_grid,
+            continuity: !!preferences.continuity,
+            roundFood: !!preferences.round_food,
             skinId: preferences.skin_id
         });
     } catch (error) {
@@ -242,11 +242,8 @@ io.on('connection', function (socket) {
 const addPlayerToArena = async (socket) => {
     // Check if player is respawning (has preferred arena)
     const preferredArenaId = socket.handshake.query.arenaId || null;
-
     const userId = socket.handshake.query.userId || null;
     const playerName = socket.handshake.query.playerName || `Guest_${Math.floor(Math.random() * 10000)}`;
-
-
     // Find or create arena
     const arena = arenaManager.findAvailableArena(preferredArenaId);
 
@@ -255,6 +252,10 @@ const addPlayerToArena = async (socket) => {
     socket.userId = userId ? parseInt(userId) : null;
     socket.playerName = playerName;
 
+    // TODO: Fix session tracking - temporarily disabled to fix black screen issue
+    // Session creation works but causes immediate disconnects for logged-in users
+    // Needs investigation into the disconnect flow
+    /*
     // Start game session if authenticated user
     if (socket.userId) {
         try {
@@ -265,6 +266,7 @@ const addPlayerToArena = async (socket) => {
             console.error('[SERVER] Failed to start game session:', error);
         }
     }
+    */
 
     // Join Socket.io room
     socket.join(arena.id);

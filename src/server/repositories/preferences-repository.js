@@ -1,7 +1,7 @@
 /*jslint node: true */
 'use strict';
 
-const db = require('../sql');
+const pool = require('../sql');
 const DEFAULT_PREFERENCES = require('../../shared/default-preferences');
 
 class PreferencesRepository {
@@ -9,136 +9,137 @@ class PreferencesRepository {
      * Get user preferences (creates default if doesn't exist)
      */
     static async getPreferences(userId) {
-        return new Promise((resolve, reject) => {
-            db.get(
-                'SELECT * FROM user_preferences WHERE user_id = ?',
-                [userId],
-                async (err, prefs) => {
-                    if (err) return reject(err);
-
-                    if (!prefs) {
-                        // Create default preferences
-                        await this.createDefaultPreferences(userId);
-                        db.get(
-                            'SELECT * FROM user_preferences WHERE user_id = ?',
-                            [userId],
-                            (err2, newPrefs) => {
-                                if (err2) return reject(err2);
-                                resolve(newPrefs);
-                            }
-                        );
-                    } else {
-                        resolve(prefs);
-                    }
-                }
+        try {
+            let result = await pool.query(
+                'SELECT * FROM user_preferences WHERE user_id = $1',
+                [userId]
             );
-        });
+            let prefs = result.rows[0];
+
+            if (!prefs) {
+                // Create default preferences
+                await this.createDefaultPreferences(userId);
+                result = await pool.query(
+                    'SELECT * FROM user_preferences WHERE user_id = $1',
+                    [userId]
+                );
+                prefs = result.rows[0];
+            }
+
+            return prefs;
+        } catch (err) {
+            console.error('Error getting preferences:', err);
+            throw err;
+        }
     }
 
     /**
      * Create default preferences for a new user using game defaults
      */
     static async createDefaultPreferences(userId) {
-        return new Promise((resolve, reject) => {
-            // Convert boolean values to SQLite integers (0 or 1)
-            const darkMode = DEFAULT_PREFERENCES.darkMode ? 1 : 0;
-            const showMass = DEFAULT_PREFERENCES.showMass ? 1 : 0;
-            const showBorder = DEFAULT_PREFERENCES.showBorder ? 1 : 0;
-            const showFps = DEFAULT_PREFERENCES.showFps ? 1 : 0;
-            const showGrid = DEFAULT_PREFERENCES.showGrid ? 1 : 0;
-            const continuity = DEFAULT_PREFERENCES.continuity ? 1 : 0;
-            const roundFood = DEFAULT_PREFERENCES.roundFood ? 1 : 0;
-
-            db.run(
+        try {
+            // PostgreSQL handles boolean values natively
+            await pool.query(
                 `INSERT INTO user_preferences (user_id, dark_mode, show_mass, show_border,
                  show_fps, show_grid, continuity, round_food, skin_id, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
-                [userId, darkMode, showMass, showBorder, showFps, showGrid, continuity, roundFood, Date.now()],
-                (err) => {
-                    if (err) return reject(err);
-                    console.log(`[PREFERENCES] Created default preferences for user ${userId} using game defaults`);
-                    resolve(true);
-                }
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL, $9)`,
+                [
+                    userId,
+                    DEFAULT_PREFERENCES.darkMode,
+                    DEFAULT_PREFERENCES.showMass,
+                    DEFAULT_PREFERENCES.showBorder,
+                    DEFAULT_PREFERENCES.showFps,
+                    DEFAULT_PREFERENCES.showGrid,
+                    DEFAULT_PREFERENCES.continuity,
+                    DEFAULT_PREFERENCES.roundFood,
+                    Date.now()
+                ]
             );
-        });
+            console.log(`[PREFERENCES] Created default preferences for user ${userId} using game defaults`);
+            return true;
+        } catch (err) {
+            console.error('Error creating default preferences:', err);
+            throw err;
+        }
     }
 
     /**
      * Update user preferences
      */
     static async updatePreferences(userId, preferences) {
-        const allowedFields = [
-            'dark_mode', 'show_mass', 'show_border', 'show_fps',
-            'show_grid', 'continuity', 'round_food', 'skin_id'
-        ];
+        try {
+            const allowedFields = [
+                'dark_mode', 'show_mass', 'show_border', 'show_fps',
+                'show_grid', 'continuity', 'round_food', 'skin_id'
+            ];
 
-        const updateFields = [];
-        const values = [];
+            const updateFields = [];
+            const values = [];
+            let paramIndex = 1;
 
-        for (const field of allowedFields) {
-            if (preferences[field] !== undefined) {
-                updateFields.push(`${field} = ?`);
-                // Convert boolean to integer for SQLite
-                const value = typeof preferences[field] === 'boolean' ?
-                    (preferences[field] ? 1 : 0) : preferences[field];
-                values.push(value);
+            for (const field of allowedFields) {
+                if (preferences[field] !== undefined) {
+                    updateFields.push(`${field} = $${paramIndex++}`);
+                    // PostgreSQL handles boolean values natively
+                    values.push(preferences[field]);
+                }
             }
-        }
 
-        if (updateFields.length === 0) {
-            return Promise.resolve(true);
-        }
+            if (updateFields.length === 0) {
+                return true;
+            }
 
-        // Add updated_at
-        updateFields.push('updated_at = ?');
-        values.push(Date.now());
+            // Add updated_at
+            updateFields.push(`updated_at = $${paramIndex++}`);
+            values.push(Date.now());
 
-        // Add user_id for WHERE clause
-        values.push(userId);
+            // Add user_id for WHERE clause
+            values.push(userId);
 
-        return new Promise((resolve, reject) => {
             // First ensure preferences exist
-            this.getPreferences(userId).then(() => {
-                db.run(
-                    `UPDATE user_preferences SET ${updateFields.join(', ')} WHERE user_id = ?`,
-                    values,
-                    (err) => {
-                        if (err) return reject(err);
-                        resolve(true);
-                    }
-                );
-            }).catch(reject);
-        });
+            await this.getPreferences(userId);
+
+            await pool.query(
+                `UPDATE user_preferences SET ${updateFields.join(', ')} WHERE user_id = $${paramIndex}`,
+                values
+            );
+            return true;
+        } catch (err) {
+            console.error('Error updating preferences:', err);
+            throw err;
+        }
     }
 
     /**
      * Reset preferences to defaults using shared configuration
      */
     static async resetToDefaults(userId) {
-        return new Promise((resolve, reject) => {
-            // Convert boolean values to SQLite integers (0 or 1)
-            const darkMode = DEFAULT_PREFERENCES.darkMode ? 1 : 0;
-            const showMass = DEFAULT_PREFERENCES.showMass ? 1 : 0;
-            const showBorder = DEFAULT_PREFERENCES.showBorder ? 1 : 0;
-            const showFps = DEFAULT_PREFERENCES.showFps ? 1 : 0;
-            const showGrid = DEFAULT_PREFERENCES.showGrid ? 1 : 0;
-            const continuity = DEFAULT_PREFERENCES.continuity ? 1 : 0;
-            const roundFood = DEFAULT_PREFERENCES.roundFood ? 1 : 0;
-
-            db.run(
+        try {
+            // PostgreSQL handles boolean values natively
+            await pool.query(
                 `UPDATE user_preferences SET
-                 dark_mode = ?, show_mass = ?, show_border = ?, show_fps = ?,
-                 show_grid = ?, continuity = ?, round_food = ?, skin_id = NULL,
-                 updated_at = ?
-                 WHERE user_id = ?`,
-                [darkMode, showMass, showBorder, showFps, showGrid, continuity, roundFood, Date.now(), userId],
-                (err) => {
-                    if (err) return reject(err);
-                    console.log(`[PREFERENCES] Reset preferences to defaults for user ${userId}`);
-                    resolve(true);
-                }
+                 dark_mode = $1, show_mass = $2, show_border = $3, show_fps = $4,
+                 show_grid = $5, continuity = $6, round_food = $7, skin_id = NULL,
+                 updated_at = $8
+                 WHERE user_id = $9`,
+                [
+                    DEFAULT_PREFERENCES.darkMode,
+                    DEFAULT_PREFERENCES.showMass,
+                    DEFAULT_PREFERENCES.showBorder,
+                    DEFAULT_PREFERENCES.showFps,
+                    DEFAULT_PREFERENCES.showGrid,
+                    DEFAULT_PREFERENCES.continuity,
+                    DEFAULT_PREFERENCES.roundFood,
+                    Date.now(),
+                    userId
+                ]
             );
-        });
+            console.log(`[PREFERENCES] Reset preferences to defaults for user ${userId}`);
+            return true;
+        } catch (err) {
+            console.error('Error resetting preferences:', err);
+            throw err;
+        }
     }
 }
 

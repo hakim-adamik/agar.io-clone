@@ -49,7 +49,7 @@ function applyDefaultGameSettings() {
 // Load user preferences from server
 function loadUserPreferences(userId) {
     fetch("/api/user/" + userId + "/preferences")
-        .then(function(response) {
+        .then(function (response) {
             if (!response.ok) throw new Error("Failed to load preferences");
             return response.json();
         })
@@ -64,9 +64,9 @@ function loadUserPreferences(userId) {
 
 // Apply user preferences from server
 function applyUserPreferences(prefs) {
-    console.log('Applying user preferences:', prefs);
+    console.log("Applying user preferences:", prefs);
 
-    var DARK = "#181818";
+    var DARK = "#111111";
     var LIGHT = "#f2fbff";
     var LINEDARK = "#ffffff";
     var LINELIGHT = "#000000";
@@ -117,11 +117,10 @@ function applyUserPreferences(prefs) {
 }
 
 // Apply default settings from config
-function applyConfigDefaults() {
-    var config = window.gameConfig || {};
-    var defaults = config.getSettings ? config.getSettings() : {};
+function applyConfigDefaults(settings) {
+    var defaults = window.DEFAULT_PREFERENCES || {};
 
-    var DARK = "#181818";
+    var DARK = "#111111";
     var LIGHT = "#f2fbff";
     var LINEDARK = "#ffffff";
     var LINELIGHT = "#000000";
@@ -162,7 +161,7 @@ function syncSettingsCheckboxes() {
     var checkboxSync = [
         {
             ids: ["darkMode", "darkModeGame"],
-            value: global.backgroundColor === "#181818",
+            value: global.backgroundColor === "#111111",
         },
         {
             ids: ["showMass", "showMassGame"],
@@ -228,12 +227,12 @@ function startGame(type) {
         // Get user data from localStorage (if authenticated)
         let userData = null;
         try {
-            const privyUserStr = localStorage.getItem('privy_user');
+            const privyUserStr = localStorage.getItem("privy_user");
             if (privyUserStr) {
                 userData = JSON.parse(privyUserStr);
             }
         } catch (e) {
-            console.error('[Socket] Failed to parse user data:', e);
+            console.error("[Socket] Failed to parse user data:", e);
         }
 
         // Build query params including user data
@@ -241,14 +240,17 @@ function startGame(type) {
             type: type,
             arenaId: global.arenaId || null,
             userId: userData?.dbUserId || null,
-            playerName: playerNameInput.value || userData?.username || `Guest_${Math.floor(Math.random() * 10000)}`
+            playerName:
+                playerNameInput.value ||
+                userData?.username ||
+                `Guest_${Math.floor(Math.random() * 10000)}`,
         };
 
         // Convert to query string
         const query = Object.keys(queryParams)
-            .filter(key => queryParams[key] !== null)
-            .map(key => `${key}=${encodeURIComponent(queryParams[key])}`)
-            .join('&');
+            .filter((key) => queryParams[key] !== null)
+            .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
+            .join("&");
 
         socket = io({ query });
         setupSocket(socket);
@@ -548,8 +550,10 @@ window.canvas = new Canvas();
 
 // Toggle functions for settings
 function toggleDarkMode() {
-    var LIGHT = "#f2fbff", DARK = "#181818";
-    var LINELIGHT = "#000000", LINEDARK = "#ffffff";
+    var LIGHT = "#f2fbff",
+        DARK = "#181818";
+    var LINELIGHT = "#000000",
+        LINEDARK = "#ffffff";
 
     if (global.backgroundColor === LIGHT) {
         global.backgroundColor = DARK;
@@ -696,23 +700,31 @@ $("#exit").on("click touchstart", function (e) {
 });
 
 // Directional pad control - touch anywhere on screen
-(function() {
-    var canvas = document.getElementById('cvs');
-    var touchCenterIndicator = document.getElementById('touchCenter');
+(function () {
+    var canvas = document.getElementById("cvs");
+    var touchCenterIndicator = document.getElementById("touchCenter");
     var touchCenterX = 0;
     var touchCenterY = 0;
     var isMoving = false;
     var movingTouchId = null;
 
     if (canvas) {
-        canvas.addEventListener('touchstart', function(e) {
+        canvas.addEventListener("touchstart", function (e) {
             // Check if this touch is on a button
             var touch = e.touches[0];
-            var element = document.elementFromPoint(touch.clientX, touch.clientY);
+            var element = document.elementFromPoint(
+                touch.clientX,
+                touch.clientY
+            );
 
             if (element) {
-                var isButton = element.id === 'split' || element.id === 'feed' || element.id === 'exit' ||
-                               element.closest('#split') || element.closest('#feed') || element.closest('#exit');
+                var isButton =
+                    element.id === "split" ||
+                    element.id === "feed" ||
+                    element.id === "exit" ||
+                    element.closest("#split") ||
+                    element.closest("#feed") ||
+                    element.closest("#exit");
 
                 if (isButton) {
                     return; // Let button handle this
@@ -729,13 +741,13 @@ $("#exit").on("click touchstart", function (e) {
 
             // Show visual indicator at touch center
             if (touchCenterIndicator) {
-                touchCenterIndicator.style.left = touchCenterX + 'px';
-                touchCenterIndicator.style.top = touchCenterY + 'px';
-                touchCenterIndicator.style.display = 'block';
+                touchCenterIndicator.style.left = touchCenterX + "px";
+                touchCenterIndicator.style.top = touchCenterY + "px";
+                touchCenterIndicator.style.display = "block";
             }
         });
 
-        canvas.addEventListener('touchmove', function(e) {
+        canvas.addEventListener("touchmove", function (e) {
             e.preventDefault();
 
             if (isMoving) {
@@ -759,7 +771,7 @@ $("#exit").on("click touchstart", function (e) {
             }
         });
 
-        canvas.addEventListener('touchend', function(e) {
+        canvas.addEventListener("touchend", function (e) {
             e.preventDefault();
 
             // Check if the moving touch has ended
@@ -781,12 +793,12 @@ $("#exit").on("click touchstart", function (e) {
 
                 // Hide visual indicator
                 if (touchCenterIndicator) {
-                    touchCenterIndicator.style.display = 'none';
+                    touchCenterIndicator.style.display = "none";
                 }
             }
         });
 
-        canvas.addEventListener('touchcancel', function(e) {
+        canvas.addEventListener("touchcancel", function (e) {
             e.preventDefault();
             isMoving = false;
             movingTouchId = null;
@@ -795,7 +807,7 @@ $("#exit").on("click touchstart", function (e) {
 
             // Hide visual indicator
             if (touchCenterIndicator) {
-                touchCenterIndicator.style.display = 'none';
+                touchCenterIndicator.style.display = "none";
             }
         });
     }
@@ -860,11 +872,14 @@ function setupSocket(socket) {
         var status = '<span class="title">Leaderboard</span>';
         for (var i = 0; i < leaderboard.length; i++) {
             status += "<br />";
-            var displayName = leaderboard[i].name.length !== 0 ? leaderboard[i].name : "An unnamed cell";
+            var displayName =
+                leaderboard[i].name.length !== 0
+                    ? leaderboard[i].name
+                    : "An unnamed cell";
             var score = leaderboard[i].score || 0;
             // Format score with 2 decimals, removing trailing zeros
             var displayScore = parseFloat(score.toFixed(2));
-            var entry = (i + 1) + ". " + displayName + " - " + displayScore;
+            var entry = i + 1 + ". " + displayName + " - " + displayScore;
 
             if (leaderboard[i].id == player.id) {
                 status += '<span class="me">' + entry + "</span>";
@@ -994,7 +1009,8 @@ function setupSocket(socket) {
                 var playerScoreEl = document.getElementById("playerScore");
                 if (playerScoreEl) {
                     var displayScore = parseFloat(player.score.toFixed(2));
-                    playerScoreEl.innerHTML = '<span class="title">Score</span><br />' + displayScore;
+                    playerScoreEl.innerHTML =
+                        '<span class="title">Score</span><br />' + displayScore;
                 }
             }
             // Store other players' data and calculate their velocities
@@ -1114,7 +1130,8 @@ function setupSocket(socket) {
             } else {
                 // Fallback to old menu if landing page not found
                 document.getElementById("gameAreaWrapper").style.opacity = 0;
-                document.getElementById("startMenuWrapper").style.maxHeight = "1000px";
+                document.getElementById("startMenuWrapper").style.maxHeight =
+                    "1000px";
                 if (global.animLoopHandle) {
                     window.cancelAnimationFrame(global.animLoopHandle);
                     global.animLoopHandle = undefined;
@@ -1214,7 +1231,6 @@ var prediction = {
         // Ignore localStorage errors
     }
 })();
-
 
 // Use performance.now() if available, fallback to Date.now()
 var getTime = (function () {
@@ -1501,7 +1517,7 @@ function gameLoop() {
         for (var i = 0; i < users.length; i++) {
             let color = "hsl(" + users[i].hue + ", 100%, 50%)";
             let borderColor = "hsl(" + users[i].hue + ", 100%, 45%)";
-            let isCurrentPlayer = (users[i].id === player.id);
+            let isCurrentPlayer = users[i].id === player.id;
             for (var j = 0; j < users[i].cells.length; j++) {
                 let screenX =
                     users[i].cells[j].x - player.x + global.screen.width / 2;
@@ -1596,7 +1612,7 @@ function exitGame() {
     exitCountdownValue = 5;
 
     // Start countdown timer
-    exitCountdownTimer = setInterval(function() {
+    exitCountdownTimer = setInterval(function () {
         exitCountdownValue--;
 
         if (exitCountdownValue <= 0) {
@@ -1660,7 +1676,7 @@ function cleanupGame() {
         y: global.screen.height / 2,
         screenWidth: global.screen.width,
         screenHeight: global.screen.height,
-        target: {x: global.screen.width / 2, y: global.screen.height / 2}
+        target: { x: global.screen.width / 2, y: global.screen.height / 2 },
     };
 }
 
@@ -1689,36 +1705,36 @@ function saveLastScore(score) {
     try {
         // Round to 2 decimals for display consistency
         var preciseScore = Math.round(score * 100) / 100;
-        localStorage.setItem('lastScore', preciseScore);
+        localStorage.setItem("lastScore", preciseScore);
     } catch (e) {
-        console.log('Could not save last score:', e);
+        console.log("Could not save last score:", e);
     }
 }
 
 // Display last score on landing page
 function displayLastScore() {
     try {
-        var lastScore = localStorage.getItem('lastScore');
-        var lastScoreBox = document.getElementById('lastScoreBox');
-        var lastScoreValue = document.getElementById('lastScoreValue');
+        var lastScore = localStorage.getItem("lastScore");
+        var lastScoreBox = document.getElementById("lastScoreBox");
+        var lastScoreValue = document.getElementById("lastScoreValue");
 
         if (lastScoreValue && lastScoreBox) {
             if (lastScore) {
                 // Format score to remove trailing zeros
                 var formattedScore = parseFloat(lastScore);
                 lastScoreValue.textContent = formattedScore;
-                lastScoreBox.style.display = 'flex';
+                lastScoreBox.style.display = "flex";
             } else {
-                lastScoreBox.style.display = 'none';
+                lastScoreBox.style.display = "none";
             }
         }
     } catch (e) {
-        console.log('Could not display last score:', e);
+        console.log("Could not display last score:", e);
     }
 }
 
 // Initialize exit functionality - Keyboard ESC key trigger
-document.addEventListener("keydown", function(event) {
+document.addEventListener("keydown", function (event) {
     // Check if ESC key is pressed and game is active
     if (event.key === "Escape" && global.gameStart) {
         event.preventDefault();
@@ -1727,8 +1743,8 @@ document.addEventListener("keydown", function(event) {
 });
 
 // Display last score when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', displayLastScore);
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", displayLastScore);
 } else {
     displayLastScore();
 }

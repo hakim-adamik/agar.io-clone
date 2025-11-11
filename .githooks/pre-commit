@@ -1,0 +1,9 @@
+#!/usr/bin/env node
+
+/*
+ * Git Pre-Commit Hook
+ * Prevents direct schema modifications in sql.js
+ * Enforces migration-only workflow for database changes
+ */
+
+require('../scripts/check-schema-changes.js');
