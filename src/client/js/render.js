@@ -1,5 +1,17 @@
 const FULL_ANGLE = 2 * Math.PI;
 
+// HSL color cache (shared with app.js via window)
+var colorCache = window.colorCache || {};
+window.colorCache = colorCache;
+
+function getHSLColor(hue, lightness) {
+    var key = hue + '_' + lightness;
+    if (!colorCache[key]) {
+        colorCache[key] = 'hsl(' + hue + ', 100%, ' + lightness + '%)';
+    }
+    return colorCache[key];
+}
+
 const drawRoundObject = (position, radius, graph) => {
     graph.beginPath();
     graph.arc(position.x, position.y, radius, 0, FULL_ANGLE);
@@ -9,8 +21,9 @@ const drawRoundObject = (position, radius, graph) => {
 };
 
 const drawFood = (position, food, graph) => {
-    graph.fillStyle = "hsl(" + food.hue + ", 100%, 50%)";
-    graph.strokeStyle = "hsl(" + food.hue + ", 100%, 45%)";
+    // Use cached colors instead of creating strings every frame
+    graph.fillStyle = getHSLColor(food.hue, 50);
+    graph.strokeStyle = getHSLColor(food.hue, 45);
     graph.lineWidth = 0;
     drawRoundObject(position, food.radius, graph);
 };
@@ -40,8 +53,9 @@ const drawVirus = (position, virus, graph) => {
 };
 
 const drawFireFood = (position, mass, playerConfig, graph) => {
-    graph.strokeStyle = "hsl(" + mass.hue + ", 100%, 45%)";
-    graph.fillStyle = "hsl(" + mass.hue + ", 100%, 50%)";
+    // Use cached colors instead of creating strings every frame
+    graph.strokeStyle = getHSLColor(mass.hue, 45);
+    graph.fillStyle = getHSLColor(mass.hue, 50);
     graph.lineWidth = playerConfig.border + 2;
     drawRoundObject(position, mass.radius - 1, graph);
 };

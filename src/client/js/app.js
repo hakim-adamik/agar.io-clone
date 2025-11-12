@@ -6,6 +6,20 @@ var global = require("./global");
 var playerNameInput = document.getElementById("playerNameInput");
 var socket;
 
+// Debug mode flag (accessible from browser console via window.DEBUG_MODE)
+/*
+window.DEBUG_MODE = false;
+window.enableDebug = function() {
+    window.DEBUG_MODE = true;
+    console.log("%c[DEBUG MODE ENABLED]", "color: green; font-weight: bold");
+    console.log("Performance warnings will be logged when large updates occur.");
+};
+window.disableDebug = function() {
+    window.DEBUG_MODE = false;
+    console.log("%c[DEBUG MODE DISABLED]", "color: orange; font-weight: bold");
+};
+*/
+
 var debug = function (args) {
     if (console && console.log) {
         console.log(args);
@@ -971,6 +985,22 @@ function setupSocket(socket) {
             }
             lastPositionUpdateTime = updateTime;
 
+            // Performance monitoring: log if processing takes too long
+            /*
+            if (window.DEBUG_MODE) {
+                var entityCount = userData.length + foodsList.length + massList.length + virusList.length;
+                if (entityCount > 200) {
+                    console.warn('[PERF] Large update:', {
+                        players: userData.length,
+                        food: foodsList.length,
+                        mass: massList.length,
+                        viruses: virusList.length,
+                        total: entityCount
+                    });
+                }
+            }
+            */
+
             if (global.playerType == "player") {
                 var now = getTime();
 
@@ -1273,6 +1303,23 @@ function cloneCells(cells) {
         };
     }
     return cloned;
+}
+
+// HSL color cache (avoid string concatenation every frame)
+var colorCache = {};
+function getHSLColor(hue, lightness) {
+    var key = hue + '_' + lightness;
+    if (!colorCache[key]) {
+        colorCache[key] = 'hsl(' + hue + ', 100%, ' + lightness + '%)';
+    }
+    return colorCache[key];
+}
+
+// Clear color cache if it gets too large (memory leak prevention)
+function clearColorCacheIfNeeded() {
+    if (Object.keys(colorCache).length > 1000) {
+        colorCache = {};
+    }
 }
 
 // Client-side prediction with velocity extrapolation
@@ -1596,8 +1643,9 @@ function gameLoop() {
         // Clear array instead of creating new one each frame (reduce GC pressure)
         cellsToDraw.length = 0;
         for (var i = 0; i < users.length; i++) {
-            let color = "hsl(" + users[i].hue + ", 100%, 50%)";
-            let borderColor = "hsl(" + users[i].hue + ", 100%, 45%)";
+            // Use cached HSL colors to avoid string concatenation
+            let color = getHSLColor(users[i].hue, 50);
+            let borderColor = getHSLColor(users[i].hue, 45);
             let isCurrentPlayer = users[i].id === player.id;
             for (var j = 0; j < users[i].cells.length; j++) {
                 let screenX =
