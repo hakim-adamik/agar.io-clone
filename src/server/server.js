@@ -23,6 +23,89 @@ const PreferencesRepository = require('./repositories/preferences-repository');
 // Add middleware for JSON parsing
 app.use(express.json());
 
+// ============================================
+// SERVER PERFORMANCE MONITORING
+// ============================================
+let serverLastUpdate = Date.now();
+let serverStalls = [];
+let serverUpdateGaps = [];
+
+// Monitor server main thread for blocking
+setInterval(() => {
+    const now = Date.now();
+    const delta = now - serverLastUpdate;
+
+    if (delta > 50) {
+        const stall = { time: now, gap: delta };
+        serverStalls.push(stall);
+
+        // Keep only last 20 stalls
+        if (serverStalls.length > 20) {
+            serverStalls.shift();
+        }
+
+        console.warn(`[SERVER STALL] Main thread blocked for ${delta}ms!`);
+    }
+
+    // Track all update gaps for analysis
+    if (delta > 0) {
+        serverUpdateGaps.push(delta);
+        if (serverUpdateGaps.length > 100) {
+            serverUpdateGaps.shift();
+        }
+    }
+
+    serverLastUpdate = now;
+}, 16); // Check every 16ms for 60Hz monitoring
+
+// Log server performance every 10 seconds
+setInterval(() => {
+    if (serverUpdateGaps.length > 0) {
+        const avgGap = serverUpdateGaps.reduce((a, b) => a + b, 0) / serverUpdateGaps.length;
+        const maxGap = Math.max(...serverUpdateGaps);
+        const stallCount = serverStalls.filter(s => Date.now() - s.time < 10000).length;
+
+        console.log(`[SERVER PERF] Avg loop: ${avgGap.toFixed(1)}ms | Max gap: ${maxGap}ms | Stalls (10s): ${stallCount}`);
+    }
+}, 10000);
+
+// ============================================
+// SOCKET.IO OPTIMIZATIONS
+// ============================================
+
+// Disable message compression which can cause batching
+io.engine.opts.perMessageDeflate = false;
+
+// Reduce WebSocket handshake timeout
+io.engine.opts.pingTimeout = 5000;
+io.engine.opts.pingInterval = 10000;
+
+// Override ID generation for better performance
+io.engine.generateId = (req) => {
+    return Math.random().toString(36).substr(2, 9);
+};
+
+// Set WebSocket-specific optimizations when engine connects
+io.engine.on('connection', (rawSocket) => {
+    // rawSocket here is the engine.io socket
+    const transport = rawSocket.transport;
+
+    if (transport && transport.name === 'websocket') {
+        const ws = transport.socket;
+
+        // Disable Nagle's algorithm for immediate packet sending
+        if (ws._socket && ws._socket.setNoDelay) {
+            ws._socket.setNoDelay(true);
+            console.log('[SERVER] WebSocket NoDelay enabled for new connection');
+        }
+
+        // Keep connection alive with no delay
+        if (ws._socket && ws._socket.setKeepAlive) {
+            ws._socket.setKeepAlive(true, 0);
+        }
+    }
+});
+
 // Initialize arena manager (replaces single map)
 const arenaManager = new ArenaManager(config, io);
 
@@ -30,6 +113,8 @@ const arenaManager = new ArenaManager(config, io);
 arenaManager.createArena();
 
 console.log('[SERVER] Multi-arena system initialized');
+console.log('[SERVER] Performance monitoring enabled');
+console.log('[SERVER] Socket.IO optimizations enabled');
 
 // Serve index.html with injected environment variables
 const fs = require('fs');

@@ -70,22 +70,93 @@ class Arena {
      * Start arena game loops
      */
     start() {
+        // Initialize performance monitoring
+        this.perfStats = {
+            tickTimes: [],
+            gameloopTimes: [],
+            updateTimes: [],
+            lastTickTime: 0,
+            lastGameloopTime: 0,
+            lastUpdateTime: 0
+        };
+
         // Game tick (physics, collisions) - 60 FPS
         this.tickInterval = setInterval(() => {
+            const start = Date.now();
             this.tickGame();
+            const duration = Date.now() - start;
+
+            // Track tick performance
+            this.perfStats.tickTimes.push(duration);
+            if (this.perfStats.tickTimes.length > 60) this.perfStats.tickTimes.shift();
+
+            // Warn if tick takes too long
+            if (duration > 20) {
+                console.warn(`[ARENA ${this.id}] Slow tick: ${duration}ms`);
+            }
+
+            this.perfStats.lastTickTime = start;
         }, 1000 / 60);
 
         // Game loop (balance, leaderboard) - 1 FPS
         this.gameloopInterval = setInterval(() => {
+            const start = Date.now();
             this.gameloop();
+            const duration = Date.now() - start;
+
+            // Track gameloop performance
+            this.perfStats.gameloopTimes.push(duration);
+            if (this.perfStats.gameloopTimes.length > 10) this.perfStats.gameloopTimes.shift();
+
+            // Warn if gameloop takes too long
+            if (duration > 100) {
+                console.warn(`[ARENA ${this.id}] Slow gameloop: ${duration}ms`);
+            }
+
+            this.perfStats.lastGameloopTime = start;
         }, 1000);
 
         // Send updates to clients - configurable Hz
         this.updateInterval = setInterval(() => {
+            const start = Date.now();
             this.sendUpdates();
+            const duration = Date.now() - start;
+
+            // Track update performance
+            this.perfStats.updateTimes.push(duration);
+            if (this.perfStats.updateTimes.length > 60) this.perfStats.updateTimes.shift();
+
+            // Warn if update takes too long
+            if (duration > 20) {
+                console.warn(`[ARENA ${this.id}] Slow update broadcast: ${duration}ms`);
+            }
+
+            // Check for update gaps
+            if (this.perfStats.lastUpdateTime > 0) {
+                const gap = start - this.perfStats.lastUpdateTime;
+                if (gap > 50) {
+                    console.warn(`[ARENA ${this.id}] Update gap: ${gap}ms (should be ${1000 / this.config.networkUpdateFactor}ms)`);
+                }
+            }
+
+            this.perfStats.lastUpdateTime = start;
         }, 1000 / this.config.networkUpdateFactor);
 
-        console.log(`[ARENA ${this.id}] Started game loops`);
+        // Log arena performance every 10 seconds
+        setInterval(() => {
+            if (this.map.players.data.length > 0 && this.perfStats.tickTimes.length > 0) {
+                const avgTick = this.perfStats.tickTimes.reduce((a, b) => a + b, 0) / this.perfStats.tickTimes.length;
+                const avgUpdate = this.perfStats.updateTimes.reduce((a, b) => a + b, 0) / this.perfStats.updateTimes.length;
+                const maxTick = Math.max(...this.perfStats.tickTimes);
+                const maxUpdate = Math.max(...this.perfStats.updateTimes);
+
+                console.log(`[ARENA ${this.id} PERF] Players: ${this.map.players.data.length} | ` +
+                    `Tick: ${avgTick.toFixed(1)}ms (max: ${maxTick}ms) | ` +
+                    `Update: ${avgUpdate.toFixed(1)}ms (max: ${maxUpdate}ms)`);
+            }
+        }, 10000);
+
+        console.log(`[ARENA ${this.id}] Started game loops with performance monitoring`);
     }
 
     /**
