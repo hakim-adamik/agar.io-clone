@@ -9,7 +9,7 @@ const io = require('socket.io')(http, {
         origin: "*",
         methods: ["GET", "POST"]
     },
-    transports: ['polling', 'websocket'],
+    transports: ['websocket'], // Force WebSocket only, no polling fallback
     allowEIO3: true
 });
 

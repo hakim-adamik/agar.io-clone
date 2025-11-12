@@ -258,7 +258,10 @@ function startGame(type) {
             .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
             .join("&");
 
-        socket = io({ query });
+        socket = io({
+            query,
+            transports: ['websocket'] // Force WebSocket only, no polling
+        });
         setupSocket(socket);
     }
     if (!global.animLoopHandle) animloop();
