@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
         social: {
             title: 'Social',
             content: `
-                <div class="social-links" style="display: grid; gap: 1rem; margin-top: 1.5rem; padding-top: 0.5rem;">
+                <div class="social-links" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem; padding-top: 0.5rem;">
                     ${createSocialLink('discord', 'fab fa-discord', '#7289da', 'Join our Discord Server')}
                     ${createSocialLink('telegram', 'fab fa-telegram', '#0088cc', 'Telegram Community')}
                     ${createSocialLink('x', 'fa-brands fa-x-twitter', 'white', 'Follow on X')}
@@ -41,10 +41,10 @@ document.addEventListener('DOMContentLoaded', function() {
             dynamic: true,
             getContent: function() {
                 return `
-                    <div style="display: flex; gap: 0.5rem; margin: 1.5rem 0;">
-                        <button class="tab-btn active" data-period="all" style="padding: 0.5rem 1rem; background: var(--primary-green); color: white; border: none; border-radius: 20px; cursor: pointer;">All Time</button>
-                        <button class="tab-btn" data-period="today" style="padding: 0.5rem 1rem; background: transparent; color: var(--text-secondary); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; cursor: pointer;">Today</button>
-                        <button class="tab-btn" data-period="week" style="padding: 0.5rem 1rem; background: transparent; color: var(--text-secondary); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; cursor: pointer;">This Week</button>
+                    <div style="display: flex; gap: 0.5rem; margin: 1.5rem 0; flex-wrap: wrap; justify-content: center;">
+                        <button class="tab-btn active" data-period="all" style="padding: 0.5rem 1rem; background: var(--primary-green); color: white; border: none; border-radius: 20px; cursor: pointer; flex: 1; min-width: 80px;">All Time</button>
+                        <button class="tab-btn" data-period="today" style="padding: 0.5rem 1rem; background: transparent; color: var(--text-secondary); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; cursor: pointer; flex: 1; min-width: 80px;">Today</button>
+                        <button class="tab-btn" data-period="week" style="padding: 0.5rem 1rem; background: transparent; color: var(--text-secondary); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; cursor: pointer; flex: 1; min-width: 80px;">This Week</button>
                     </div>
                     <div id="leaderboard-entries" style="display: flex; flex-direction: column; gap: 0.75rem;">
                         <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">Loading leaderboard...</div>
@@ -82,8 +82,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         '0.0';
 
                     return `
-                        <div style="padding: 1.5rem; background: linear-gradient(135deg, rgba(74, 144, 226, 0.15), rgba(80, 227, 194, 0.1)); border-radius: 12px; margin: 1rem 0; display: flex; align-items: center; gap: 1.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                            <div style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.8rem; color: white; position: relative; box-shadow: 0 4px 8px rgba(74, 144, 226, 0.3);">
+                        <div class="profile-header" style="padding: 1.5rem; background: linear-gradient(135deg, rgba(74, 144, 226, 0.15), rgba(80, 227, 194, 0.1)); border-radius: 12px; margin: 1rem 0; display: flex; align-items: center; gap: 1.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); flex-wrap: wrap;">
+                            <div class="profile-avatar" style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.8rem; color: white; position: relative; box-shadow: 0 4px 8px rgba(74, 144, 226, 0.3); flex-shrink: 0;">
                                 ${avatarUrl ?
                                     `<img src="${avatarUrl}" alt="${displayName}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` :
                                     `<i class="fas fa-user"></i>`
@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </button>
                                 </div>
                                 <div id="username-edit-container" style="display: none; align-items: center; gap: 0.5rem;">
-                                    <input id="username-input" type="text" value="${displayName}" maxlength="25" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(80, 227, 194, 0.5); color: white; padding: 0.5rem; border-radius: 6px; font-size: 1rem; width: 200px; outline: none;">
+                                    <input id="username-input" type="text" value="${displayName}" maxlength="25" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(80, 227, 194, 0.5); color: white; padding: 0.5rem; border-radius: 6px; font-size: 1rem; flex: 1; min-width: 120px; outline: none;">
                                     <button onclick="window.saveUsername()" style="background: #50e3c2; border: none; color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Save</button>
                                     <button onclick="window.toggleUsernameEdit(false)" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Cancel</button>
                                 </div>
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <h3 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px;">
                                 <i class="fas fa-chart-line" style="margin-right: 0.5rem;"></i>Performance Stats
                             </h3>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem;">
+                            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
                                 <div style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
                                     <i class="fas fa-crown" style="color: #4CAF50; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
                                     <div style="font-size: 1.75rem; font-weight: bold; color: #4CAF50; line-height: 1;">${(stats.highScore || 0).toLocaleString()}</div>
@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <h3 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px;">
                                 <i class="fas fa-sliders-h" style="margin-right: 0.5rem;"></i>Game Settings
                             </h3>
-                            <div id="preferencesSection" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                            <div id="preferencesSection" class="preferences-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
                                 <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s; hover: background: rgba(255, 255, 255, 0.08);">
                                     <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-moon" style="margin-right: 0.5rem; color: #FFC107;"></i>Dark Mode</span>
                                     <input type="checkbox" id="pref-darkMode" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
-    function createLeaderboardEntry(rank, name, score, medal = '', isCurrentUser = false) {
+    function createLeaderboardEntry(rank, name, score, medal = '', isCurrentUser = false, isMobile = false) {
         const medalStyles = {
             gold: 'background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1)); border: 1px solid rgba(255, 215, 0, 0.5);',
             silver: 'background: linear-gradient(135deg, rgba(192, 192, 192, 0.2), rgba(192, 192, 192, 0.1)); border: 1px solid rgba(192, 192, 192, 0.5);',
@@ -275,7 +275,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <span style="flex: 1; margin-left: 1rem; display: flex; align-items: center; gap: 0.5rem; ${isCurrentUser ? 'font-weight: 600; color: #50e3c2;' : ''}">
                     ${isCurrentUser ? `<i class="fas fa-user" style="font-size: 0.9rem;"></i>` : ''}
                     ${name}
-                    ${isCurrentUser ? `
+                    ${isCurrentUser && !isMobile ? `
                         <span style="background: rgba(80, 227, 194, 0.9); color: white; padding: 0.15rem 0.5rem; border-radius: 12px; font-size: 0.65rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">You</span>
                     ` : ''}
                 </span>
@@ -334,7 +334,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Format score with commas
             const formattedScore = score.toLocaleString();
 
-            return createLeaderboardEntry(rank, username, formattedScore, medal, isCurrentUser);
+            // Pass window width to determine if we're on mobile
+            const isMobile = window.innerWidth <= 768;
+            return createLeaderboardEntry(rank, username, formattedScore, medal, isCurrentUser, isMobile);
         }).join('');
 
         container.innerHTML = entries;
