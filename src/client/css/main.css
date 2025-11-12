@@ -567,14 +567,34 @@ div {
         font-size: 11px;
     }
 
-    /* Mobile score adjustments */
+    /* Mobile score adjustments - Move to top left corner without background */
     #playerScore {
-        bottom: 30px;
-        max-width: 95vw;
+        top: 10px;
+        left: 10px;
+        bottom: auto;
+        transform: none;
+        max-width: 200px;
+        background: none;
+        backdrop-filter: none;
+        padding: 0;
+        border-radius: 0;
+        border: none;
+        box-shadow: none;
+        text-align: left !important;  /* Override center alignment */
     }
 
     .score-value {
-        font-size: 33px !important;  /* Readable on mobile */
+        font-size: 36px !important;  /* Visible size on mobile */
+        font-weight: 900;
+        background: linear-gradient(45deg, #00FF00, #00CC00, #FFD700, #00FF00, #32CD32, #00FF7F) !important;
+        background-size: 300% 300% !important;
+        -webkit-background-clip: text !important;
+        background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        animation: gradientShift 3s ease infinite !important;
+        letter-spacing: -1px;
+        padding: 0;
+        text-shadow: none;  /* Remove shadow to let gradient show */
     }
 
     /* Score change and medal removed - no longer needed */

@@ -229,6 +229,12 @@ function startGame(type) {
         document.getElementById("gameAreaWrapper").style.opacity = 1;
     }
 
+    // Show the player score display when game starts
+    var playerScoreEl = document.getElementById("playerScore");
+    if (playerScoreEl) {
+        playerScoreEl.style.display = "block";
+    }
+
     if (!socket) {
         // Get user data from localStorage (if authenticated)
         let userData = null;
@@ -1091,6 +1097,12 @@ function setupSocket(socket) {
                 // Hide game view
                 gameView.style.display = "none";
                 document.getElementById("gameAreaWrapper").style.opacity = 0;
+
+                // Hide player score display
+                var playerScoreEl = document.getElementById("playerScore");
+                if (playerScoreEl) {
+                    playerScoreEl.style.display = "none";
+                }
 
                 // Show landing view
                 landingView.style.display = "block";
