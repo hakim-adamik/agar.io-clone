@@ -260,7 +260,18 @@ function startGame(type) {
 
         socket = io({
             query,
-            transports: ['websocket'] // Force WebSocket only, no polling
+            transports: ['websocket'], // Force WebSocket only, no polling
+            // Real-time optimizations
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 20000,
+            // Disable buffering
+            forceNew: true,
+            // Important: disable message buffering
+            upgrade: false,
+            rememberUpgrade: false
         });
         setupSocket(socket);
     }

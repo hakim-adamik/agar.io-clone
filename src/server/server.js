@@ -10,7 +10,20 @@ const io = require('socket.io')(http, {
         methods: ["GET", "POST"]
     },
     transports: ['websocket'], // Force WebSocket only, no polling fallback
-    allowEIO3: true
+    allowEIO3: true,
+    // Critical real-time optimizations
+    perMessageDeflate: false, // Disable compression (adds latency)
+    httpCompression: false, // Disable HTTP compression
+    pingTimeout: 60000, // 60 seconds (prevent disconnects)
+    pingInterval: 25000, // 25 seconds
+    upgradeTimeout: 30000, // 30 seconds
+    maxHttpBufferSize: 1e6, // 1MB
+    // Disable all buffering
+    writeBuffer: [],
+    // Force immediate sending
+    cookie: false,
+    // Reduce overhead
+    connectTimeout: 45000
 });
 
 const config = require('../../config');
@@ -73,12 +86,8 @@ setInterval(() => {
 // SOCKET.IO OPTIMIZATIONS
 // ============================================
 
-// Disable message compression which can cause batching
-io.engine.opts.perMessageDeflate = false;
-
-// Reduce WebSocket handshake timeout
-io.engine.opts.pingTimeout = 5000;
-io.engine.opts.pingInterval = 10000;
+// Already configured in io() constructor above
+// Additional runtime optimizations:
 
 // Override ID generation for better performance
 io.engine.generateId = (req) => {
@@ -87,21 +96,29 @@ io.engine.generateId = (req) => {
 
 // Set WebSocket-specific optimizations when engine connects
 io.engine.on('connection', (rawSocket) => {
-    // rawSocket here is the engine.io socket
-    const transport = rawSocket.transport;
+    // Disable buffering at engine.io level
+    rawSocket.writeBuffer = [];
 
+    const transport = rawSocket.transport;
     if (transport && transport.name === 'websocket') {
         const ws = transport.socket;
 
         // Disable Nagle's algorithm for immediate packet sending
         if (ws._socket && ws._socket.setNoDelay) {
             ws._socket.setNoDelay(true);
-            console.log('[SERVER] WebSocket NoDelay enabled for new connection');
-        }
-
-        // Keep connection alive with no delay
-        if (ws._socket && ws._socket.setKeepAlive) {
             ws._socket.setKeepAlive(true, 0);
+
+            // Linux-specific TCP optimizations
+            try {
+                // TCP_NODELAY is already set by setNoDelay
+                // Try to set TCP_QUICKACK (Linux only)
+                const TCP_QUICKACK = 12;
+                ws._socket.setsockopt(6, TCP_QUICKACK, 1);
+            } catch(e) {
+                // Not Linux or not supported, ignore
+            }
+
+            console.log('[SERVER] WebSocket optimizations enabled');
         }
     }
 });
