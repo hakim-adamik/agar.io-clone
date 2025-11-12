@@ -16,7 +16,9 @@ RUN npm run build
 # Build webpack bundles (client JS and Privy auth)
 RUN node build-webpack.js
 
-CMD [ "npm", "run", "start:prod" ]
+# Use WebSocket server to test if it fixes network stalls
+# Change back to "start:prod" to use Socket.IO
+CMD [ "npm", "run", "start:ws" ]
 
 HEALTHCHECK  --interval=5m --timeout=3s \
   CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-8080}/ || exit 1
