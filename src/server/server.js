@@ -9,8 +9,18 @@ const io = require('socket.io')(http, {
         origin: "*",
         methods: ["GET", "POST"]
     },
-    transports: ['polling', 'websocket'],
-    allowEIO3: true
+    // Prioritize WebSocket for real-time gaming, fallback to polling
+    transports: ['websocket', 'polling'],
+    allowEIO3: true,
+    // Performance optimizations for real-time multiplayer
+    pingInterval: 25000,  // Send ping every 25s to detect disconnections
+    pingTimeout: 20000,   // Consider connection dead if no pong after 20s
+    upgradeTimeout: 30000, // Allow more time for WebSocket upgrade
+    maxHttpBufferSize: 1e6, // 1MB buffer for large game state updates
+    // Enable compression for update packets
+    perMessageDeflate: {
+        threshold: 1024 // Compress messages larger than 1KB
+    }
 });
 
 const config = require('../../config');

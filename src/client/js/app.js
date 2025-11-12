@@ -252,7 +252,23 @@ function startGame(type) {
             .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
             .join("&");
 
-        socket = io({ query });
+        // Socket.io configuration optimized for real-time gaming
+        socket = io({
+            query,
+            // Prioritize WebSocket, fallback to polling
+            transports: ['websocket', 'polling'],
+            // Reconnection settings
+            reconnection: true,
+            reconnectionDelay: 1000,      // Start with 1s delay
+            reconnectionDelayMax: 5000,   // Max 5s between attempts
+            reconnectionAttempts: 10,     // Try 10 times before giving up
+            // Timeouts
+            timeout: 20000,               // 20s connection timeout
+            // Upgrade settings
+            upgrade: true,
+            rememberUpgrade: true,
+            // Ping/pong already configured server-side
+        });
         setupSocket(socket);
     }
     if (!global.animLoopHandle) animloop();
@@ -823,6 +839,37 @@ function handleDisconnect() {
 
 // socket stuff.
 function setupSocket(socket) {
+    // Connection event handlers for better user feedback
+    socket.on("connect", function() {
+        console.log("[Socket] Connected successfully");
+        // Hide any connection error messages
+        if (global.connectionErrorShown) {
+            global.connectionErrorShown = false;
+        }
+    });
+
+    socket.on("reconnect", function(attemptNumber) {
+        console.log("[Socket] Reconnected after " + attemptNumber + " attempts");
+        // Optionally show success message briefly
+        if (global.gameStart) {
+            // Request fresh game state after reconnection
+            socket.emit("respawn");
+        }
+    });
+
+    socket.on("reconnect_attempt", function(attemptNumber) {
+        console.log("[Socket] Reconnection attempt #" + attemptNumber);
+        if (!global.connectionErrorShown && global.gameStart) {
+            render.drawErrorMessage("Reconnecting...", graph, global.screen);
+            global.connectionErrorShown = true;
+        }
+    });
+
+    socket.on("reconnect_failed", function() {
+        console.log("[Socket] Reconnection failed after all attempts");
+        render.drawErrorMessage("Connection Lost - Please Refresh", graph, global.screen);
+    });
+
     // Handle ping.
     socket.on("pongcheck", function () {
         var latency = Date.now() - global.startPingTime;
@@ -830,8 +877,24 @@ function setupSocket(socket) {
     });
 
     // Handle error.
-    socket.on("connect_error", handleDisconnect);
-    socket.on("disconnect", handleDisconnect);
+    socket.on("connect_error", function(error) {
+        console.error("[Socket] Connection error:", error.message);
+        // Don't immediately show disconnect message - let reconnection try first
+        if (socket.io.reconnecting === false) {
+            handleDisconnect();
+        }
+    });
+
+    socket.on("disconnect", function(reason) {
+        console.log("[Socket] Disconnected:", reason);
+        // Only show disconnect for unexpected disconnects (not user-initiated)
+        if (reason === "io server disconnect" || reason === "ping timeout") {
+            handleDisconnect();
+        } else if (reason === "transport close" || reason === "transport error") {
+            // Let automatic reconnection handle these
+            console.log("[Socket] Connection issue, will attempt reconnection");
+        }
+    });
 
     // Handle connection.
     socket.on("welcome", function (playerSettings, gameSizes) {

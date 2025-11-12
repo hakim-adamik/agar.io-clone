@@ -6,14 +6,15 @@ env_variables:
   NODE_ENV: production
 
 # Resource limits
+# Optimized for real-time multiplayer gaming
 automatic_scaling:
-  min_instances: 0
-  max_instances: 20
-  target_cpu_utilization: 0.6
+  min_instances: 1  # Keep 1 instance always warm to avoid cold starts
+  max_instances: 5  # Lower max to reduce container churn and connection drops
+  target_cpu_utilization: 0.75  # Higher threshold for more stable performance
 
 resources:
-  cpu: 1
-  memory_gb: 0.5
+  cpu: 2  # Increased from 1 for better game loop performance
+  memory_gb: 2  # Increased from 0.5 to reduce GC pauses
 
 # Health check
 liveness_check:
