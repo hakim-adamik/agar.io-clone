@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>uWebSocket Test Client</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #000;
+            color: #0f0;
+            padding: 20px;
+        }
+        #status {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #0f0;
+        }
+        #log {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #0f0;
+            padding: 10px;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0a0;
+        }
+    </style>
+</head>
+<body>
+    <h1>uWebSocket Test Client</h1>
+
+    <div id="status">Status: Disconnected</div>
+
+    <div>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <button onclick="sendMove()">Send Move</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <h3>Network Stats:</h3>
+    <div id="stats">
+        <div>Messages Received: <span id="msgCount">0</span></div>
+        <div>Last Update Gap: <span id="lastGap">-</span>ms</div>
+        <div>Average Gap: <span id="avgGap">-</span>ms</div>
+        <div>Max Gap: <span id="maxGap">-</span>ms</div>
+        <div>Stalls (>100ms): <span id="stallCount">0</span></div>
+    </div>
+
+    <h3>Log:</h3>
+    <div id="log"></div>
+
+    <script>
+        let ws = null;
+        let lastMessageTime = 0;
+        let messageCount = 0;
+        let gaps = [];
+        let stalls = 0;
+        let moveInterval = null;
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            logDiv.textContent = `[${timestamp}] ${message}\n` + logDiv.textContent;
+
+            // Keep only last 100 lines
+            const lines = logDiv.textContent.split('\n');
+            if (lines.length > 100) {
+                logDiv.textContent = lines.slice(0, 100).join('\n');
+            }
+        }
+
+        function updateStatus(status, color = '#0f0') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = `Status: ${status}`;
+            statusDiv.style.borderColor = color;
+        }
+
+        function connect() {
+            if (ws) {
+                log('Already connected');
+                return;
+            }
+
+            const host = window.location.hostname || 'localhost';
+            const port = 3000;
+            const url = `ws://${host}:${port}/?playerName=TestPlayer&type=player`;
+
+            log(`Connecting to ${url}...`);
+            updateStatus('Connecting...', '#ff0');
+
+            ws = new WebSocket(url);
+
+            ws.onopen = () => {
+                log('✅ Connected! Raw WebSocket, no Socket.IO');
+                updateStatus('Connected', '#0f0');
+                lastMessageTime = Date.now();
+
+                // Start sending moves automatically
+                moveInterval = setInterval(sendMove, 50); // 20 times per second
+            };
+
+            ws.onmessage = (event) => {
+                const now = Date.now();
+                messageCount++;
+
+                // Calculate gap
+                if (lastMessageTime > 0) {
+                    const gap = now - lastMessageTime;
+                    gaps.push(gap);
+
+                    // Keep only last 100 gaps
+                    if (gaps.length > 100) {
+                        gaps.shift();
+                    }
+
+                    // Check for stalls
+                    if (gap > 100) {
+                        stalls++;
+                        log(`⚠️ STALL DETECTED: ${gap}ms gap!`);
+                    }
+
+                    // Update stats
+                    document.getElementById('msgCount').textContent = messageCount;
+                    document.getElementById('lastGap').textContent = gap.toFixed(1);
+                    document.getElementById('avgGap').textContent = (gaps.reduce((a,b) => a+b, 0) / gaps.length).toFixed(1);
+                    document.getElementById('maxGap').textContent = Math.max(...gaps).toFixed(1);
+                    document.getElementById('stallCount').textContent = stalls;
+                }
+
+                lastMessageTime = now;
+
+                // Parse and log message
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'gameUpdate') {
+                        // Don't log every game update to avoid spam
+                        if (messageCount % 30 === 0) {
+                            log(`Game update #${messageCount}`);
+                        }
+                    } else {
+                        log(`Received: ${data.type}`);
+                    }
+                } catch (e) {
+                    log(`Received raw: ${event.data.substring(0, 100)}...`);
+                }
+            };
+
+            ws.onerror = (error) => {
+                log(`❌ Error: ${error}`);
+                updateStatus('Error', '#f00');
+            };
+
+            ws.onclose = () => {
+                log('Connection closed');
+                updateStatus('Disconnected', '#f00');
+                ws = null;
+
+                if (moveInterval) {
+                    clearInterval(moveInterval);
+                    moveInterval = null;
+                }
+
+                // Reset stats
+                lastMessageTime = 0;
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                log('Disconnecting...');
+            } else {
+                log('Not connected');
+            }
+        }
+
+        function sendMove() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const move = {
+                    type: 'move',
+                    x: Math.random() * 5000,
+                    y: Math.random() * 5000
+                };
+                ws.send(JSON.stringify(move));
+                // Don't log every move to avoid spam
+            } else {
+                log('Not connected');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+            gaps = [];
+            stalls = 0;
+            messageCount = 0;
+            document.getElementById('stallCount').textContent = '0';
+            log('Log cleared');
+        }
+
+        // Auto-connect on load
+        window.addEventListener('load', () => {
+            setTimeout(connect, 500);
+        });
+    </script>
+</body>
+</html>

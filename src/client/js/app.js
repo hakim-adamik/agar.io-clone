@@ -258,10 +258,17 @@ function startGame(type) {
             .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
             .join("&");
 
-        socket = io({
-            query,
-            transports: ['websocket'] // Force WebSocket only, no polling
-        });
+        // Use raw WebSocket if flag is set, otherwise use Socket.IO
+        if (window.USE_RAW_WEBSOCKET) {
+            console.log('[Game] Using raw WebSocket instead of Socket.IO');
+            socket = window.createWebSocketClient({ query });
+            socket.connect();
+        } else {
+            socket = io({
+                query,
+                transports: ['websocket'] // Force WebSocket only, no polling
+            });
+        }
         setupSocket(socket);
     }
     if (!global.animLoopHandle) animloop();
