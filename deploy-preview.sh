@@ -155,6 +155,8 @@ gcloud run deploy $SERVICE_NAME \
   --max-instances 5 \
   --min-instances 0 \
   --timeout 300 \
+  --no-cpu-throttling \
+  --execution-environment gen2 \
   --set-env-vars NODE_ENV=production,PRIVY_APP_ID=cmhkpg56r02vbjr0cdeex8n7i,DEPLOYMENT_TYPE=preview,GIT_BRANCH=$GIT_BRANCH,GIT_COMMIT=$COMMIT_HASH,DATABASE_URL="postgresql://neondb_owner:npg_X0hNZFwe8Lrk@ep-wild-bar-agks6pgk-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require" \
   --labels environment=preview,branch=$SANITIZED_BRANCH,commit=$COMMIT_HASH \
   --quiet

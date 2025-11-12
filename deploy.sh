@@ -97,20 +97,22 @@ echo ""
 
 # Step 4: Deploy to Cloud Run
 echo -e "${YELLOW}🚀 Deploying to Google Cloud Run...${NC}"
+echo "Using optimized service.yaml configuration to prevent WebSocket buffering..."
 echo "This may take a few minutes..."
 echo ""
 
+# First deploy the service with our optimized configuration
+gcloud run services replace service.yaml \
+  --region $REGION \
+  --platform managed
+
+# Then deploy the application source
 gcloud run deploy $SERVICE_NAME \
   --source . \
   --platform managed \
   --region $REGION \
   --allow-unauthenticated \
   --port 8080 \
-  --memory 512Mi \
-  --cpu 1 \
-  --max-instances 20 \
-  --min-instances 0 \
-  --timeout 300 \
   --set-env-vars NODE_ENV=production,PRIVY_APP_ID=cmhkpg56r02vbjr0cdeex8n7i,DATABASE_URL="postgresql://neondb_owner:npg_dNhm5vgEr8Vy@ep-tiny-night-ago05sk9-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require" \
   --quiet
 

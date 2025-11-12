@@ -1,0 +1,41 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: raga-io
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+spec:
+  template:
+    metadata:
+      annotations:
+        # Maximum concurrent requests per instance
+        run.googleapis.com/execution-environment: gen2
+        # CPU is always allocated (no throttling)
+        run.googleapis.com/cpu-throttling: "false"
+    spec:
+      # Keep container always allocated (reduces cold starts)
+      containerConcurrency: 1000
+      timeoutSeconds: 3600  # 1 hour timeout for WebSockets
+      containers:
+      - image: gcr.io/raga-io-476815/raga-io
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+          requests:
+            cpu: "1"
+            memory: "512Mi"
+        env:
+        # PORT is automatically set by Cloud Run, don't specify it
+        - name: NODE_ENV
+          value: "production"
+        - name: PRIVY_APP_ID
+          value: "cmhkpg56r02vbjr0cdeex8n7i"
+        - name: DATABASE_URL
+          value: "postgresql://neondb_owner:npg_dNhm5vgEr8Vy@ep-tiny-night-ago05sk9-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require"
+      # serviceAccountName: (using default)
+  traffic:
+  - percent: 100
+    latestRevision: true

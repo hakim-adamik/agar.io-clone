@@ -1,16 +1,30 @@
 const { Pool } = require('pg');
 
 // Database connection configuration
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+const connectionString = process.env.DATABASE_URL;
+
+// Log the DATABASE_URL status
+if (!connectionString) {
+    console.log('[DATABASE] DATABASE_URL not set - game will run without database features');
+}
+
+// Only create pool if DATABASE_URL is set
+const pool = connectionString ? new Pool({
+    connectionString: connectionString,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     max: 20, // Maximum number of clients in the pool
     idleTimeoutMillis: 30000, // How long to keep clients in pool
     connectionTimeoutMillis: 2000, // How long to wait for connection
-});
+}) : null;
 
 // Create all necessary tables
 async function initializeTables() {
+    // Skip if no database connection
+    if (!pool) {
+        console.log('[DATABASE] Skipping database initialization - no DATABASE_URL');
+        return;
+    }
+
     const client = await pool.connect();
     try {
         console.log('[DATABASE] Connected to PostgreSQL database');
@@ -176,7 +190,8 @@ async function initializeTables() {
 // Initialize tables on startup
 initializeTables().catch(err => {
     console.error('[DATABASE] Failed to initialize database:', err);
-    process.exit(1);
+    console.log('[DATABASE] Game will run without database features (no user accounts/stats)');
+    // Don't exit - let the game run without database
 });
 
 // Export the pool for use in repositories

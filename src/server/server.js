@@ -305,7 +305,21 @@ app.put('/api/user/:userId/profile', async (req, res) => {
     }
 });
 
+// Middleware to disable proxy buffering
+app.use((req, res, next) => {
+    // Disable buffering for all responses
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    next();
+});
+
 io.on('connection', function (socket) {
+    // Disable buffering on the socket connection
+    if (socket.request.res) {
+        socket.request.res.setHeader('X-Accel-Buffering', 'no');
+    }
+
     let type = socket.handshake.query.type;
     console.log('[SERVER] User connected: ', type);
 
