@@ -1528,7 +1528,7 @@ var prediction = {
     bufferTime: 150, // Buffer 150ms worth of updates (to handle your 135ms stalls)
     renderTime: 0,
     lastBufferPush: 0,
-    interpolationDelay: 100 // Render 100ms behind real-time for smoothing
+    interpolationDelay: 50 // Reduced from 100ms to 50ms to reduce oscillation
 };
 
 // Initialize cell velocities
@@ -1658,25 +1658,51 @@ function animloop() {
                 // Clamp ratio to [0, 1]
                 ratio = Math.max(0, Math.min(1, ratio));
 
-                // Interpolate player position
-                player.x = before.playerData.x + (after.playerData.x - before.playerData.x) * ratio;
-                player.y = before.playerData.y + (after.playerData.y - before.playerData.y) * ratio;
+                // Apply easing function to smooth the interpolation (reduces oscillation)
+                // Using smoothstep for smoother transitions
+                ratio = ratio * ratio * (3.0 - 2.0 * ratio);
 
-                // Interpolate cells
+                // Interpolate player position with damping to prevent oscillation
+                var targetX = before.playerData.x + (after.playerData.x - before.playerData.x) * ratio;
+                var targetY = before.playerData.y + (after.playerData.y - before.playerData.y) * ratio;
+
+                // Apply damping if player position exists
+                if (player.x !== undefined && player.y !== undefined) {
+                    // Smooth transition: blend 80% new position, 20% old position
+                    player.x = player.x * 0.2 + targetX * 0.8;
+                    player.y = player.y * 0.2 + targetY * 0.8;
+                } else {
+                    player.x = targetX;
+                    player.y = targetY;
+                }
+
+                // Interpolate cells with same smoothing
                 if (before.playerData.cells.length === after.playerData.cells.length) {
-                    player.cells = [];
+                    if (!player.cells) player.cells = [];
+
                     for (var i = 0; i < before.playerData.cells.length; i++) {
                         var beforeCell = before.playerData.cells[i];
                         var afterCell = after.playerData.cells[i];
-                        player.cells.push({
-                            x: beforeCell.x + (afterCell.x - beforeCell.x) * ratio,
-                            y: beforeCell.y + (afterCell.y - beforeCell.y) * ratio,
+
+                        // Calculate interpolated position
+                        var cellTargetX = beforeCell.x + (afterCell.x - beforeCell.x) * ratio;
+                        var cellTargetY = beforeCell.y + (afterCell.y - beforeCell.y) * ratio;
+
+                        // Apply damping to cells too
+                        if (player.cells[i]) {
+                            cellTargetX = player.cells[i].x * 0.2 + cellTargetX * 0.8;
+                            cellTargetY = player.cells[i].y * 0.2 + cellTargetY * 0.8;
+                        }
+
+                        player.cells[i] = {
+                            x: cellTargetX,
+                            y: cellTargetY,
                             mass: beforeCell.mass + (afterCell.mass - beforeCell.mass) * ratio,
                             radius: beforeCell.radius + (afterCell.radius - beforeCell.radius) * ratio,
                             score: afterCell.score,
                             name: afterCell.name,
                             color: afterCell.color
-                        });
+                        };
                     }
                 } else {
                     // Cell count changed, use the "after" state
