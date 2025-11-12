@@ -1185,49 +1185,7 @@ function setupSocket(socket) {
             }
             lastPositionUpdateTime = updateTime;
 
-            // Push update to interpolation buffer
-            if (global.playerType == "player" && playerData) {
-                var now = getTime();
-
-                // Store update in buffer for interpolation
-                prediction.buffer.push({
-                    timestamp: now,
-                    playerData: {
-                        x: playerData.x,
-                        y: playerData.y,
-                        hue: playerData.hue,
-                        massTotal: playerData.massTotal,
-                        cells: playerData.cells.map(c => ({
-                            x: c.x,
-                            y: c.y,
-                            mass: c.mass,
-                            radius: c.radius,
-                            score: c.score || 0,
-                            name: c.name || "",
-                            color: c.color || ""
-                        }))
-                    },
-                    userData: userData,
-                    foodsList: foodsList,
-                    massList: massList,
-                    virusList: virusList
-                });
-
-                // Remove old updates (keep 500ms worth)
-                var cutoffTime = now - 500;
-                while (prediction.buffer.length > 0 && prediction.buffer[0].timestamp < cutoffTime) {
-                    prediction.buffer.shift();
-                }
-
-                // Initialize render time if needed
-                if (prediction.renderTime === 0 && prediction.buffer.length > 2) {
-                    prediction.renderTime = now - prediction.interpolationDelay;
-                }
-
-                prediction.lastBufferPush = now;
-            }
-
-            if (global.playerType == "player" && false) { // Disable old direct update logic
+            if (global.playerType == "player") {
                 // Update non-position data directly
                 player.hue = playerData.hue;
                 player.massTotal = playerData.massTotal;
@@ -1521,14 +1479,7 @@ var prediction = {
         // Map of playerId -> { previous, current, velocities }
         states: {},
         timestamp: 0
-    },
-
-    // Interpolation buffer to smooth network stalls
-    buffer: [],
-    bufferTime: 150, // Buffer 150ms worth of updates (to handle your 135ms stalls)
-    renderTime: 0,
-    lastBufferPush: 0,
-    interpolationDelay: 100 // Render 100ms behind real-time for smoothing
+    }
 };
 
 // Initialize cell velocities
@@ -1629,101 +1580,6 @@ function animloop() {
         frameTimes.push(deltaTime);
         if (frameTimes.length > 60) {
             frameTimes.shift(); // Keep only last 60 frames
-        }
-
-        // INTERPOLATION: Update render time and interpolate between buffered states
-        if (prediction.buffer.length >= 2) {
-            // Advance render time
-            prediction.renderTime = currentTime - prediction.interpolationDelay;
-
-            // Find the two updates to interpolate between
-            var before = null;
-            var after = null;
-
-            for (var i = 0; i < prediction.buffer.length - 1; i++) {
-                if (prediction.buffer[i].timestamp <= prediction.renderTime &&
-                    prediction.buffer[i + 1].timestamp >= prediction.renderTime) {
-                    before = prediction.buffer[i];
-                    after = prediction.buffer[i + 1];
-                    break;
-                }
-            }
-
-            // If we found two states to interpolate between
-            if (before && after) {
-                var total = after.timestamp - before.timestamp;
-                var portion = prediction.renderTime - before.timestamp;
-                var ratio = portion / total;
-
-                // Clamp ratio to [0, 1]
-                ratio = Math.max(0, Math.min(1, ratio));
-
-                // Interpolate player position
-                player.x = before.playerData.x + (after.playerData.x - before.playerData.x) * ratio;
-                player.y = before.playerData.y + (after.playerData.y - before.playerData.y) * ratio;
-
-                // Interpolate cells
-                if (before.playerData.cells.length === after.playerData.cells.length) {
-                    player.cells = [];
-                    for (var i = 0; i < before.playerData.cells.length; i++) {
-                        var beforeCell = before.playerData.cells[i];
-                        var afterCell = after.playerData.cells[i];
-                        player.cells.push({
-                            x: beforeCell.x + (afterCell.x - beforeCell.x) * ratio,
-                            y: beforeCell.y + (afterCell.y - beforeCell.y) * ratio,
-                            mass: beforeCell.mass + (afterCell.mass - beforeCell.mass) * ratio,
-                            radius: beforeCell.radius + (afterCell.radius - beforeCell.radius) * ratio,
-                            score: afterCell.score,
-                            name: afterCell.name,
-                            color: afterCell.color
-                        });
-                    }
-                } else {
-                    // Cell count changed, use the "after" state
-                    player.cells = after.playerData.cells;
-                }
-
-                // Update other data from the interpolated state
-                player.hue = after.playerData.hue;
-                player.massTotal = after.playerData.massTotal;
-                player.score = after.playerData.cells.reduce((sum, cell) => sum + cell.score, 0);
-
-                // Update world state from the "after" update
-                users = after.userData;
-                foods = after.foodsList;
-                viruses = after.virusList;
-                fireFood = after.massList;
-
-                // Update prediction state for extrapolation if needed
-                prediction.current.x = player.x;
-                prediction.current.y = player.y;
-                prediction.current.timestamp = currentTime;
-                prediction.enabled = true;
-            } else if (prediction.buffer.length > 0) {
-                // No interpolation possible, use latest update with extrapolation
-                var latest = prediction.buffer[prediction.buffer.length - 1];
-
-                // Extrapolate position based on velocity
-                var timeSinceUpdate = currentTime - latest.timestamp;
-                if (timeSinceUpdate < 200 && prediction.velocity.x !== 0) {
-                    // Only extrapolate for up to 200ms
-                    player.x = latest.playerData.x + prediction.velocity.x * timeSinceUpdate;
-                    player.y = latest.playerData.y + prediction.velocity.y * timeSinceUpdate;
-                } else {
-                    player.x = latest.playerData.x;
-                    player.y = latest.playerData.y;
-                }
-
-                player.cells = latest.playerData.cells;
-                player.hue = latest.playerData.hue;
-                player.massTotal = latest.playerData.massTotal;
-                player.score = latest.playerData.cells.reduce((sum, cell) => sum + cell.score, 0);
-
-                users = latest.userData;
-                foods = latest.foodsList;
-                viruses = latest.virusList;
-                fireFood = latest.massList;
-            }
         }
 
         frameCount++;
