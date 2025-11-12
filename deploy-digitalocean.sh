@@ -90,10 +90,11 @@ else
         echo -e "${YELLOW}You'll need to enter your droplet password one time:${NC}"
 
         if command -v ssh-copy-id &> /dev/null; then
-            ssh-copy-id -i $SSH_KEY_FILE $DROPLET_USER@$DROPLET_IP
+            # Force password authentication (don't try existing keys)
+            ssh-copy-id -o PubkeyAuthentication=no -o PreferredAuthentications=password -i $SSH_KEY_FILE $DROPLET_USER@$DROPLET_IP
         else
-            # Fallback for systems without ssh-copy-id
-            cat $SSH_KEY_FILE | ssh $DROPLET_USER@$DROPLET_IP "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && chmod 700 ~/.ssh"
+            # Fallback for systems without ssh-copy-id (force password auth)
+            cat $SSH_KEY_FILE | ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password $DROPLET_USER@$DROPLET_IP "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && chmod 700 ~/.ssh"
         fi
 
         # Test connection

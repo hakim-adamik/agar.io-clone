@@ -85,6 +85,15 @@ ssh root@YOUR_DROPLET_IP
 
 ## Troubleshooting
 
+### "Too many authentication failures"
+
+You have multiple SSH keys and SSH tried them all before prompting for password. Force password authentication:
+```bash
+ssh-copy-id -o PubkeyAuthentication=no -o PreferredAuthentications=password -i ~/.ssh/id_ed25519.pub root@YOUR_DROPLET_IP
+```
+
+The deployment script now handles this automatically!
+
 ### "Permission denied (publickey)"
 
 Your key isn't properly installed. Try:
@@ -92,14 +101,9 @@ Your key isn't properly installed. Try:
 ssh-copy-id -f root@YOUR_DROPLET_IP
 ```
 
-### "Too many authentication failures"
+### After SSH key setup, still asks for password
 
-You have too many SSH keys. Specify which one to use:
-```bash
-ssh -i ~/.ssh/id_ed25519 root@YOUR_DROPLET_IP
-```
-
-Then update your `~/.ssh/config`:
+Update your `~/.ssh/config` to use only this key:
 ```bash
 cat >> ~/.ssh/config << EOF
 Host YOUR_DROPLET_IP
