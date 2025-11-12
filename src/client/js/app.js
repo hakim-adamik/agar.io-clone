@@ -981,35 +981,35 @@ function setupSocket(socket) {
 
                 // Client-side prediction: store server states and calculate velocity
                 if (!prediction.enabled) {
-                    // First update - initialize
+                    // First update - initialize (using optimized cloning)
                     prediction.previous = {
                         x: playerData.x,
                         y: playerData.y,
-                        cells: JSON.parse(JSON.stringify(playerData.cells)),
+                        cells: cloneCells(playerData.cells),
                         timestamp: now
                     };
                     prediction.current = {
                         x: playerData.x,
                         y: playerData.y,
-                        cells: JSON.parse(JSON.stringify(playerData.cells)),
+                        cells: cloneCells(playerData.cells),
                         timestamp: now
                     };
                     prediction.predicted = {
                         x: playerData.x,
                         y: playerData.y,
-                        cells: JSON.parse(JSON.stringify(playerData.cells))
+                        cells: cloneCells(playerData.cells)
                     };
                     player.x = playerData.x;
                     player.y = playerData.y;
                     player.cells = playerData.cells;
                     prediction.enabled = true;
                 } else {
-                    // Subsequent updates - shift states and calculate velocity
+                    // Subsequent updates - shift states and calculate velocity (using optimized cloning)
                     prediction.previous = prediction.current;
                     prediction.current = {
                         x: playerData.x,
                         y: playerData.y,
-                        cells: JSON.parse(JSON.stringify(playerData.cells)),
+                        cells: cloneCells(playerData.cells),
                         timestamp: now
                     };
 
@@ -1062,10 +1062,10 @@ function setupSocket(socket) {
                         }
                     }
 
-                    // Start predicting from current server state
+                    // Start predicting from current server state (using optimized cloning)
                     prediction.predicted.x = prediction.current.x;
                     prediction.predicted.y = prediction.current.y;
-                    prediction.predicted.cells = JSON.parse(JSON.stringify(prediction.current.cells));
+                    prediction.predicted.cells = cloneCells(prediction.current.cells);
                 }
 
                 // Update player score display
@@ -1099,18 +1099,18 @@ function setupSocket(socket) {
 
                 var playerId = user.id;
                 if (!prediction.otherPlayers.states[playerId]) {
-                    // First time seeing this player - initialize
+                    // First time seeing this player - initialize (using optimized cloning)
                     prediction.otherPlayers.states[playerId] = {
                         previous: { cells: [], timestamp: now },
-                        current: { cells: JSON.parse(JSON.stringify(user.cells)), timestamp: now },
+                        current: { cells: cloneCells(user.cells), timestamp: now },
                         velocities: []
                     };
                 } else {
-                    // Update states and calculate velocity
+                    // Update states and calculate velocity (using optimized cloning)
                     var playerState = prediction.otherPlayers.states[playerId];
                     playerState.previous = playerState.current;
                     playerState.current = {
-                        cells: JSON.parse(JSON.stringify(user.cells)),
+                        cells: cloneCells(user.cells),
                         timestamp: now
                     };
 
@@ -1256,6 +1256,24 @@ var fpsTrackingStarted = false;
 // Position update tracking (UPS - Updates Per Second)
 var positionUpdateTimes = [];
 var lastPositionUpdateTime = 0;
+
+// Optimized cell cloning (much faster than JSON.parse(JSON.stringify()))
+function cloneCells(cells) {
+    if (!cells || cells.length === 0) return [];
+
+    const cloned = new Array(cells.length);
+    for (let i = 0; i < cells.length; i++) {
+        const cell = cells[i];
+        cloned[i] = {
+            x: cell.x,
+            y: cell.y,
+            mass: cell.mass,
+            radius: cell.radius,
+            score: cell.score
+        };
+    }
+    return cloned;
+}
 
 // Client-side prediction with velocity extrapolation
 var prediction = {
@@ -1458,14 +1476,14 @@ function gameLoop() {
                         });
                     }
                 } else {
-                    // No velocity data (split/merge just happened) - use current state
-                    prediction.predicted.cells = JSON.parse(JSON.stringify(prediction.current.cells));
+                    // No velocity data (split/merge just happened) - use current state (using optimized cloning)
+                    prediction.predicted.cells = cloneCells(prediction.current.cells);
                 }
             } else {
-                // Invalid time delta - use current state without extrapolation
+                // Invalid time delta - use current state without extrapolation (using optimized cloning)
                 prediction.predicted.x = prediction.current.x;
                 prediction.predicted.y = prediction.current.y;
-                prediction.predicted.cells = JSON.parse(JSON.stringify(prediction.current.cells));
+                prediction.predicted.cells = cloneCells(prediction.current.cells);
             }
 
             // Use predicted state for rendering
