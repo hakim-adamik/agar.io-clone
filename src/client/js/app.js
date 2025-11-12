@@ -567,8 +567,94 @@ function setupLeaderboardToggle() {
     });
 }
 
+// Create debug overlay
+function createDebugOverlay() {
+    var overlay = document.createElement('div');
+    overlay.id = 'debugOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 60px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.9);
+        color: #00ff00;
+        font-family: monospace;
+        font-size: 11px;
+        padding: 10px;
+        z-index: 10000;
+        display: none;
+        min-width: 300px;
+        border: 1px solid #00ff00;
+        pointer-events: none;
+    `;
+    document.body.appendChild(overlay);
+
+    // Toggle with F3 key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'F3') {
+            e.preventDefault();
+            perfMonitor.enabled = !perfMonitor.enabled;
+            overlay.style.display = perfMonitor.enabled ? 'block' : 'none';
+            console.log('Debug overlay:', perfMonitor.enabled ? 'ON' : 'OFF');
+        }
+    });
+
+    return overlay;
+}
+
+function updateDebugOverlay() {
+    if (!perfMonitor.enabled) return;
+
+    var overlay = document.getElementById('debugOverlay');
+    if (!overlay) return;
+
+    var now = getTime();
+    var recentStutter = perfMonitor.stutterEvents.length > 0 ?
+        perfMonitor.stutterEvents[perfMonitor.stutterEvents.length - 1] : null;
+    var recentStall = perfMonitor.networkStalls.length > 0 ?
+        perfMonitor.networkStalls[perfMonitor.networkStalls.length - 1] : null;
+
+    // Calculate average network delay
+    var avgDelay = 0;
+    for (var i = 0; i < positionUpdateCount; i++) {
+        avgDelay += positionUpdateTimes[i];
+    }
+    avgDelay = positionUpdateCount > 0 ? avgDelay / positionUpdateCount : 0;
+
+    var html = `
+<div style="color: #0ff; font-weight: bold;">🐛 DEBUG MONITOR (F3 to toggle)</div>
+<div style="border-bottom: 1px solid #333; margin: 5px 0;"></div>
+<div>📊 FRAME STATS:</div>
+<div>  Drops: ${perfMonitor.frameDrops} | Worst: ${perfMonitor.worstFrameTime.toFixed(1)}ms</div>
+<div>  Last Drop: ${perfMonitor.lastFrameDrop > 0 ? ((now - perfMonitor.lastFrameDrop) / 1000).toFixed(1) + 's ago' : 'Never'}</div>
+<div style="border-bottom: 1px solid #333; margin: 5px 0;"></div>
+<div>🌐 NETWORK:</div>
+<div>  Avg Delay: ${avgDelay.toFixed(1)}ms | Jitter: ${perfMonitor.networkJitter.toFixed(1)}ms</div>
+<div>  Stalls: ${perfMonitor.networkStalls.length} | Prediction: ${prediction.enabled ? 'ON' : 'OFF'}</div>
+<div>  Last Stall: ${recentStall ? ((now - recentStall.time) / 1000).toFixed(1) + 's ago (' + recentStall.gap.toFixed(0) + 'ms)' : 'None'}</div>
+<div style="border-bottom: 1px solid #333; margin: 5px 0;"></div>
+<div>⚠️ LAST STUTTER:</div>
+<div>  ${recentStutter ?
+    `${((now - recentStutter.time) / 1000).toFixed(1)}s ago | ${recentStutter.duration.toFixed(1)}ms frame` :
+    'None detected'}</div>
+`;
+
+    // Color code based on severity
+    if (perfMonitor.frameDrops > 10) {
+        overlay.style.borderColor = '#ff0000';
+    } else if (perfMonitor.frameDrops > 5) {
+        overlay.style.borderColor = '#ffff00';
+    } else {
+        overlay.style.borderColor = '#00ff00';
+    }
+
+    overlay.innerHTML = html;
+}
+
 window.onload = function () {
     // Landing page is handled by landing.js
+
+    // Create debug overlay
+    createDebugOverlay();
 
     // Set up leaderboard click handler for mobile
     setupLeaderboardToggle();
@@ -1044,6 +1130,29 @@ function setupSocket(socket) {
             var updateTime = getTime();
             if (lastPositionUpdateTime > 0) {
                 var timeSinceLastUpdate = updateTime - lastPositionUpdateTime;
+
+                // Detect network stalls (updates taking > 100ms)
+                if (timeSinceLastUpdate > 100) {
+                    perfMonitor.networkStalls.push({
+                        time: updateTime,
+                        gap: timeSinceLastUpdate
+                    });
+                    perfMonitor.lastNetworkStall = updateTime;
+
+                    // Keep only last 20 stalls
+                    if (perfMonitor.networkStalls.length > 20) {
+                        perfMonitor.networkStalls.shift();
+                    }
+
+                    console.warn(`[NETWORK STALL] ${timeSinceLastUpdate.toFixed(1)}ms gap between server updates!`);
+                }
+
+                // Track jitter (variance in update timing)
+                if (positionUpdateCount > 0) {
+                    var avgTiming = positionUpdateTimes.reduce((a,b) => a+b, 0) / positionUpdateCount;
+                    perfMonitor.networkJitter = Math.abs(timeSinceLastUpdate - avgTiming);
+                }
+
                 // Use circular buffer instead of shift() to avoid GC
                 positionUpdateTimes[positionUpdateIndex] = timeSinceLastUpdate;
                 positionUpdateIndex = (positionUpdateIndex + 1) % 30;
@@ -1296,6 +1405,23 @@ var positionUpdateIndex = 0;
 var positionUpdateCount = 0;
 var lastPositionUpdateTime = 0;
 
+// Performance monitoring
+var perfMonitor = {
+    enabled: false,
+    frameDrops: 0,
+    lastFrameDrop: 0,
+    networkStalls: [],
+    lastNetworkStall: 0,
+    socketBufferSize: 0,
+    lastGC: 0,
+    memoryUsage: 0,
+    stutterEvents: [],
+    worstFrameTime: 0,
+    networkJitter: 0,
+    packetsLost: 0,
+    serverUpdateGaps: []
+};
+
 // Pre-allocate cell arrays to reduce GC pressure
 var MAX_CELLS = 16;
 function createCellArray() {
@@ -1393,6 +1519,33 @@ function animloop() {
     var deltaTime = currentTime - lastFrameTime;
     lastFrameTime = currentTime;
 
+    // Detect stutters (frames taking > 33ms is a stutter at 60fps)
+    if (deltaTime > 33 && fpsTrackingStarted) {
+        perfMonitor.frameDrops++;
+        perfMonitor.lastFrameDrop = currentTime;
+        if (deltaTime > perfMonitor.worstFrameTime) {
+            perfMonitor.worstFrameTime = deltaTime;
+        }
+
+        // Log severe stutters (> 50ms)
+        if (deltaTime > 50) {
+            perfMonitor.stutterEvents.push({
+                time: currentTime,
+                duration: deltaTime,
+                avgNetworkDelay: positionUpdateCount > 0 ?
+                    positionUpdateTimes.reduce((a,b) => a+b, 0) / positionUpdateCount : 0,
+                timeSinceLastUpdate: currentTime - lastPositionUpdateTime
+            });
+
+            // Keep only last 10 stutter events
+            if (perfMonitor.stutterEvents.length > 10) {
+                perfMonitor.stutterEvents.shift();
+            }
+
+            console.warn(`[STUTTER] ${deltaTime.toFixed(1)}ms frame! Network delay: ${perfMonitor.stutterEvents[perfMonitor.stutterEvents.length-1].avgNetworkDelay.toFixed(1)}ms, Time since server update: ${perfMonitor.stutterEvents[perfMonitor.stutterEvents.length-1].timeSinceLastUpdate.toFixed(1)}ms`);
+        }
+    }
+
     // Track frame times for accurate FPS calculation (only if game is running)
     if (global.gameStart) {
         frameTimes.push(deltaTime);
@@ -1405,6 +1558,9 @@ function animloop() {
 
     global.animLoopHandle = window.requestAnimFrame(animloop);
     gameLoop();
+
+    // Update debug overlay
+    updateDebugOverlay();
 
     // Show/hide FPS counter based on game state and user preference
     if (fpsCounter) {
