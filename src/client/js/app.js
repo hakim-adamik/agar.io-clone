@@ -620,10 +620,15 @@ function updateDebugOverlay() {
     }
     avgDelay = positionUpdateCount > 0 ? avgDelay / positionUpdateCount : 0;
 
+    // Calculate current FPS
+    var currentFPS = frameTimes.length > 0 ?
+        1000 / (frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length) : 0;
+
     var html = `
 <div style="color: #0ff; font-weight: bold;">🐛 DEBUG MONITOR (F3 or \`)</div>
 <div style="border-bottom: 1px solid #333; margin: 5px 0;"></div>
 <div>📊 FRAME STATS:</div>
+<div>  FPS: ${currentFPS.toFixed(1)} | Game: ${global.gameStart ? 'RUNNING' : 'STOPPED'}</div>
 <div>  Drops: ${perfMonitor.frameDrops} | Worst: ${perfMonitor.worstFrameTime.toFixed(1)}ms</div>
 <div>  Last Drop: ${perfMonitor.lastFrameDrop > 0 ? ((now - perfMonitor.lastFrameDrop) / 1000).toFixed(1) + 's ago' : 'Never'}</div>
 <div style="border-bottom: 1px solid #333; margin: 5px 0;"></div>
@@ -631,6 +636,7 @@ function updateDebugOverlay() {
 <div>  Avg Delay: ${avgDelay.toFixed(1)}ms | Jitter: ${perfMonitor.networkJitter.toFixed(1)}ms</div>
 <div>  Stalls: ${perfMonitor.networkStalls.length} | Prediction: ${prediction.enabled ? 'ON' : 'OFF'}</div>
 <div>  Last Stall: ${recentStall ? ((now - recentStall.time) / 1000).toFixed(1) + 's ago (' + recentStall.gap.toFixed(0) + 'ms)' : 'None'}</div>
+<div>  Stalls >200ms: ${perfMonitor.networkStalls.filter(s => s.gap > 200).length} | >500ms: ${perfMonitor.networkStalls.filter(s => s.gap > 500).length}</div>
 <div style="border-bottom: 1px solid #333; margin: 5px 0;"></div>
 <div>⚠️ LAST STUTTER:</div>
 <div>  ${recentStutter ?
@@ -1520,12 +1526,16 @@ function animloop() {
     lastFrameTime = currentTime;
 
     // Detect stutters (frames taking > 33ms is a stutter at 60fps)
-    if (deltaTime > 33 && fpsTrackingStarted) {
+    // Skip first frame after tracking starts to avoid false positives
+    if (deltaTime > 33 && fpsTrackingStarted && lastFrameTime > 0) {
         perfMonitor.frameDrops++;
         perfMonitor.lastFrameDrop = currentTime;
         if (deltaTime > perfMonitor.worstFrameTime) {
             perfMonitor.worstFrameTime = deltaTime;
         }
+
+        // Add to console for debugging
+        console.log(`[FRAME DROP] ${deltaTime.toFixed(1)}ms frame detected!`);
 
         // Log severe stutters (> 50ms)
         if (deltaTime > 50) {
