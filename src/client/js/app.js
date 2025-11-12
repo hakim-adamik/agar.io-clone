@@ -588,13 +588,9 @@ function createDebugOverlay() {
     `;
     document.body.appendChild(overlay);
 
-    // Toggle with F3 key or alternatives for Mac
+    // Toggle with F3 key (use fn+F3 on Mac if needed)
     document.addEventListener('keydown', function(e) {
-        // F3, or D key, or backtick/tilde key
-        if (e.key === 'F3' ||
-            (e.key === 'd' && e.shiftKey) ||  // Shift+D
-            e.key === '`' ||  // Backtick/tilde key (top left, below ESC)
-            (e.key === 'D' && e.metaKey)) {  // Cmd+D on Mac
+        if (e.key === 'F3' || e.key === '`') {  // F3 or backtick key
             e.preventDefault();
             perfMonitor.enabled = !perfMonitor.enabled;
             overlay.style.display = perfMonitor.enabled ? 'block' : 'none';
@@ -625,7 +621,7 @@ function updateDebugOverlay() {
     avgDelay = positionUpdateCount > 0 ? avgDelay / positionUpdateCount : 0;
 
     var html = `
-<div style="color: #0ff; font-weight: bold;">🐛 DEBUG MONITOR (F3/\`/Shift+D)</div>
+<div style="color: #0ff; font-weight: bold;">🐛 DEBUG MONITOR (F3 or \`)</div>
 <div style="border-bottom: 1px solid #333; margin: 5px 0;"></div>
 <div>📊 FRAME STATS:</div>
 <div>  Drops: ${perfMonitor.frameDrops} | Worst: ${perfMonitor.worstFrameTime.toFixed(1)}ms</div>
