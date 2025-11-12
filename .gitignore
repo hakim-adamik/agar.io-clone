@@ -18,3 +18,5 @@ src/server/db/*.db
 
 # Log files
 *.log
+logs/
+!logs/README.md

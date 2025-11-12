@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  agar-game:
+    build:
+      context: .
+      dockerfile: Dockerfile.digitalocean
+    container_name: agar-game-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - PRIVY_APP_ID=${PRIVY_APP_ID}
+      - DATABASE_URL=${DATABASE_URL}
+    volumes:
+      # Mount logs directory for persistence
+      - ./logs:/usr/src/app/logs
+    networks:
+      - agar-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  agar-network:
+    driver: bridge
+
