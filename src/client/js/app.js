@@ -581,7 +581,7 @@ function createDebugOverlay() {
         font-size: 11px;
         padding: 10px;
         z-index: 10000;
-        display: none;
+        display: block;  /* Visible by default */
         min-width: 300px;
         border: 1px solid #00ff00;
         pointer-events: none;
@@ -637,6 +637,11 @@ function updateDebugOverlay() {
 <div>  Stalls: ${perfMonitor.networkStalls.length} | Prediction: ${prediction.enabled ? 'ON' : 'OFF'}</div>
 <div>  Last Stall: ${recentStall ? ((now - recentStall.time) / 1000).toFixed(1) + 's ago (' + recentStall.gap.toFixed(0) + 'ms)' : 'None'}</div>
 <div>  Stalls >200ms: ${perfMonitor.networkStalls.filter(s => s.gap > 200).length} | >500ms: ${perfMonitor.networkStalls.filter(s => s.gap > 500).length}</div>
+<div style="border-bottom: 1px solid #333; margin: 5px 0;"></div>
+<div>💾 MEMORY:</div>
+<div>  ${performance.memory ?
+    `Heap: ${(performance.memory.usedJSHeapSize / 1048576).toFixed(1)}MB / ${(performance.memory.totalJSHeapSize / 1048576).toFixed(1)}MB` :
+    'Not available'}</div>
 <div style="border-bottom: 1px solid #333; margin: 5px 0;"></div>
 <div>⚠️ LAST STUTTER:</div>
 <div>  ${recentStutter ?
@@ -1413,7 +1418,7 @@ var lastPositionUpdateTime = 0;
 
 // Performance monitoring
 var perfMonitor = {
-    enabled: false,
+    enabled: true,  // ON by default
     frameDrops: 0,
     lastFrameDrop: 0,
     networkStalls: [],
