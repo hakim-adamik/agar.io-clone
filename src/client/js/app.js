@@ -6,6 +6,20 @@ var global = require("./global");
 var playerNameInput = document.getElementById("playerNameInput");
 var socket;
 
+// Debug mode flag (accessible from browser console via window.DEBUG_MODE)
+/*
+window.DEBUG_MODE = false;
+window.enableDebug = function() {
+    window.DEBUG_MODE = true;
+    console.log("%c[DEBUG MODE ENABLED]", "color: green; font-weight: bold");
+    console.log("Performance warnings will be logged when large updates occur.");
+};
+window.disableDebug = function() {
+    window.DEBUG_MODE = false;
+    console.log("%c[DEBUG MODE DISABLED]", "color: orange; font-weight: bold");
+};
+*/
+
 var debug = function (args) {
     if (console && console.log) {
         console.log(args);
@@ -38,7 +52,7 @@ function applyDefaultGameSettings() {
     // Try to load user preferences from server if authenticated
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
-        console.log("Loading preferences for user:", privyUser.dbUserId);
+        console.log('Loading preferences for user:', privyUser.dbUserId);
         loadUserPreferences(privyUser.dbUserId);
     } else {
         // Fall back to default settings if not authenticated
@@ -53,14 +67,11 @@ function loadUserPreferences(userId) {
             if (!response.ok) throw new Error("Failed to load preferences");
             return response.json();
         })
-        .then(function (prefs) {
+        .then(function(prefs) {
             applyUserPreferences(prefs);
         })
-        .catch(function (error) {
-            console.warn(
-                "Failed to load user preferences, using defaults:",
-                error
-            );
+        .catch(function(error) {
+            console.warn("Failed to load user preferences, using defaults:", error);
             applyConfigDefaults();
         });
 }
@@ -199,13 +210,10 @@ function startGame(type) {
     // Load user preferences when starting the game
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
-        console.log(
-            "Loading user preferences for game start, userId:",
-            privyUser.dbUserId
-        );
+        console.log('Loading user preferences for game start, userId:', privyUser.dbUserId);
         loadUserPreferences(privyUser.dbUserId);
     } else {
-        console.log("No authenticated user, applying default settings");
+        console.log('No authenticated user, applying default settings');
         applyConfigDefaults();
     }
 
@@ -258,7 +266,23 @@ function startGame(type) {
             .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
             .join("&");
 
-        socket = io({ query });
+        // Socket.io configuration optimized for real-time gaming
+        socket = io({
+            query,
+            // Prioritize WebSocket, fallback to polling
+            transports: ['websocket', 'polling'],
+            // Reconnection settings
+            reconnection: true,
+            reconnectionDelay: 1000,      // Start with 1s delay
+            reconnectionDelayMax: 5000,   // Max 5s between attempts
+            reconnectionAttempts: 10,     // Try 10 times before giving up
+            // Timeouts
+            timeout: 20000,               // 20s connection timeout
+            // Upgrade settings
+            upgrade: true,
+            rememberUpgrade: true,
+            // Ping/pong already configured server-side
+        });
         setupSocket(socket);
     }
     if (!global.animLoopHandle) animloop();
@@ -548,6 +572,7 @@ var viruses = [];
 var fireFood = [];
 var users = [];
 var leaderboard = [];
+var cellsToDraw = []; // Reused each frame to reduce GC pressure
 var target = { x: player.x, y: player.y };
 global.target = target;
 
@@ -570,11 +595,11 @@ function toggleDarkMode() {
 
     var darkModeCheckbox = document.getElementById("darkMode");
     if (darkModeCheckbox) {
-        darkModeCheckbox.checked = global.backgroundColor === DARK;
+        darkModeCheckbox.checked = (global.backgroundColor === DARK);
     }
     var darkModeGameCheckbox = document.getElementById("darkModeGame");
     if (darkModeGameCheckbox) {
-        darkModeGameCheckbox.checked = global.backgroundColor === DARK;
+        darkModeGameCheckbox.checked = (global.backgroundColor === DARK);
     }
 }
 
@@ -597,9 +622,7 @@ function toggleRoundFood() {
 function toggleFpsDisplay() {
     global.showFpsCounter = !global.showFpsCounter;
     if (global.fpsCounter) {
-        global.fpsCounter.style.display = global.showFpsCounter
-            ? "block"
-            : "none";
+        global.fpsCounter.style.display = global.showFpsCounter ? "block" : "none";
     }
     var showFpsCheckbox = document.getElementById("showFps");
     if (showFpsCheckbox) {
@@ -830,6 +853,37 @@ function handleDisconnect() {
 
 // socket stuff.
 function setupSocket(socket) {
+    // Connection event handlers for better user feedback
+    socket.on("connect", function() {
+        console.log("[Socket] Connected successfully");
+        // Hide any connection error messages
+        if (global.connectionErrorShown) {
+            global.connectionErrorShown = false;
+        }
+    });
+
+    socket.on("reconnect", function(attemptNumber) {
+        console.log("[Socket] Reconnected after " + attemptNumber + " attempts");
+        // Optionally show success message briefly
+        if (global.gameStart) {
+            // Request fresh game state after reconnection
+            socket.emit("respawn");
+        }
+    });
+
+    socket.on("reconnect_attempt", function(attemptNumber) {
+        console.log("[Socket] Reconnection attempt #" + attemptNumber);
+        if (!global.connectionErrorShown && global.gameStart) {
+            render.drawErrorMessage("Reconnecting...", graph, global.screen);
+            global.connectionErrorShown = true;
+        }
+    });
+
+    socket.on("reconnect_failed", function() {
+        console.log("[Socket] Reconnection failed after all attempts");
+        render.drawErrorMessage("Connection Lost - Please Refresh", graph, global.screen);
+    });
+
     // Handle ping.
     socket.on("pongcheck", function () {
         var latency = Date.now() - global.startPingTime;
@@ -837,8 +891,24 @@ function setupSocket(socket) {
     });
 
     // Handle error.
-    socket.on("connect_error", handleDisconnect);
-    socket.on("disconnect", handleDisconnect);
+    socket.on("connect_error", function(error) {
+        console.error("[Socket] Connection error:", error.message);
+        // Don't immediately show disconnect message - let reconnection try first
+        if (socket.io.reconnecting === false) {
+            handleDisconnect();
+        }
+    });
+
+    socket.on("disconnect", function(reason) {
+        console.log("[Socket] Disconnected:", reason);
+        // Only show disconnect for unexpected disconnects (not user-initiated)
+        if (reason === "io server disconnect" || reason === "ping timeout") {
+            handleDisconnect();
+        } else if (reason === "transport close" || reason === "transport error") {
+            // Let automatic reconnection handle these
+            console.log("[Socket] Connection issue, will attempt reconnection");
+        }
+    });
 
     // Handle connection.
     socket.on("welcome", function (playerSettings, gameSizes) {
@@ -915,17 +985,118 @@ function setupSocket(socket) {
             }
             lastPositionUpdateTime = updateTime;
 
+            // Performance monitoring: log if processing takes too long
+            /*
+            if (window.DEBUG_MODE) {
+                var entityCount = userData.length + foodsList.length + massList.length + virusList.length;
+                if (entityCount > 200) {
+                    console.warn('[PERF] Large update:', {
+                        players: userData.length,
+                        food: foodsList.length,
+                        mass: massList.length,
+                        viruses: virusList.length,
+                        total: entityCount
+                    });
+                }
+            }
+            */
+
             if (global.playerType == "player") {
-                player.x = playerData.x;
-                player.y = playerData.y;
+                var now = getTime();
+
+                // Update non-position data directly
                 player.hue = playerData.hue;
                 player.massTotal = playerData.massTotal;
-                player.cells = playerData.cells;
-                // Calculate total score from all cells
-                player.score = playerData.cells.reduce(
-                    (sum, cell) => sum + (cell.score || 0),
-                    0
-                );
+                player.score = playerData.cells.reduce((sum, cell) => sum + (cell.score || 0), 0);
+
+                // Client-side prediction: store server states and calculate velocity
+                if (!prediction.enabled) {
+                    // First update - initialize (using optimized cloning)
+                    prediction.previous = {
+                        x: playerData.x,
+                        y: playerData.y,
+                        cells: cloneCells(playerData.cells),
+                        timestamp: now
+                    };
+                    prediction.current = {
+                        x: playerData.x,
+                        y: playerData.y,
+                        cells: cloneCells(playerData.cells),
+                        timestamp: now
+                    };
+                    prediction.predicted = {
+                        x: playerData.x,
+                        y: playerData.y,
+                        cells: cloneCells(playerData.cells)
+                    };
+                    player.x = playerData.x;
+                    player.y = playerData.y;
+                    player.cells = playerData.cells;
+                    prediction.enabled = true;
+                } else {
+                    // Subsequent updates - shift states and calculate velocity (using optimized cloning)
+                    prediction.previous = prediction.current;
+                    prediction.current = {
+                        x: playerData.x,
+                        y: playerData.y,
+                        cells: cloneCells(playerData.cells),
+                        timestamp: now
+                    };
+
+                    // Calculate player camera velocity
+                    var timeDelta = prediction.current.timestamp - prediction.previous.timestamp;
+
+                    // Only calculate velocity if updates are far enough apart (prevent extreme velocities)
+                    var minTimeDelta = 5; // ms - ignore updates closer than 5ms apart
+                    if (timeDelta > minTimeDelta) {
+                        var vx = (prediction.current.x - prediction.previous.x) / timeDelta;
+                        var vy = (prediction.current.y - prediction.previous.y) / timeDelta;
+
+                        // Sanity check: cap maximum velocity (prevent glitches from bad data)
+                        var maxVelocity = 5; // pixels per ms (very generous, typical is ~0.5)
+                        var velocityMagnitude = Math.sqrt(vx * vx + vy * vy);
+                        if (velocityMagnitude > maxVelocity) {
+                            var scale = maxVelocity / velocityMagnitude;
+                            vx *= scale;
+                            vy *= scale;
+                        }
+
+                        prediction.velocity.x = vx;
+                        prediction.velocity.y = vy;
+
+                        // Calculate velocity for each cell (if cell count matches)
+                        if (prediction.current.cells.length === prediction.previous.cells.length) {
+                            prediction.cellVelocities = [];
+                            for (var i = 0; i < prediction.current.cells.length; i++) {
+                                var currCell = prediction.current.cells[i];
+                                var prevCell = prediction.previous.cells[i];
+                                var cellVx = (currCell.x - prevCell.x) / timeDelta;
+                                var cellVy = (currCell.y - prevCell.y) / timeDelta;
+
+                                // Cap cell velocity too
+                                var cellVelMagnitude = Math.sqrt(cellVx * cellVx + cellVy * cellVy);
+                                if (cellVelMagnitude > maxVelocity) {
+                                    var cellScale = maxVelocity / cellVelMagnitude;
+                                    cellVx *= cellScale;
+                                    cellVy *= cellScale;
+                                }
+
+                                prediction.cellVelocities.push({
+                                    vx: cellVx,
+                                    vy: cellVy
+                                });
+                            }
+                        } else {
+                            // Cell count changed (split/merge) - reset velocities
+                            prediction.cellVelocities = [];
+                        }
+                    }
+
+                    // Start predicting from current server state (using optimized cloning)
+                    prediction.predicted.x = prediction.current.x;
+                    prediction.predicted.y = prediction.current.y;
+                    prediction.predicted.cells = cloneCells(prediction.current.cells);
+                }
 
                 // Update player score display
                 var playerScoreEl = document.getElementById("playerScore");
@@ -935,6 +1106,77 @@ function setupSocket(socket) {
                         '<span class="title">Score</span><br />' + displayScore;
                 }
             }
+            // Store other players' data and calculate their velocities
+            var now = getTime();
+            prediction.otherPlayers.timestamp = now;
+
+            // Create a set of current player IDs for cleanup
+            var currentPlayerIds = {};
+            for (var i = 0; i < userData.length; i++) {
+                currentPlayerIds[userData[i].id] = true;
+            }
+
+            // Remove disconnected players from prediction states
+            for (var playerId in prediction.otherPlayers.states) {
+                if (!currentPlayerIds[playerId] && playerId != player.id) {
+                    delete prediction.otherPlayers.states[playerId];
+                }
+            }
+
+            for (var i = 0; i < userData.length; i++) {
+                var user = userData[i];
+                if (user.id === player.id) continue; // Skip current player
+
+                var playerId = user.id;
+                if (!prediction.otherPlayers.states[playerId]) {
+                    // First time seeing this player - initialize (using optimized cloning)
+                    prediction.otherPlayers.states[playerId] = {
+                        previous: { cells: [], timestamp: now },
+                        current: { cells: cloneCells(user.cells), timestamp: now },
+                        velocities: []
+                    };
+                } else {
+                    // Update states and calculate velocity (using optimized cloning)
+                    var playerState = prediction.otherPlayers.states[playerId];
+                    playerState.previous = playerState.current;
+                    playerState.current = {
+                        cells: cloneCells(user.cells),
+                        timestamp: now
+                    };
+
+                    // Calculate velocity for each cell
+                    var timeDelta = playerState.current.timestamp - playerState.previous.timestamp;
+                    var minTimeDelta = 5; // ms - ignore updates closer than 5ms apart
+
+                    if (timeDelta > minTimeDelta && playerState.current.cells.length === playerState.previous.cells.length) {
+                        playerState.velocities = [];
+                        var maxVelocity = 5; // pixels per ms
+
+                        for (var j = 0; j < playerState.current.cells.length; j++) {
+                            var currCell = playerState.current.cells[j];
+                            var prevCell = playerState.previous.cells[j];
+                            var cellVx = (currCell.x - prevCell.x) / timeDelta;
+                            var cellVy = (currCell.y - prevCell.y) / timeDelta;
+
+                            // Cap velocity to prevent glitches
+                            var cellVelMagnitude = Math.sqrt(cellVx * cellVx + cellVy * cellVy);
+                            if (cellVelMagnitude > maxVelocity) {
+                                var cellScale = maxVelocity / cellVelMagnitude;
+                                cellVx *= cellScale;
+                                cellVy *= cellScale;
+                            }
+
+                            playerState.velocities.push({
+                                vx: cellVx,
+                                vy: cellVy
+                            });
+                        }
+                    } else {
+                        playerState.velocities = [];
+                    }
+                }
+            }
+
             users = userData;
             foods = foodsList;
             viruses = virusList;
@@ -1044,6 +1286,61 @@ var fpsTrackingStarted = false;
 // Position update tracking (UPS - Updates Per Second)
 var positionUpdateTimes = [];
 var lastPositionUpdateTime = 0;
+
+// Optimized cell cloning (much faster than JSON.parse(JSON.stringify()))
+function cloneCells(cells) {
+    if (!cells || cells.length === 0) return [];
+
+    const cloned = new Array(cells.length);
+    for (let i = 0; i < cells.length; i++) {
+        const cell = cells[i];
+        cloned[i] = {
+            x: cell.x,
+            y: cell.y,
+            mass: cell.mass,
+            radius: cell.radius,
+            score: cell.score
+        };
+    }
+    return cloned;
+}
+
+// HSL color cache (avoid string concatenation every frame)
+var colorCache = {};
+function getHSLColor(hue, lightness) {
+    var key = hue + '_' + lightness;
+    if (!colorCache[key]) {
+        colorCache[key] = 'hsl(' + hue + ', 100%, ' + lightness + '%)';
+    }
+    return colorCache[key];
+}
+
+// Clear color cache if it gets too large (memory leak prevention)
+function clearColorCacheIfNeeded() {
+    if (Object.keys(colorCache).length > 1000) {
+        colorCache = {};
+    }
+}
+
+// Client-side prediction with velocity extrapolation
+var prediction = {
+    enabled: false,
+    // Last two server states to calculate velocity (for current player)
+    previous: { x: 0, y: 0, cells: [], timestamp: 0 },
+    current: { x: 0, y: 0, cells: [], timestamp: 0 },
+    // Predicted state (what we render)
+    predicted: { x: 0, y: 0, cells: [] },
+    // Calculated velocities
+    velocity: { x: 0, y: 0 },
+    cellVelocities: [],
+
+    // Other players prediction
+    otherPlayers: {
+        // Map of playerId -> { previous, current, velocities }
+        states: {},
+        timestamp: 0
+    }
+};
 
 // Initialize FPS counter visibility from localStorage
 (function () {
@@ -1196,6 +1493,89 @@ var socketEmitInterval = 16; // ~60fps for socket updates (every ~16ms)
 
 function gameLoop() {
     if (global.gameStart) {
+        // Client-side prediction: extrapolate positions forward based on velocity
+        if (prediction.enabled) {
+            var now = getTime();
+            var timeSinceUpdate = now - prediction.current.timestamp;
+
+            // Limit extrapolation to reasonable time (prevent overshooting if network lags)
+            var maxExtrapolation = 50; // ms - about 3 frames at 60fps
+            timeSinceUpdate = Math.min(timeSinceUpdate, maxExtrapolation);
+
+            // Only extrapolate if timeSinceUpdate is positive and reasonable
+            if (timeSinceUpdate >= 0 && timeSinceUpdate <= maxExtrapolation) {
+                // Extrapolate player camera position
+                prediction.predicted.x = prediction.current.x + prediction.velocity.x * timeSinceUpdate;
+                prediction.predicted.y = prediction.current.y + prediction.velocity.y * timeSinceUpdate;
+
+                // Extrapolate cell positions
+                if (prediction.cellVelocities.length === prediction.current.cells.length) {
+                    prediction.predicted.cells = [];
+                    for (var i = 0; i < prediction.current.cells.length; i++) {
+                        var cell = prediction.current.cells[i];
+                        var vel = prediction.cellVelocities[i];
+                        prediction.predicted.cells.push({
+                            x: cell.x + vel.vx * timeSinceUpdate,
+                            y: cell.y + vel.vy * timeSinceUpdate,
+                            mass: cell.mass,
+                            radius: cell.radius,
+                            score: cell.score
+                        });
+                    }
+                } else {
+                    // No velocity data (split/merge just happened) - use current state (using optimized cloning)
+                    prediction.predicted.cells = cloneCells(prediction.current.cells);
+                }
+            } else {
+                // Invalid time delta - use current state without extrapolation (using optimized cloning)
+                prediction.predicted.x = prediction.current.x;
+                prediction.predicted.y = prediction.current.y;
+                prediction.predicted.cells = cloneCells(prediction.current.cells);
+            }
+
+            // Use predicted state for rendering
+            player.x = prediction.predicted.x;
+            player.y = prediction.predicted.y;
+            player.cells = prediction.predicted.cells;
+
+            // Also update predicted cells in users array (for cell rendering)
+            for (var i = 0; i < users.length; i++) {
+                if (users[i].id === player.id) {
+                    // Found current player in users array - replace with predicted cells
+                    users[i].cells = prediction.predicted.cells;
+                } else {
+                    // Other player - extrapolate their cells too
+                    var playerId = users[i].id;
+                    var playerState = prediction.otherPlayers.states[playerId];
+
+                    if (playerState && playerState.velocities.length > 0) {
+                        var timeSinceUpdate = now - playerState.current.timestamp;
+
+                        // Only extrapolate if time is valid
+                        if (timeSinceUpdate >= 0 && timeSinceUpdate <= maxExtrapolation) {
+                            timeSinceUpdate = Math.min(timeSinceUpdate, maxExtrapolation);
+
+                            if (playerState.velocities.length === playerState.current.cells.length) {
+                                var predictedCells = [];
+                                for (var j = 0; j < playerState.current.cells.length; j++) {
+                                    var cell = playerState.current.cells[j];
+                                    var vel = playerState.velocities[j];
+                                    predictedCells.push({
+                                        x: cell.x + vel.vx * timeSinceUpdate,
+                                        y: cell.y + vel.vy * timeSinceUpdate,
+                                        mass: cell.mass,
+                                        radius: cell.radius,
+                                        score: cell.score
+                                    });
+                                }
+                                users[i].cells = predictedCells;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         graph.fillStyle = global.backgroundColor;
         graph.fillRect(0, 0, global.screen.width, global.screen.height);
 
@@ -1206,40 +1586,46 @@ function gameLoop() {
 
         // Client-side viewport culling for food
         foods.forEach((food) => {
-            let position = getPosition(food, player, global.screen);
+            // Inline position calculation to avoid object allocation (GC pressure reduction)
+            let posX = food.x - player.x + global.screen.width / 2;
+            let posY = food.y - player.y + global.screen.height / 2;
             if (
                 isEntityVisible(
-                    { x: position.x, y: position.y, radius: food.radius },
+                    { x: posX, y: posY, radius: food.radius },
                     global.screen
                 )
             ) {
-                render.drawFood(position, food, graph);
+                render.drawFood({ x: posX, y: posY }, food, graph);
             }
         });
 
         // Client-side viewport culling for fireFood
         fireFood.forEach((fireFood) => {
-            let position = getPosition(fireFood, player, global.screen);
+            // Inline position calculation to avoid object allocation (GC pressure reduction)
+            let posX = fireFood.x - player.x + global.screen.width / 2;
+            let posY = fireFood.y - player.y + global.screen.height / 2;
             if (
                 isEntityVisible(
-                    { x: position.x, y: position.y, radius: fireFood.radius },
+                    { x: posX, y: posY, radius: fireFood.radius },
                     global.screen
                 )
             ) {
-                render.drawFireFood(position, fireFood, playerConfig, graph);
+                render.drawFireFood({ x: posX, y: posY }, fireFood, playerConfig, graph);
             }
         });
 
         // Client-side viewport culling for viruses
         viruses.forEach((virus) => {
-            let position = getPosition(virus, player, global.screen);
+            // Inline position calculation to avoid object allocation (GC pressure reduction)
+            let posX = virus.x - player.x + global.screen.width / 2;
+            let posY = virus.y - player.y + global.screen.height / 2;
             if (
                 isEntityVisible(
-                    { x: position.x, y: position.y, radius: virus.radius },
+                    { x: posX, y: posY, radius: virus.radius },
                     global.screen
                 )
             ) {
-                render.drawVirus(position, virus, graph);
+                render.drawVirus({ x: posX, y: posY }, virus, graph);
             }
         });
 
@@ -1254,10 +1640,12 @@ function gameLoop() {
             render.drawBorder(borders, graph);
         }
 
-        var cellsToDraw = [];
+        // Clear array instead of creating new one each frame (reduce GC pressure)
+        cellsToDraw.length = 0;
         for (var i = 0; i < users.length; i++) {
-            let color = "hsl(" + users[i].hue + ", 100%, 50%)";
-            let borderColor = "hsl(" + users[i].hue + ", 100%, 45%)";
+            // Use cached HSL colors to avoid string concatenation
+            let color = getHSLColor(users[i].hue, 50);
+            let borderColor = getHSLColor(users[i].hue, 45);
             let isCurrentPlayer = users[i].id === player.id;
             for (var j = 0; j < users[i].cells.length; j++) {
                 let screenX =
@@ -1395,6 +1783,20 @@ function cleanupGame() {
     viruses = [];
     fireFood = [];
     users = [];
+
+    // Reset client-side prediction
+    prediction = {
+        enabled: false,
+        previous: { x: 0, y: 0, cells: [], timestamp: 0 },
+        current: { x: 0, y: 0, cells: [], timestamp: 0 },
+        predicted: { x: 0, y: 0, cells: [] },
+        velocity: { x: 0, y: 0 },
+        cellVelocities: [],
+        otherPlayers: {
+            states: {},
+            timestamp: 0
+        }
+    };
 
     // Reset player
     player = {

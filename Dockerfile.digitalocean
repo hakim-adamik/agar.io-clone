@@ -1,0 +1,28 @@
+FROM node:18-alpine
+
+# Install wget and PM2 for healthcheck and process management
+RUN apk add --no-cache wget
+RUN npm install -g pm2
+
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app
+
+# Copy package files and install dependencies
+COPY package.json package-lock.json /usr/src/app/
+RUN npm install --legacy-peer-deps && npm cache clean --force
+
+# Copy source code
+COPY . /usr/src/app
+
+# Build the application (gulp build - server + static files)
+RUN npm run build
+
+# Build webpack bundles (client JS and Privy auth)
+RUN node build-webpack.js
+
+# Expose port
+EXPOSE 3000
+
+# Use PM2 for process management (auto-restart, clustering)
+CMD ["pm2-runtime", "start", "ecosystem.config.js"]
+

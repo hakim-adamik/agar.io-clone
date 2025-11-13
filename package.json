@@ -12,7 +12,10 @@
     "test": "gulp test",
     "migration:create": "node scripts/create-migration.js",
     "setup-hooks": "git config core.hooksPath .githooks",
-    "check-schema": "node scripts/check-schema-changes.js"
+    "check-schema": "node scripts/check-schema-changes.js",
+    "deploy:digitalocean": "./deploy-digitalocean.sh",
+    "deploy:cloudrun": "./deploy.sh",
+    "logs:digitalocean": "ssh root@$DROPLET_IP 'cd /opt/agar-game && docker-compose -f docker-compose.digitalocean.yml logs -f'"
   },
   "repository": {
     "type": "git",

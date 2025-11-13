@@ -106,11 +106,13 @@ gcloud run deploy $SERVICE_NAME \
   --region $REGION \
   --allow-unauthenticated \
   --port 8080 \
-  --memory 512Mi \
-  --cpu 1 \
-  --max-instances 20 \
-  --min-instances 0 \
+  --memory 2Gi \
+  --cpu 2 \
+  --max-instances 5 \
+  --min-instances 1 \
   --timeout 300 \
+  --cpu-throttling \
+  --session-affinity \
   --set-env-vars NODE_ENV=production,PRIVY_APP_ID=cmhkpg56r02vbjr0cdeex8n7i,DATABASE_URL="postgresql://neondb_owner:npg_dNhm5vgEr8Vy@ep-tiny-night-ago05sk9-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require" \
   --quiet
 
@@ -129,26 +131,26 @@ if [ $? -eq 0 ]; then
     echo ""
     echo -e "${GREEN}🎉 Deployment successful!${NC}"
     echo ""
-    
+
     # Get service URL
     SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region=$REGION --format="value(status.url)")
-    
+
     echo -e "${BLUE}🌐 Your application is now live at:${NC}"
     echo -e "${GREEN}$SERVICE_URL${NC}"
     echo ""
-    
+
     echo -e "${BLUE}📊 Useful commands:${NC}"
     echo "  View logs:    gcloud run logs read $SERVICE_NAME --region=$REGION"
     echo "  Get status:   gcloud run services describe $SERVICE_NAME --region=$REGION"
     echo "  Update:       Re-run this script"
     echo ""
-    
+
     echo -e "${GREEN}✅ Deployment completed successfully!${NC}"
-    
+
     # Optional: Open in browser (uncomment if you want)
     # echo "Opening in browser..."
     # open $SERVICE_URL 2>/dev/null || xdg-open $SERVICE_URL 2>/dev/null || echo "Please open $SERVICE_URL in your browser"
-    
+
 else
     echo -e "${RED}❌ Deployment failed${NC}"
     echo "Check the logs above for error details."

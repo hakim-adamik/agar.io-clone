@@ -1,5 +1,17 @@
 const FULL_ANGLE = 2 * Math.PI;
 
+// HSL color cache (shared with app.js via window)
+var colorCache = window.colorCache || {};
+window.colorCache = colorCache;
+
+function getHSLColor(hue, lightness) {
+    var key = hue + '_' + lightness;
+    if (!colorCache[key]) {
+        colorCache[key] = 'hsl(' + hue + ', 100%, ' + lightness + '%)';
+    }
+    return colorCache[key];
+}
+
 const drawRoundObject = (position, radius, graph) => {
     graph.beginPath();
     graph.arc(position.x, position.y, radius, 0, FULL_ANGLE);
@@ -9,8 +21,9 @@ const drawRoundObject = (position, radius, graph) => {
 };
 
 const drawFood = (position, food, graph) => {
-    graph.fillStyle = "hsl(" + food.hue + ", 100%, 50%)";
-    graph.strokeStyle = "hsl(" + food.hue + ", 100%, 45%)";
+    // Use cached colors instead of creating strings every frame
+    graph.fillStyle = getHSLColor(food.hue, 50);
+    graph.strokeStyle = getHSLColor(food.hue, 45);
     graph.lineWidth = 0;
     drawRoundObject(position, food.radius, graph);
 };
@@ -40,8 +53,9 @@ const drawVirus = (position, virus, graph) => {
 };
 
 const drawFireFood = (position, mass, playerConfig, graph) => {
-    graph.strokeStyle = "hsl(" + mass.hue + ", 100%, 45%)";
-    graph.fillStyle = "hsl(" + mass.hue + ", 100%, 50%)";
+    // Use cached colors instead of creating strings every frame
+    graph.strokeStyle = getHSLColor(mass.hue, 45);
+    graph.fillStyle = getHSLColor(mass.hue, 50);
     graph.lineWidth = playerConfig.border + 2;
     drawRoundObject(position, mass.radius - 1, graph);
 };
@@ -64,6 +78,12 @@ const regulatePoint = (point, borders) => ({
     y: valueInRange(borders.top, borders.bottom, point.y),
 });
 
+// Pre-allocated points pool to reduce GC pressure (max 40 points)
+const pointsPool = new Array(40);
+for (let i = 0; i < 40; i++) {
+    pointsPool[i] = { x: 0, y: 0 };
+}
+
 // Optimized cell border drawing with reduced point count for smaller cells
 const drawCellWithLines = (cell, borders, graph) => {
     // Use fewer points for smaller cells to improve performance
@@ -71,20 +91,22 @@ const drawCellWithLines = (cell, borders, graph) => {
     const massFactor = Math.min(cell.mass / 10, 10); // Cap the mass factor
     let pointCount = Math.min(basePointCount + ~~massFactor, 40); // Cap at 40 points max
 
-    // Pre-allocate array for better performance
-    let points = new Array(pointCount);
+    // Reuse pre-allocated points pool to reduce GC pressure
     const thetaStep = FULL_ANGLE / pointCount;
 
     for (let i = 0; i < pointCount; i++) {
         let theta = i * thetaStep;
         let point = circlePoint(cell, cell.radius, theta);
-        points[i] = regulatePoint(point, borders);
+        let regulated = regulatePoint(point, borders);
+        // Reuse pooled point object instead of creating new one
+        pointsPool[i].x = regulated.x;
+        pointsPool[i].y = regulated.y;
     }
 
     graph.beginPath();
-    graph.moveTo(points[0].x, points[0].y);
+    graph.moveTo(pointsPool[0].x, pointsPool[0].y);
     for (let i = 1; i < pointCount; i++) {
-        graph.lineTo(points[i].x, points[i].y);
+        graph.lineTo(pointsPool[i].x, pointsPool[i].y);
     }
     graph.closePath();
     graph.fill();
@@ -151,15 +173,9 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph, exitCou
     }
 };
 
-// Cache grid drawing to improve performance
-let gridCache = {
-    canvas: null,
-    playerX: null,
-    playerY: null,
-    screenWidth: null,
-    screenHeight: null,
-    gridSize: null,
-};
+// Reusable canvas for grid drawing (created once to reduce GC pressure)
+let gridCanvas = null;
+let gridContext = null;
 
 const drawGrid = (global, player, screen, graph) => {
     // Don't draw grid if disabled by user preference
@@ -180,77 +196,55 @@ const drawGrid = (global, player, screen, graph) => {
     const gridOffsetX = ((-playerX + screen.width / 2) % gridSize + gridSize) % gridSize;
     const gridOffsetY = ((-playerY + screen.height / 2) % gridSize + gridSize) % gridSize;
 
-    // Check if we need to redraw the grid (only if offset changed significantly or screen changed)
-    const shouldRedraw =
-        !gridCache.canvas ||
-        Math.abs((gridCache.playerX || 0) - playerX) > 1 ||
-        Math.abs((gridCache.playerY || 0) - playerY) > 1 ||
-        gridCache.screenWidth !== screen.width ||
-        gridCache.screenHeight !== screen.height ||
-        gridCache.gridSize !== gridSize;
-
-    if (shouldRedraw) {
-        // Create or reuse off-screen canvas for grid
-        if (
-            !gridCache.canvas ||
-            gridCache.canvas.width !== screen.width ||
-            gridCache.canvas.height !== screen.height
-        ) {
-            gridCache.canvas = document.createElement("canvas");
-            gridCache.canvas.width = screen.width;
-            gridCache.canvas.height = screen.height;
-        }
-
-        const cacheCtx = gridCache.canvas.getContext("2d");
-        cacheCtx.clearRect(0, 0, screen.width, screen.height);
-        cacheCtx.lineWidth = 1;
-        cacheCtx.strokeStyle = global.lineColor;
-        cacheCtx.globalAlpha = 0.15;
-        cacheCtx.beginPath();
-
-        // Start drawing from the first visible grid line
-        // gridOffsetX/Y represents where the first grid line should appear on screen
-
-        // Draw vertical lines
-        for (let x = gridOffsetX; x <= screen.width; x += gridSize) {
-            cacheCtx.moveTo(x, 0);
-            cacheCtx.lineTo(x, screen.height);
-        }
-        // Handle the case where gridOffsetX > 0 (need to draw a line on the left)
-        if (gridOffsetX > 0) {
-            const x = gridOffsetX - gridSize;
-            cacheCtx.moveTo(x, 0);
-            cacheCtx.lineTo(x, screen.height);
-        }
-
-        // Draw horizontal lines
-        for (let y = gridOffsetY; y <= screen.height; y += gridSize) {
-            cacheCtx.moveTo(0, y);
-            cacheCtx.lineTo(screen.width, y);
-        }
-        // Handle the case where gridOffsetY > 0 (need to draw a line on the top)
-        if (gridOffsetY > 0) {
-            const y = gridOffsetY - gridSize;
-            cacheCtx.moveTo(0, y);
-            cacheCtx.lineTo(screen.width, y);
-        }
-
-        cacheCtx.stroke();
-        cacheCtx.globalAlpha = 1;
-
-        // Update cache metadata
-        gridCache.playerX = playerX;
-        gridCache.playerY = playerY;
-        gridCache.screenWidth = screen.width;
-        gridCache.screenHeight = screen.height;
-        gridCache.gridSize = gridSize;
+    // Create off-screen canvas for grid only once (reuse to reduce GC pressure)
+    if (!gridCanvas) {
+        gridCanvas = document.createElement("canvas");
+        gridContext = gridCanvas.getContext("2d");
     }
 
-    // Draw cached grid
-    if (gridCache.canvas) {
-        graph.globalAlpha = 1;
-        graph.drawImage(gridCache.canvas, 0, 0);
+    // Resize canvas only if screen dimensions changed
+    if (gridCanvas.width !== screen.width || gridCanvas.height !== screen.height) {
+        gridCanvas.width = screen.width;
+        gridCanvas.height = screen.height;
     }
+
+    // Draw grid every frame to follow player movement smoothly
+    gridContext.clearRect(0, 0, screen.width, screen.height);
+    gridContext.lineWidth = 1;
+    gridContext.strokeStyle = global.lineColor;
+    gridContext.globalAlpha = 0.15;
+    gridContext.beginPath();
+
+    // Draw vertical lines
+    for (let x = gridOffsetX; x <= screen.width; x += gridSize) {
+        gridContext.moveTo(x, 0);
+        gridContext.lineTo(x, screen.height);
+    }
+    // Handle the case where gridOffsetX > 0 (need to draw a line on the left)
+    if (gridOffsetX > 0) {
+        const x = gridOffsetX - gridSize;
+        gridContext.moveTo(x, 0);
+        gridContext.lineTo(x, screen.height);
+    }
+
+    // Draw horizontal lines
+    for (let y = gridOffsetY; y <= screen.height; y += gridSize) {
+        gridContext.moveTo(0, y);
+        gridContext.lineTo(screen.width, y);
+    }
+    // Handle the case where gridOffsetY > 0 (need to draw a line on the top)
+    if (gridOffsetY > 0) {
+        const y = gridOffsetY - gridSize;
+        gridContext.moveTo(0, y);
+        gridContext.lineTo(screen.width, y);
+    }
+
+    gridContext.stroke();
+    gridContext.globalAlpha = 1;
+
+    // Draw grid to main canvas
+    graph.globalAlpha = 1;
+    graph.drawImage(gridCanvas, 0, 0);
 };
 
 const drawBorder = (borders, graph) => {

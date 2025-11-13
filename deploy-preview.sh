@@ -150,11 +150,13 @@ gcloud run deploy $SERVICE_NAME \
   --region $REGION \
   --allow-unauthenticated \
   --port 8080 \
-  --memory 512Mi \
-  --cpu 1 \
+  --memory 2Gi \
+  --cpu 2 \
   --max-instances 5 \
-  --min-instances 0 \
+  --min-instances 1 \
   --timeout 300 \
+  --cpu-throttling \
+  --session-affinity \
   --set-env-vars NODE_ENV=production,PRIVY_APP_ID=cmhkpg56r02vbjr0cdeex8n7i,DEPLOYMENT_TYPE=preview,GIT_BRANCH=$GIT_BRANCH,GIT_COMMIT=$COMMIT_HASH,DATABASE_URL="postgresql://neondb_owner:npg_X0hNZFwe8Lrk@ep-wild-bar-agks6pgk-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require" \
   --labels environment=preview,branch=$SANITIZED_BRANCH,commit=$COMMIT_HASH \
   --quiet
