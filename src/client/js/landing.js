@@ -60,6 +60,85 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Modal content templates
     const modalTemplates = {
+        playChoice: {
+            title: 'Choose Your Adventure',
+            dynamic: true,
+            getContent: function() {
+                return `
+                    <div style="text-align: center; padding: 0.5rem 0;">
+                        <p style="color: var(--text-secondary); font-size: 1rem; margin-bottom: 1.5rem; line-height: 1.4;">
+                            Welcome to the arena! How would you like to play?
+                        </p>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1rem 0; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));"
+                             class="play-options-grid">
+                            <!-- Guest Option -->
+                            <div class="play-option-card" style="background: linear-gradient(135deg, rgba(108, 117, 125, 0.15), rgba(73, 80, 87, 0.1)); border: 1px solid rgba(108, 117, 125, 0.3); border-radius: 16px; padding: 1.5rem; text-align: center; position: relative; cursor: pointer; transition: all 0.3s ease; display: flex; flex-direction: column; min-height: 320px;"
+                                 onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 25px rgba(108, 117, 125, 0.3)'"
+                                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
+                                 onclick="window.playAsGuest()">
+                                <div style="width: 70px; height: 70px; margin: 0 auto 1rem; background: linear-gradient(135deg, #6c757d, #495057); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-user-secret" style="font-size: 1.8rem; color: white;"></i>
+                                </div>
+                                <h3 style="color: white; margin-bottom: 0.5rem; font-size: 1.2rem;">Play as Guest</h3>
+                                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: auto; line-height: 1.3;">
+                                    Jump in immediately and enjoy the game for free
+                                </p>
+                                <div style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 6px; padding: 0.6rem; margin: 1rem 0;">
+                                    <p style="color: #FFC107; margin: 0; font-size: 0.75rem;">
+                                        <i class="fas fa-info-circle" style="margin-right: 0.4rem;"></i>
+                                        No earnings or progress saved
+                                    </p>
+                                </div>
+                                <button class="modal-button" style="background: linear-gradient(135deg, #6c757d, #495057); border: none; width: 100%; padding: 0.75rem; font-weight: 600; margin-top: auto;">
+                                    Play Now
+                                </button>
+                            </div>
+
+                            <!-- Sign Up Option -->
+                            <div class="play-option-card" style="background: linear-gradient(135deg, rgba(74, 144, 226, 0.15), rgba(80, 227, 194, 0.1)); border: 1px solid rgba(74, 144, 226, 0.3); border-radius: 16px; padding: 1.5rem; text-align: center; position: relative; cursor: pointer; transition: all 0.3s ease; display: flex; flex-direction: column; min-height: 320px;"
+                                 onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 25px rgba(74, 144, 226, 0.3)'"
+                                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
+                                 onclick="window.signUpToPlay()">
+                                <div style="position: absolute; top: -8px; right: 12px; background: linear-gradient(135deg, #FFD700, #FFA500); color: white; padding: 0.2rem 0.6rem; border-radius: 16px; font-size: 0.65rem; font-weight: bold; text-transform: uppercase;">
+                                    Recommended
+                                </div>
+                                <div style="width: 70px; height: 70px; margin: 0 auto 1rem; background: linear-gradient(135deg, #4a90e2, #50e3c2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-trophy" style="font-size: 1.8rem; color: white;"></i>
+                                </div>
+                                <h3 style="color: white; margin-bottom: 0.5rem; font-size: 1.2rem;">Sign Up & Compete</h3>
+                                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: auto; line-height: 1.3;">
+                                    Are you bullish enough to dominate the arena?
+                                </p>
+                                <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 6px; padding: 0.6rem; margin: 1rem 0;">
+                                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                                        <div style="display: flex; align-items: center; color: #4CAF50; font-size: 0.75rem;">
+                                            <i class="fas fa-check" style="margin-right: 0.4rem;"></i>
+                                            Earn virtual currency
+                                        </div>
+                                        <div style="display: flex; align-items: center; color: #4CAF50; font-size: 0.75rem;">
+                                            <i class="fas fa-check" style="margin-right: 0.4rem;"></i>
+                                            Track your progress
+                                        </div>
+                                        <div style="display: flex; align-items: center; color: #4CAF50; font-size: 0.75rem;">
+                                            <i class="fas fa-check" style="margin-right: 0.4rem;"></i>
+                                            Compete on leaderboard
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="modal-button" style="background: linear-gradient(135deg, #4a90e2, #50e3c2); border: none; width: 100%; padding: 0.75rem; font-weight: 600; margin-top: auto;">
+                                    Sign Up Now
+                                </button>
+                            </div>
+                        </div>
+
+                        <p style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 1rem;">
+                            You can always sign up later to start earning rewards!
+                        </p>
+                    </div>
+                `;
+            }
+        },
         social: {
             title: 'Social',
             content: `
@@ -466,6 +545,48 @@ document.addEventListener('DOMContentLoaded', function() {
     // Make fetchLeaderboard available globally for retry button
     window.fetchLeaderboard = fetchLeaderboard;
 
+    // Play choice functions - global scope for inline onclick handlers
+    window.playAsGuest = function() {
+        playMenuSelectionSound();
+
+        // Close the play choice modal
+        const modal = document.getElementById('sectionModal');
+        if (modal) closeModal(modal);
+
+        // Start the game immediately as guest
+        redirectToGame();
+    };
+
+    window.signUpToPlay = function() {
+        playClickSound();
+
+        // Close the play choice modal
+        const modal = document.getElementById('sectionModal');
+        if (modal) closeModal(modal);
+
+        // Set a flag to indicate user wants to play after signing up
+        window._playAfterAuth = true;
+
+        // Trigger authentication flow
+        window.dispatchEvent(new CustomEvent('auth:show-privy'));
+    };
+
+    function showPlayChoiceModal() {
+        const template = modalTemplates.playChoice;
+        let modal = document.getElementById('sectionModal');
+        if (!modal) {
+            modal = createModal('sectionModal', '<div id="modalContent"></div>');
+        }
+
+        const modalContent = document.getElementById('modalContent');
+        modalContent.innerHTML = `
+            <h2>${template.title}</h2>
+            ${template.getContent()}
+        `;
+
+        showModal('sectionModal');
+    }
+
     function redirectToGame() {
         // Set the username for logged-in users
         const playerNameInput = document.getElementById("playerNameInput");
@@ -543,7 +664,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listeners
     elements.playBtn?.addEventListener('click', () => {
         playMenuSelectionSound(); // Play menu selection sound for Play button
-        redirectToGame();
+
+        // Check if user is authenticated
+        const isAuthenticated = window.PrivyAuth && window.PrivyAuth.isAuthenticated();
+
+        if (isAuthenticated) {
+            // User is logged in, go directly to game
+            redirectToGame();
+        } else {
+            // User is not logged in, show the play choice modal
+            showPlayChoiceModal();
+        }
     });
     elements.howToPlayBtn?.addEventListener('click', () => {
         playClickSound(); // Play click sound for How to Play button
@@ -1232,6 +1363,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+
+    // Listen for successful authentication to auto-redirect to game if user signed up to play
+    window.addEventListener('auth:login', function(event) {
+        // Check if user came from the "Sign Up & Compete" choice
+        if (window._playAfterAuth) {
+            window._playAfterAuth = false; // Clear the flag
+
+            // Small delay to ensure everything is loaded
+            setTimeout(() => {
+                redirectToGame();
+            }, 1500);
+        }
+    });
 
     // Initialize Privy authentication
     window.dispatchEvent(new CustomEvent('privy:init'));
