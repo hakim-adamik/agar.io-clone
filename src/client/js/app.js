@@ -281,6 +281,12 @@ function startGame(type) {
             setupBackgroundMusic();
         }
 
+        // Show the player score display when game starts
+        var playerScoreEl = document.getElementById("playerScore");
+        if (playerScoreEl) {
+            playerScoreEl.style.display = "block";
+        }
+
         if (!socket) {
             // Get user data from localStorage (if authenticated)
             let userData = null;
@@ -555,8 +561,103 @@ function initParallax() {
 
 */
 
+// Enhanced player score display update
+var lastScore = 0;
+var displayedScore = 0;
+var targetScore = 0;
+var scoreAnimationFrame = null;
+
+function updatePlayerScoreDisplay(player) {
+    var score = player.score || 0; // Keep as float for smooth animation
+    targetScore = score;
+
+    var scoreValueEl = document.querySelector('.score-value');
+
+    if (scoreValueEl) {
+        // Start animated counting if not already running
+        if (!scoreAnimationFrame) {
+            animateScore();
+        }
+
+        lastScore = score;
+    }
+}
+
+function animateScore() {
+    var scoreValueEl = document.querySelector('.score-value');
+    if (!scoreValueEl) return;
+
+    // Smooth animation towards target
+    var diff = targetScore - displayedScore;
+    var step = diff * 0.15; // Adjust speed of counting
+
+    // Minimum step to ensure we're always moving
+    if (Math.abs(diff) > 0.01) {
+        displayedScore += step;
+
+        // Add counting class for subtle animation
+        scoreValueEl.classList.add('counting');
+        setTimeout(() => scoreValueEl.classList.remove('counting'), 50);
+    } else {
+        displayedScore = targetScore;
+    }
+
+    // Format with 2 decimal places, thousand separators, and $ sign
+    var formattedScore = displayedScore.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    scoreValueEl.textContent = formattedScore + '$';
+
+    // Continue animation if needed
+    if (Math.abs(targetScore - displayedScore) > 0.01) {
+        scoreAnimationFrame = requestAnimationFrame(animateScore);
+    } else {
+        scoreAnimationFrame = null;
+    }
+}
+
+// Setup leaderboard toggle for all devices
+function setupLeaderboardToggle() {
+    var statusEl = document.getElementById("status");
+    if (!statusEl) return;
+
+    // Add click listener to entire leaderboard for easy toggling
+    statusEl.addEventListener("click", function(e) {
+        // Prevent event bubbling
+        e.stopPropagation();
+
+        // Toggle expanded class immediately
+        this.classList.toggle("expanded");
+
+        // Just toggle visibility, don't re-render entire HTML
+        var expandIcon = this.querySelector('.expand-icon');
+        var leaderboardEntries = this.querySelectorAll('.leaderboard-entry');
+        var moreIndicator = this.querySelector('.leaderboard-more');
+
+        if (this.classList.contains("expanded")) {
+            // Show all entries
+            if (expandIcon) expandIcon.textContent = '▼';
+            for (var i = 1; i < leaderboardEntries.length; i++) {
+                leaderboardEntries[i].style.display = '';
+            }
+            if (moreIndicator) moreIndicator.style.display = 'none';
+        } else {
+            // Show only first entry
+            if (expandIcon) expandIcon.textContent = '▶';
+            for (var i = 1; i < leaderboardEntries.length; i++) {
+                leaderboardEntries[i].style.display = 'none';
+            }
+            if (moreIndicator) moreIndicator.style.display = '';
+        }
+    });
+}
+
 window.onload = function () {
     // Landing page is handled by landing.js
+
+    // Set up leaderboard click handler for mobile
+    setupLeaderboardToggle();
 
     // Hidden start button for auto-start
     var btn = document.getElementById("startButton"),
@@ -1003,28 +1104,69 @@ function setupSocket(socket) {
         // Player join notification removed (chat feature removed)
     });
 
-    socket.on("leaderboard", (data) => {
+    function renderLeaderboard(data) {
         leaderboard = data.leaderboard;
-        var status = '<span class="title">Leaderboard</span>';
-        for (var i = 0; i < leaderboard.length; i++) {
-            status += "<br />";
-            var displayName =
-                leaderboard[i].name.length !== 0
-                    ? leaderboard[i].name
-                    : "An unnamed cell";
-            var score = leaderboard[i].score || 0;
-            // Format score with 2 decimals, removing trailing zeros
-            var displayScore = parseFloat(score.toFixed(2));
-            var entry = i + 1 + ". " + displayName + " - " + displayScore;
+        var statusEl = document.getElementById("status");
+        if (!statusEl) return;
 
-            if (leaderboard[i].id == player.id) {
-                status += '<span class="me">' + entry + "</span>";
-            } else {
-                status += entry;
+        var isExpanded = statusEl.classList.contains("expanded");
+
+        // Use array join for better string concatenation performance
+        var statusParts = [];
+        statusParts.push('<div class="leaderboard-header">');
+        statusParts.push('LEADERBOARD');
+        statusParts.push('<span class="expand-icon">' + (isExpanded ? '▼' : '▶') + '</span>');
+        statusParts.push('</div>');
+        statusParts.push('<div class="leaderboard-content">');
+        statusParts.push('<div class="leaderboard-list">');
+
+        // Always render ALL entries, we'll hide them with CSS
+        for (var i = 0; i < leaderboard.length; i++) {
+            var displayName = leaderboard[i].name.length !== 0 ? leaderboard[i].name : "An unnamed cell";
+            // Truncate long names
+            if (displayName.length > 12) {
+                displayName = displayName.substring(0, 10) + "...";
             }
+
+            var score = leaderboard[i].score || 0;
+            var displayScore = score.toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+            // Add rank with medals for top 3
+            var rank = "";
+            if (i === 0) rank = "🥇";
+            else if (i === 1) rank = "🥈";
+            else if (i === 2) rank = "🥉";
+            else rank = (i + 1);
+
+            var entryClass = leaderboard[i].id == player.id ? "me" : "";
+            if (i < 3) entryClass += " top3";
+
+            // Hide entries after first one when collapsed
+            var style = (!isExpanded && i > 0) ? ' style="display:none"' : '';
+
+            statusParts.push('<div class="leaderboard-entry ' + entryClass + '"' + style + '>');
+            statusParts.push('<span class="rank">' + rank + '</span>');
+            statusParts.push('<span class="name">' + displayName + '</span>');
+            statusParts.push('<span class="score">' + displayScore + '</span>');
+            statusParts.push('</div>');
         }
-        //status += '<br />Players: ' + data.players;
-        document.getElementById("status").innerHTML = status;
+
+        // Show collapsed indicator when collapsed
+        var moreStyle = !isExpanded && leaderboard.length > 1 ? '' : ' style="display:none"';
+        if (leaderboard.length > 1) {
+            statusParts.push('<div class="leaderboard-more"' + moreStyle + '>+' + (leaderboard.length - 1) + ' more</div>');
+        }
+
+        statusParts.push('</div>');
+        statusParts.push('</div>');
+
+        // Single DOM update for best performance
+        statusEl.innerHTML = statusParts.join('');
+    }
+
+    socket.on("leaderboard", (data) => {
+        window.lastLeaderboardData = data;
+        renderLeaderboard(data);
     });
 
     // Chat feature removed
@@ -1157,13 +1299,8 @@ function setupSocket(socket) {
                     prediction.predicted.cells = cloneCells(prediction.current.cells);
                 }
 
-                // Update player score display
-                var playerScoreEl = document.getElementById("playerScore");
-                if (playerScoreEl) {
-                    var displayScore = parseFloat(player.score.toFixed(2));
-                    playerScoreEl.innerHTML =
-                        '<span class="title">Score</span><br />' + displayScore;
-                }
+                // Update player score display with enhanced features
+                updatePlayerScoreDisplay(player);
             }
             // Store other players' data and calculate their velocities
             var now = getTime();
@@ -1261,6 +1398,12 @@ function setupSocket(socket) {
                 // Hide game view
                 gameView.style.display = "none";
                 document.getElementById("gameAreaWrapper").style.opacity = 0;
+
+                // Hide player score display
+                var playerScoreEl = document.getElementById("playerScore");
+                if (playerScoreEl) {
+                    playerScoreEl.style.display = "none";
+                }
 
                 // Show landing view
                 landingView.style.display = "block";
