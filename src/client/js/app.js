@@ -231,10 +231,32 @@ function startGame(type) {
         setTimeout(function () {
             document.getElementById("gameAreaWrapper").style.opacity = 1;
         }, 50);
+
+        // Start background music
+        try {
+            const backgroundMusic = document.getElementById('background_music');
+            if (backgroundMusic) {
+                backgroundMusic.volume = 0.3; // Set volume to 30%
+                backgroundMusic.play().catch(console.log);
+            }
+        } catch (e) {
+            console.log('Background music not available:', e);
+        }
     } else {
         // Fallback for old flow
         document.getElementById("startMenuWrapper").style.maxHeight = "0px";
         document.getElementById("gameAreaWrapper").style.opacity = 1;
+
+        // Start background music (fallback flow)
+        try {
+            const backgroundMusic = document.getElementById('background_music');
+            if (backgroundMusic) {
+                backgroundMusic.volume = 0.3; // Set volume to 30%
+                backgroundMusic.play().catch(console.log);
+            }
+        } catch (e) {
+            console.log('Background music not available:', e);
+        }
     }
 
     if (!socket) {
