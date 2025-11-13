@@ -103,7 +103,7 @@ class Arena {
      * Add player to this arena
      */
     addPlayer(socket) {
-        const currentPlayer = new mapUtils.playerUtils.Player(socket.id);
+        const currentPlayer = new mapUtils.playerUtils.Player(socket.id, this.config);
 
         // Initialize heartbeat immediately to prevent premature disconnect
         currentPlayer.setLastHeartbeat();

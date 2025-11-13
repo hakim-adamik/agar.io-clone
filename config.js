@@ -5,7 +5,9 @@ module.exports = {
     foodMass: 1,
     fireFood: 20,
     limitSplit: 16,
-    defaultPlayerMass: 10,
+    //defaultPlayerMass: 10,
+    // FIXME DEBUG TBR
+    defaultPlayerMass: 100,
     minSplitMass: 10,
     virus: {
         fill: "#33ff33",
@@ -36,8 +38,17 @@ module.exports = {
     arenaCleanupTimeout: 60000, // Milliseconds before cleaning empty arenas (60 seconds)
     maxTotalArenas: 50, // Maximum concurrent arenas (resource limit)
 
+    // Cell movement physics
+    minSpeed: 6.5, // Base movement speed for cells (reduced from 6.25 to slow down convergence)
+    splitCellSpeed: 20, // Initial speed when a cell splits
+    speedDecrement: 0.5, // How quickly split speed decreases
+    minDistance: 150, // Minimum distance from cursor where cells slow down
+    pushingAwaySpeed: 1.1, // Speed at which overlapping cells push away from each other
+
     massLossRate: 1,
     minMassLoss: 50,
+    mergeTimer: 700, // Time in milliseconds before cells can merge after they are fully separated (0 = immediate merge once separated)
+
     sqlinfo: {
         fileName: "db.sqlite3",
     },

@@ -4,20 +4,17 @@ const util = require('../lib/util');
 const sat = require('sat');
 const gameLogic = require('../game-logic');
 
-const MIN_SPEED = 6.25;
-const SPLIT_CELL_SPEED = 20;
-const SPEED_DECREMENT = 0.5;
-const MIN_DISTANCE = 50;
-const PUSHING_AWAY_SPEED = 1.1;
-const MERGE_TIMER = 15;
-
 class Cell {
-    constructor(x, y, mass, speed) {
+    constructor(x, y, mass, speed, config) {
         this.x = x;
         this.y = y;
         this.mass = mass;
         this.radius = util.massToRadius(mass);
         this.speed = speed;
+        this.config = config; // Store config for movement calculations
+        this.canMerge = true; // Track if this specific cell is allowed to merge
+        this.hasSeparated = true; // Track if this cell has separated from siblings after split
+        this.timeToMerge = null; // Per-cell merge timer
     }
 
     setMass(mass) {
@@ -45,19 +42,19 @@ class Cell {
         var dist = Math.hypot(target.y, target.x)
         var deg = Math.atan2(target.y, target.x);
         var slowDown = 1;
-        if (this.speed <= MIN_SPEED) {
+        if (this.speed <= this.config.minSpeed) {
             slowDown = util.mathLog(this.mass, slowBase) - initMassLog + 1;
         }
 
         var deltaY = this.speed * Math.sin(deg) / slowDown;
         var deltaX = this.speed * Math.cos(deg) / slowDown;
 
-        if (this.speed > MIN_SPEED) {
-            this.speed -= SPEED_DECREMENT;
+        if (this.speed > this.config.minSpeed) {
+            this.speed -= this.config.speedDecrement;
         }
-        if (dist < (MIN_DISTANCE + this.radius)) {
-            deltaY *= dist / (MIN_DISTANCE + this.radius);
-            deltaX *= dist / (MIN_DISTANCE + this.radius);
+        if (dist < (this.config.minDistance + this.radius)) {
+            deltaY *= dist / (this.config.minDistance + this.radius);
+            deltaX *= dist / (this.config.minDistance + this.radius);
         }
 
         if (!isNaN(deltaY)) {
@@ -83,20 +80,20 @@ class Cell {
 }
 
 exports.Player = class {
-    constructor(id) {
+    constructor(id, config) {
         this.id = id;
         this.hue = Math.round(Math.random() * 360);
         this.name = null;
         this.admin = false;
         this.screenWidth = null;
         this.screenHeight = null;
-        this.timeToMerge = null;
+        this.config = config; // Store config for all settings
         this.setLastHeartbeat();
     }
 
     /* Initalizes things that change with every respawn */
     init(position, defaultPlayerMass) {
-        this.cells = [new Cell(position.x, position.y, defaultPlayerMass, MIN_SPEED)];
+        this.cells = [new Cell(position.x, position.y, defaultPlayerMass, this.config.minSpeed, this.config)];
         this.massTotal = defaultPlayerMass;
         this.defaultPlayerMass = defaultPlayerMass;
         this.x = position.x;
@@ -132,8 +129,13 @@ exports.Player = class {
         this.lastHeartbeat = Date.now();
     }
 
-    setLastSplit() {
-        this.timeToMerge = Date.now() + 1000 * MERGE_TIMER;
+    markCellsAsSplit() {
+        // Mark all cells as needing to separate before they can merge
+        for (let cell of this.cells) {
+            cell.canMerge = false;
+            cell.hasSeparated = false;
+            cell.timeToMerge = null;
+        }
     }
 
     loseMassIfNeeded(massLossRate, defaultPlayerMass, minMassLoss) {
@@ -169,10 +171,10 @@ exports.Player = class {
         }
         let newCellsMass = cellToSplit.mass / piecesToCreate;
         for (let i = 0; i < piecesToCreate - 1; i++) {
-            this.cells.push(new Cell(cellToSplit.x, cellToSplit.y, newCellsMass, SPLIT_CELL_SPEED));
+            this.cells.push(new Cell(cellToSplit.x, cellToSplit.y, newCellsMass, this.config.splitCellSpeed, this.config));
         }
         cellToSplit.setMass(newCellsMass);
-        this.setLastSplit();
+        this.markCellsAsSplit();
     }
 
     // Performs a split resulting from colliding with a virus.
@@ -223,38 +225,76 @@ exports.Player = class {
         this.cells = util.removeNulls(this.cells);
     }
 
-    mergeCollidingCells() {
-        this.enumerateCollidingCells(function (cells, cellAIndex, cellBIndex) {
-            cells[cellAIndex].addMass(cells[cellBIndex].mass);
-            cells[cellBIndex] = null;
-        });
-    }
-
-    pushAwayCollidingCells() {
-        this.enumerateCollidingCells(function (cells, cellAIndex, cellBIndex) {
-            let cellA = cells[cellAIndex],
-                cellB = cells[cellBIndex],
-                vector = new sat.Vector(cellB.x - cellA.x, cellB.y - cellA.y); // vector pointing from A to B
-            vector = vector.normalize().scale(PUSHING_AWAY_SPEED, PUSHING_AWAY_SPEED);
-            if (vector.len() == 0) { // The two cells are perfectly on the top of each other
-                vector = new sat.Vector(0, 1);
-            }
-
-            cellA.x -= vector.x;
-            cellA.y -= vector.y;
-
-            cellB.x += vector.x;
-            cellB.y += vector.y;
-        });
-    }
-
     move(slowBase, gameWidth, gameHeight, initMassLog) {
         if (this.cells.length > 1) {
-            if (this.timeToMerge < Date.now()) {
-                this.mergeCollidingCells();
-            } else {
-                this.pushAwayCollidingCells();
+            // Track which cells are currently colliding with any other cell
+            const collidingCellIndexes = new Set();
+
+            // Check all pairs for collisions
+            for (let cellAIndex = 0; cellAIndex < this.cells.length; cellAIndex++) {
+                let cellA = this.cells[cellAIndex];
+                if (!cellA) continue;
+
+                for (let cellBIndex = cellAIndex + 1; cellBIndex < this.cells.length; cellBIndex++) {
+                    let cellB = this.cells[cellBIndex];
+                    if (!cellB) continue;
+
+                    let colliding = sat.testCircleCircle(cellA.toCircle(), cellB.toCircle());
+                    if (colliding) {
+                        collidingCellIndexes.add(cellAIndex);
+                        collidingCellIndexes.add(cellBIndex);
+                    }
+                }
             }
+
+            // Update separation status and timers for each cell
+            const now = Date.now();
+            for (let i = 0; i < this.cells.length; i++) {
+                let cell = this.cells[i];
+                if (!cell) continue;
+
+                // If this cell is not colliding with anyone and hasn't separated yet
+                if (!collidingCellIndexes.has(i) && !cell.hasSeparated) {
+                    // Mark as separated and start merge timer
+                    cell.hasSeparated = true;
+                    cell.timeToMerge = now + this.config.mergeTimer;
+                }
+
+                // Update canMerge status based on timer
+                if (cell.hasSeparated && cell.timeToMerge !== null && now >= cell.timeToMerge) {
+                    cell.canMerge = true;
+                }
+            }
+
+            // Merge or push away cells based on their individual merge status
+            this.enumerateCollidingCells((cells, cellAIndex, cellBIndex) => {
+                let cellA = cells[cellAIndex];
+                let cellB = cells[cellBIndex];
+
+                // Only merge if BOTH cells are allowed to merge
+                if (cellA.canMerge && cellB.canMerge) {
+                    cellA.addMass(cellB.mass);
+                    // Reset merge state for the merged cell
+                    cellA.canMerge = true;
+                    cellA.hasSeparated = true;
+                    cellA.timeToMerge = null;
+                    cells[cellBIndex] = null;
+                } else {
+                    // Push them apart
+                    let vector = new sat.Vector(cellB.x - cellA.x, cellB.y - cellA.y);
+                    vector = vector.normalize().scale(this.config.pushingAwaySpeed, this.config.pushingAwaySpeed);
+                    if (vector.len() == 0) {
+                        vector = new sat.Vector(0, 1);
+                    }
+
+                    cellA.x -= vector.x;
+                    cellA.y -= vector.y;
+                    cellB.x += vector.x;
+                    cellB.y += vector.y;
+                }
+            });
+
+            this.cells = util.removeNulls(this.cells);
         }
 
         let xSum = 0, ySum = 0;
