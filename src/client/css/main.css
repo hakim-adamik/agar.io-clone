@@ -515,57 +515,11 @@ div {
 
 /* Mobile responsive styles for leaderboard and player score */
 @media only screen and (max-width: 768px) {
+    /* Hide leaderboard completely on mobile during gameplay */
     #status {
-        padding: 8px 10px;
-        top: 5px;
-        right: 5px;
-        width: 200px;
-        max-width: 200px;
-        cursor: pointer;
-        user-select: none;
-        -webkit-tap-highlight-color: transparent;
+        display: none !important;
     }
 
-    #status:active {
-        /* Removed transform for instant response */
-    }
-
-    #status.expanded {
-        max-height: 300px;
-        overflow-y: auto;
-        overflow-x: hidden;
-    }
-
-    .leaderboard-header {
-        font-size: 10px;
-        letter-spacing: 1px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .expand-icon {
-        font-size: 10px;
-        margin-left: 8px;
-    }
-
-    .leaderboard-more {
-        font-size: 10px;
-        color: rgba(255, 255, 255, 0.5);
-        text-align: center;
-        padding: 4px 0;
-        font-style: italic;
-    }
-
-    .leaderboard-entry .rank {
-        font-size: 12px;
-        width: 24px;
-    }
-
-    .leaderboard-entry .name,
-    .leaderboard-entry .score {
-        font-size: 11px;
-    }
 
     /* Mobile score adjustments - Move to top left corner without background */
     #playerScore {
