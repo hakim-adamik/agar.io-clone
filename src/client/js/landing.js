@@ -168,6 +168,28 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Wallet Balance Section -->
+                        <div class="wallet-section" style="margin: 1.5rem 0; padding: 1.5rem; background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(46, 125, 50, 0.1)); border-radius: 12px; border: 1px solid rgba(76, 175, 80, 0.2);">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #4CAF50, #2E7D32); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-wallet" style="color: white; font-size: 1.2rem;"></i>
+                                    </div>
+                                    <div>
+                                        <h3 style="color: #4CAF50; font-size: 1.1rem; margin: 0; font-weight: 600;">Wallet Balance</h3>
+                                        <div id="wallet-balance" style="font-size: 1.8rem; font-weight: bold; color: #4CAF50; margin: 0.25rem 0;">Loading...</div>
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">Virtual Currency</div>
+                                    <div>
+                                        <button id="add-funds-btn" onclick="window.checkAndAddFunds()" style="background: #4CAF50; border: none; color: white; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600;">Add Funds</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div style="margin: 1.5rem 0;">
                             <h3 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px;">
                                 <i class="fas fa-chart-line" style="margin-right: 0.5rem;"></i>Performance Stats
@@ -624,6 +646,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     fetchLeaderboard('all');
                     setupLeaderboardTabs();
                 }
+
+                // If this is the profile section, load wallet balance
+                if (section === 'profile') {
+                    // Small delay to ensure DOM is ready
+                    setTimeout(() => {
+                        if (window.loadWalletBalance) {
+                            window.loadWalletBalance();
+                        }
+                    }, 100);
+                }
             } else {
                 modalContent.innerHTML = `
                     <h2>${template.title}</h2>
@@ -965,6 +997,241 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     };
+
+    // Wallet Balance Functions
+    window.loadWalletBalance = async function() {
+        const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+        if (!userData.dbUserId) {
+            document.getElementById('wallet-balance').textContent = '$0.00';
+            window.updateAddFundsButton(0);
+            return;
+        }
+
+        try {
+            const apiBase = window.location.port === '8080' ? `${window.location.protocol}//${window.location.hostname}:3000` : '';
+            const response = await fetch(`${apiBase}/api/user/${userData.dbUserId}/wallet`);
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch wallet balance');
+            }
+
+            const walletData = await response.json();
+            const balance = parseFloat(walletData.balance);
+
+            // Update the balance display with animation (rounded to 2 decimals for display)
+            const balanceElement = document.getElementById('wallet-balance');
+            if (balanceElement) {
+                balanceElement.style.opacity = '0.5';
+                setTimeout(() => {
+                    balanceElement.textContent = `$${balance.toFixed(2)}`;
+                    balanceElement.style.opacity = '1';
+                }, 200);
+            }
+
+            // Update Add Funds button state
+            window.updateAddFundsButton(balance);
+
+        } catch (error) {
+            console.error('Error fetching wallet balance:', error);
+            document.getElementById('wallet-balance').textContent = 'Error';
+            window.updateAddFundsButton(0);
+        }
+    };
+
+    // Update Add Funds button state based on balance
+    window.updateAddFundsButton = function(balance) {
+        const addFundsBtn = document.getElementById('add-funds-btn');
+        if (!addFundsBtn) return;
+
+        if (balance < 1.0) {
+            // Enable button when balance is below $1
+            addFundsBtn.disabled = false;
+            addFundsBtn.style.background = '#4CAF50';
+            addFundsBtn.style.cursor = 'pointer';
+            addFundsBtn.style.opacity = '1';
+            addFundsBtn.textContent = 'Add $1.00';
+        } else {
+            // Disable button when balance is $1 or more
+            addFundsBtn.disabled = true;
+            addFundsBtn.style.background = '#666';
+            addFundsBtn.style.cursor = 'not-allowed';
+            addFundsBtn.style.opacity = '0.5';
+            addFundsBtn.textContent = 'Reload Not Available';
+        }
+    };
+
+    // Check balance and add funds if needed
+    window.checkAndAddFunds = async function() {
+        const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+        if (!userData.dbUserId) {
+            console.error('No user ID found');
+            return;
+        }
+
+        // Get current balance first
+        try {
+            const apiBase = window.location.port === '8080' ? `${window.location.protocol}//${window.location.hostname}:3000` : '';
+            const balanceResponse = await fetch(`${apiBase}/api/user/${userData.dbUserId}/wallet`);
+
+            if (!balanceResponse.ok) {
+                throw new Error('Failed to fetch current balance');
+            }
+
+            const walletData = await balanceResponse.json();
+            const currentBalance = parseFloat(walletData.balance);
+
+            // Only add funds if balance is below $1.00
+            if (currentBalance >= 1.0) {
+                // Show message that balance is already sufficient
+                const infoMsg = document.createElement('div');
+                infoMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #2196F3; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3); z-index: 10000; font-weight: 600;';
+                infoMsg.innerHTML = `<i class="fas fa-info-circle" style="margin-right: 0.5rem;"></i>Your wallet is already at the maximum balance of $1.00`;
+                document.body.appendChild(infoMsg);
+
+                setTimeout(() => {
+                    infoMsg.remove();
+                }, 3000);
+                return;
+            }
+
+            // Calculate how much to add to reach exactly $1.00
+            const amountToAdd = 1.0 - currentBalance;
+
+            // Add funds to reach exactly $1.00
+            const addResponse = await fetch(`${apiBase}/api/user/${userData.dbUserId}/wallet/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount: amountToAdd,
+                    description: `Refilled wallet to $1.00 (added $${amountToAdd.toFixed(6)})`
+                })
+            });
+
+            if (!addResponse.ok) {
+                throw new Error('Failed to add funds');
+            }
+
+            // Refresh wallet balance
+            await window.loadWalletBalance();
+
+            // Show success message
+            const successMsg = document.createElement('div');
+            successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #4CAF50; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3); z-index: 10000; font-weight: 600;';
+            successMsg.innerHTML = `<i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i>Wallet refilled to $1.00!`;
+            document.body.appendChild(successMsg);
+
+            setTimeout(() => {
+                successMsg.remove();
+            }, 3000);
+
+        } catch (error) {
+            console.error('Error adding funds:', error);
+
+            // Show error message
+            const errorMsg = document.createElement('div');
+            errorMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #f44336; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3); z-index: 10000; font-weight: 600;';
+            errorMsg.innerHTML = `<i class="fas fa-exclamation-circle" style="margin-right: 0.5rem;"></i>Failed to add funds. Please try again.`;
+            document.body.appendChild(errorMsg);
+
+            setTimeout(() => {
+                errorMsg.remove();
+            }, 3000);
+        }
+    };
+
+    window.showAddFundsModal = function() {
+        // Show a modal for adding funds (placeholder for now)
+        const modal = document.querySelector('.modal');
+        const modalContent = modal.querySelector('.modal-content');
+
+        modalContent.innerHTML = `
+            <h2>Add Funds</h2>
+            <div style="padding: 1rem 0;">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">Add virtual currency to your wallet for in-game purchases and features.</p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; margin: 1.5rem 0;">
+                    <button onclick="window.addFunds(1)" style="background: linear-gradient(135deg, #4CAF50, #2E7D32); border: none; color: white; padding: 1rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <div style="font-size: 1.2rem;">$1.00</div>
+                        <div style="font-size: 0.75rem; opacity: 0.8;">Starter</div>
+                    </button>
+                    <button onclick="window.addFunds(5)" style="background: linear-gradient(135deg, #2196F3, #1565C0); border: none; color: white; padding: 1rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <div style="font-size: 1.2rem;">$5.00</div>
+                        <div style="font-size: 0.75rem; opacity: 0.8;">Popular</div>
+                    </button>
+                    <button onclick="window.addFunds(10)" style="background: linear-gradient(135deg, #FF9800, #F57C00); border: none; color: white; padding: 1rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <div style="font-size: 1.2rem;">$10.00</div>
+                        <div style="font-size: 0.75rem; opacity: 0.8;">Best Value</div>
+                    </button>
+                    <button onclick="window.addFunds(25)" style="background: linear-gradient(135deg, #9C27B0, #6A1B9A); border: none; color: white; padding: 1rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <div style="font-size: 1.2rem;">$25.00</div>
+                        <div style="font-size: 0.75rem; opacity: 0.8;">Premium</div>
+                    </button>
+                </div>
+
+                <div style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+                    <p style="color: #FFC107; margin: 0; font-size: 0.85rem; text-align: center;">
+                        <i class="fas fa-info-circle" style="margin-right: 0.5rem;"></i>
+                        This is virtual currency for demonstration purposes only.
+                    </p>
+                </div>
+            </div>
+            <button class="modal-button" onclick="playClickSound(); this.closest('.modal').classList.remove('show')">Close</button>
+        `;
+
+        modal.classList.add('show');
+        playMenuSelectionSound();
+    };
+
+    window.addFunds = async function(amount) {
+        const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+        if (!userData.dbUserId) {
+            console.error('No user ID found');
+            return;
+        }
+
+        try {
+            const apiBase = window.location.port === '8080' ? `${window.location.protocol}//${window.location.hostname}:3000` : '';
+            const response = await fetch(`${apiBase}/api/user/${userData.dbUserId}/wallet/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount: amount,
+                    description: `Added $${amount} via Add Funds`
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to add funds');
+            }
+
+            const result = await response.json();
+
+            // Close the modal
+            document.querySelector('.modal').classList.remove('show');
+
+            // Refresh wallet balance
+            await window.loadWalletBalance();
+
+            // Show success message
+            const successMsg = document.createElement('div');
+            successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #4CAF50; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3); z-index: 10000; font-weight: 600;';
+            successMsg.innerHTML = `<i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i>Successfully added $${amount.toFixed(6)} to your wallet!`;
+            document.body.appendChild(successMsg);
+
+            setTimeout(() => {
+                successMsg.remove();
+            }, 3000);
+
+        } catch (error) {
+            console.error('Error adding funds:', error);
+            alert('Failed to add funds. Please try again.');
+        }
+    };
+
 
     // Initialize Privy authentication
     window.dispatchEvent(new CustomEvent('privy:init'));
