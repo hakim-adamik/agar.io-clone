@@ -716,6 +716,7 @@ $("#feed").on("click touchstart", function (e) {
 $("#split").on("click touchstart", function (e) {
     e.preventDefault();
     e.stopPropagation();
+    document.getElementById('split_cell').play();
     socket.emit("2");
     window.canvas.reenviar = false;
 });
