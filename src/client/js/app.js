@@ -228,6 +228,34 @@ function startGame(type) {
     global.screen.width = window.innerWidth;
     global.screen.height = window.innerHeight;
 
+    // Function to set up seamless background music
+    function setupBackgroundMusic() {
+        try {
+            const backgroundMusic = document.getElementById('background_music');
+            if (backgroundMusic && global.musicEnabled) {
+                backgroundMusic.volume = 0.3; // Set volume to 30%
+                backgroundMusic.loop = true; // Ensure looping is enabled
+
+                // Remove any existing event listeners to prevent duplicates
+                backgroundMusic.removeEventListener('ended', window.musicLoopHandler);
+
+                // Create named handler for seamless looping
+                window.musicLoopHandler = function() {
+                    if (global.musicEnabled && global.gameStart) {
+                        this.currentTime = 0;
+                        this.play().catch(console.log);
+                    }
+                };
+
+                // Add seamless looping event listener to prevent gaps
+                backgroundMusic.addEventListener('ended', window.musicLoopHandler);
+                backgroundMusic.play().catch(console.log);
+            }
+        } catch (e) {
+            console.log('Background music not available:', e);
+        }
+    }
+
     // Function to continue game start after preferences are loaded
     function continueGameStart() {
         // Seamless transition from landing to game
@@ -243,30 +271,14 @@ function startGame(type) {
             }, 50);
 
             // Start background music if enabled (after preferences are loaded)
-            try {
-                const backgroundMusic = document.getElementById('background_music');
-                if (backgroundMusic && global.musicEnabled) {
-                    backgroundMusic.volume = 0.3; // Set volume to 30%
-                    backgroundMusic.play().catch(console.log);
-                }
-            } catch (e) {
-                console.log('Background music not available:', e);
-            }
+            setupBackgroundMusic();
         } else {
             // Fallback for old flow
             document.getElementById("startMenuWrapper").style.maxHeight = "0px";
             document.getElementById("gameAreaWrapper").style.opacity = 1;
 
             // Start background music (fallback flow) if enabled
-            try {
-                const backgroundMusic = document.getElementById('background_music');
-                if (backgroundMusic && global.musicEnabled) {
-                    backgroundMusic.volume = 0.3; // Set volume to 30%
-                    backgroundMusic.play().catch(console.log);
-                }
-            } catch (e) {
-                console.log('Background music not available:', e);
-            }
+            setupBackgroundMusic();
         }
 
         if (!socket) {
