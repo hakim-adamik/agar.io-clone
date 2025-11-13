@@ -26,6 +26,17 @@
     .play-options-grid {
         grid-template-columns: 1fr !important;
         gap: 0.75rem !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    /* Reorder cards on mobile: Sign up first, Guest second */
+    .signup-option {
+        order: 1 !important;
+    }
+
+    .guest-option {
+        order: 2 !important;
     }
 
     .play-option-card {

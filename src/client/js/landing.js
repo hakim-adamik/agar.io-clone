@@ -61,19 +61,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Modal content templates
     const modalTemplates = {
         playChoice: {
-            title: 'Choose Your Adventure',
+            title: 'Welcome to the Arena',
             dynamic: true,
             getContent: function() {
                 return `
                     <div style="text-align: center; padding: 0.5rem 0;">
-                        <p style="color: var(--text-secondary); font-size: 1rem; margin-bottom: 1.5rem; line-height: 1.4;">
-                            Welcome to the arena! How would you like to play?
-                        </p>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1rem 0; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));"
                              class="play-options-grid">
-                            <!-- Guest Option -->
-                            <div class="play-option-card" style="background: linear-gradient(135deg, rgba(108, 117, 125, 0.15), rgba(73, 80, 87, 0.1)); border: 1px solid rgba(108, 117, 125, 0.3); border-radius: 16px; padding: 1.5rem; text-align: center; position: relative; cursor: pointer; transition: all 0.3s ease; display: flex; flex-direction: column; min-height: 320px;"
+                            <!-- Guest Option (shows first on desktop, second on mobile) -->
+                            <div class="play-option-card guest-option" style="background: linear-gradient(135deg, rgba(108, 117, 125, 0.15), rgba(73, 80, 87, 0.1)); border: 1px solid rgba(108, 117, 125, 0.3); border-radius: 16px; padding: 1.5rem; text-align: center; position: relative; cursor: pointer; transition: all 0.3s ease; display: flex; flex-direction: column; min-height: 320px;"
                                  onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 25px rgba(108, 117, 125, 0.3)'"
                                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
                                  onclick="window.playAsGuest()">
@@ -95,8 +92,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </button>
                             </div>
 
-                            <!-- Sign Up Option -->
-                            <div class="play-option-card" style="background: linear-gradient(135deg, rgba(74, 144, 226, 0.15), rgba(80, 227, 194, 0.1)); border: 1px solid rgba(74, 144, 226, 0.3); border-radius: 16px; padding: 1.5rem; text-align: center; position: relative; cursor: pointer; transition: all 0.3s ease; display: flex; flex-direction: column; min-height: 320px;"
+                            <!-- Sign Up Option (shows second on desktop, first on mobile) -->
+                            <div class="play-option-card signup-option" style="background: linear-gradient(135deg, rgba(74, 144, 226, 0.15), rgba(80, 227, 194, 0.1)); border: 1px solid rgba(74, 144, 226, 0.3); border-radius: 16px; padding: 1.5rem; text-align: center; position: relative; cursor: pointer; transition: all 0.3s ease; display: flex; flex-direction: column; min-height: 320px;"
                                  onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 25px rgba(74, 144, 226, 0.3)'"
                                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
                                  onclick="window.signUpToPlay()">
