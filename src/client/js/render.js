@@ -119,13 +119,10 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph, exitCou
         graph.fillStyle = cell.color;
         graph.strokeStyle = cell.borderColor;
         graph.lineWidth = 0;
-        if (cellTouchingBorders(cell, borders)) {
-            // Asssemble the cell from lines
-            drawCellWithLines(cell, borders, graph);
-        } else {
-            // Border corrections are not needed, the cell can be drawn as a circle
-            drawRoundObject(cell, cell.radius, graph);
-        }
+        // Always draw cells as full circles
+        // The server already prevents cells from moving beyond game boundaries
+        // No need to visually clip them - they just stop at the border
+        drawRoundObject(cell, cell.radius, graph);
 
         graph.lineWidth = playerConfig.textBorderSize;
         graph.fillStyle = playerConfig.textColor;
