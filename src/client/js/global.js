@@ -30,4 +30,6 @@ module.exports = {
     showFpsCounter: true,
     showGrid: true,  // Default to true, will be overridden by user preferences
     arenaId: null,  // Multi-arena support: track which arena player is in
+    soundEnabled: true,  // Sound effects enabled by default
+    musicEnabled: true   // Background music enabled by default
 };

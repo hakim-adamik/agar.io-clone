@@ -62,7 +62,7 @@ function applyDefaultGameSettings() {
 
 // Load user preferences from server
 function loadUserPreferences(userId) {
-    fetch("/api/user/" + userId + "/preferences")
+    return fetch("/api/user/" + userId + "/preferences")
         .then(function (response) {
             if (!response.ok) throw new Error("Failed to load preferences");
             return response.json();
@@ -126,6 +126,16 @@ function applyUserPreferences(prefs) {
         global.showGrid = prefs.showGrid === true;
     }
 
+    // Apply sound enabled
+    if (prefs.soundEnabled !== undefined) {
+        global.soundEnabled = prefs.soundEnabled === true;
+    }
+
+    // Apply music enabled
+    if (prefs.musicEnabled !== undefined) {
+        global.musicEnabled = prefs.musicEnabled === true;
+    }
+
     // Sync checkbox states
     syncSettingsCheckboxes();
 }
@@ -164,6 +174,14 @@ function applyConfigDefaults(settings) {
 
     if (defaults.showFps !== undefined) {
         global.showFpsCounter = defaults.showFps;
+    }
+
+    if (defaults.soundEnabled !== undefined) {
+        global.soundEnabled = defaults.soundEnabled;
+    }
+
+    if (defaults.musicEnabled !== undefined) {
+        global.musicEnabled = defaults.musicEnabled;
     }
 
     // Sync checkbox states
@@ -207,110 +225,114 @@ function startGame(type) {
         .substring(0, 25);
     global.playerType = type;
 
+    global.screen.width = window.innerWidth;
+    global.screen.height = window.innerHeight;
+
+    // Function to continue game start after preferences are loaded
+    function continueGameStart() {
+        // Seamless transition from landing to game
+        var landingView = document.getElementById("landingView");
+        var gameView = document.getElementById("gameView");
+
+        if (landingView && gameView) {
+            // Completely hide the landing view
+            landingView.style.display = "none";
+            gameView.style.display = "block";
+            setTimeout(function () {
+                document.getElementById("gameAreaWrapper").style.opacity = 1;
+            }, 50);
+
+            // Start background music if enabled (after preferences are loaded)
+            try {
+                const backgroundMusic = document.getElementById('background_music');
+                if (backgroundMusic && global.musicEnabled) {
+                    backgroundMusic.volume = 0.3; // Set volume to 30%
+                    backgroundMusic.play().catch(console.log);
+                }
+            } catch (e) {
+                console.log('Background music not available:', e);
+            }
+        } else {
+            // Fallback for old flow
+            document.getElementById("startMenuWrapper").style.maxHeight = "0px";
+            document.getElementById("gameAreaWrapper").style.opacity = 1;
+
+            // Start background music (fallback flow) if enabled
+            try {
+                const backgroundMusic = document.getElementById('background_music');
+                if (backgroundMusic && global.musicEnabled) {
+                    backgroundMusic.volume = 0.3; // Set volume to 30%
+                    backgroundMusic.play().catch(console.log);
+                }
+            } catch (e) {
+                console.log('Background music not available:', e);
+            }
+        }
+
+        if (!socket) {
+            // Get user data from localStorage (if authenticated)
+            let userData = null;
+            try {
+                const privyUserStr = localStorage.getItem("privy_user");
+                if (privyUserStr) {
+                    userData = JSON.parse(privyUserStr);
+                }
+            } catch (e) {
+                console.error("[Socket] Failed to parse user data:", e);
+            }
+
+            // Build query params including user data
+            const queryParams = {
+                type: type,
+                arenaId: global.arenaId || null,
+                userId: userData?.dbUserId || null,
+                playerName:
+                    playerNameInput.value ||
+                    userData?.username ||
+                    `Guest_${Math.floor(Math.random() * 10000)}`,
+            };
+
+            // Convert to query string
+            const query = Object.keys(queryParams)
+                .filter((key) => queryParams[key] !== null)
+                .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
+                .join("&");
+
+            // Socket.io configuration optimized for real-time gaming
+            socket = io({
+                query,
+                // Prioritize WebSocket, fallback to polling
+                transports: ['websocket', 'polling'],
+                // Reconnection settings
+                reconnection: true,
+                reconnectionDelay: 1000,      // Start with 1s delay
+                reconnectionDelayMax: 5000,   // Max 5s between attempts
+                reconnectionAttempts: 10,     // Try 10 times before giving up
+                // Timeouts
+                timeout: 20000,               // 20s connection timeout
+                // Upgrade settings
+                upgrade: true,
+                rememberUpgrade: true,
+                // Ping/pong already configured server-side
+            });
+            setupSocket(socket);
+        }
+        if (!global.animLoopHandle) animloop();
+        socket.emit("respawn");
+        window.canvas.socket = socket;
+        global.socket = socket;
+    }
+
     // Load user preferences when starting the game
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
         console.log('Loading user preferences for game start, userId:', privyUser.dbUserId);
-        loadUserPreferences(privyUser.dbUserId);
+        loadUserPreferences(privyUser.dbUserId).then(continueGameStart);
     } else {
         console.log('No authenticated user, applying default settings');
         applyConfigDefaults();
+        continueGameStart();
     }
-
-    global.screen.width = window.innerWidth;
-    global.screen.height = window.innerHeight;
-
-    // Seamless transition from landing to game
-    var landingView = document.getElementById("landingView");
-    var gameView = document.getElementById("gameView");
-
-    if (landingView && gameView) {
-        // Completely hide the landing view
-        landingView.style.display = "none";
-        gameView.style.display = "block";
-        setTimeout(function () {
-            document.getElementById("gameAreaWrapper").style.opacity = 1;
-        }, 50);
-
-        // Start background music
-        try {
-            const backgroundMusic = document.getElementById('background_music');
-            if (backgroundMusic) {
-                backgroundMusic.volume = 0.3; // Set volume to 30%
-                backgroundMusic.play().catch(console.log);
-            }
-        } catch (e) {
-            console.log('Background music not available:', e);
-        }
-    } else {
-        // Fallback for old flow
-        document.getElementById("startMenuWrapper").style.maxHeight = "0px";
-        document.getElementById("gameAreaWrapper").style.opacity = 1;
-
-        // Start background music (fallback flow)
-        try {
-            const backgroundMusic = document.getElementById('background_music');
-            if (backgroundMusic) {
-                backgroundMusic.volume = 0.3; // Set volume to 30%
-                backgroundMusic.play().catch(console.log);
-            }
-        } catch (e) {
-            console.log('Background music not available:', e);
-        }
-    }
-
-    if (!socket) {
-        // Get user data from localStorage (if authenticated)
-        let userData = null;
-        try {
-            const privyUserStr = localStorage.getItem("privy_user");
-            if (privyUserStr) {
-                userData = JSON.parse(privyUserStr);
-            }
-        } catch (e) {
-            console.error("[Socket] Failed to parse user data:", e);
-        }
-
-        // Build query params including user data
-        const queryParams = {
-            type: type,
-            arenaId: global.arenaId || null,
-            userId: userData?.dbUserId || null,
-            playerName:
-                playerNameInput.value ||
-                userData?.username ||
-                `Guest_${Math.floor(Math.random() * 10000)}`,
-        };
-
-        // Convert to query string
-        const query = Object.keys(queryParams)
-            .filter((key) => queryParams[key] !== null)
-            .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
-            .join("&");
-
-        // Socket.io configuration optimized for real-time gaming
-        socket = io({
-            query,
-            // Prioritize WebSocket, fallback to polling
-            transports: ['websocket', 'polling'],
-            // Reconnection settings
-            reconnection: true,
-            reconnectionDelay: 1000,      // Start with 1s delay
-            reconnectionDelayMax: 5000,   // Max 5s between attempts
-            reconnectionAttempts: 10,     // Try 10 times before giving up
-            // Timeouts
-            timeout: 20000,               // 20s connection timeout
-            // Upgrade settings
-            upgrade: true,
-            rememberUpgrade: true,
-            // Ping/pong already configured server-side
-        });
-        setupSocket(socket);
-    }
-    if (!global.animLoopHandle) animloop();
-    socket.emit("respawn");
-    window.canvas.socket = socket;
-    global.socket = socket;
 }
 
 // Checks if the nick chosen contains valid alphanumeric characters (and underscores).
@@ -738,7 +760,9 @@ $("#feed").on("click touchstart", function (e) {
 $("#split").on("click touchstart", function (e) {
     e.preventDefault();
     e.stopPropagation();
-    document.getElementById('split_cell').play();
+    if (global.soundEnabled) {
+        document.getElementById('split_cell').play();
+    }
     socket.emit("2");
     window.canvas.reenviar = false;
 });
@@ -1789,6 +1813,17 @@ function cleanupGame() {
     if (global.animLoopHandle) {
         window.cancelAnimationFrame(global.animLoopHandle);
         global.animLoopHandle = null;
+    }
+
+    // Stop background music
+    try {
+        const backgroundMusic = document.getElementById('background_music');
+        if (backgroundMusic) {
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+        }
+    } catch (e) {
+        console.log('Error stopping background music:', e);
     }
 
     // Set game state to stopped

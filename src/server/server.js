@@ -149,6 +149,8 @@ app.put('/api/user/:userId/preferences', async (req, res) => {
         const userId = parseInt(req.params.userId);
         const preferences = req.body;
 
+        console.log('[API] Updating preferences for user', userId, ':', preferences);
+
         const success = await AuthService.updateUserPreferences(userId, preferences);
 
         if (success) {
@@ -168,6 +170,8 @@ app.get('/api/user/:userId/preferences', async (req, res) => {
         const userId = parseInt(req.params.userId);
         const preferences = await PreferencesRepository.getPreferences(userId);
 
+        console.log('[API] Retrieved preferences from DB for user', userId, ':', preferences);
+
         res.json({
             darkMode: !!preferences.dark_mode,
             showMass: !!preferences.show_mass,
@@ -176,6 +180,8 @@ app.get('/api/user/:userId/preferences', async (req, res) => {
             showGrid: !!preferences.show_grid,
             continuity: !!preferences.continuity,
             roundFood: !!preferences.round_food,
+            soundEnabled: !!preferences.sound_enabled,
+            musicEnabled: !!preferences.music_enabled,
             skinId: preferences.skin_id
         });
     } catch (error) {

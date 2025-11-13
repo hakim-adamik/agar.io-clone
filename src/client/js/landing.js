@@ -181,6 +181,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-infinity" style="margin-right: 0.5rem; color: #00BCD4;"></i>Continuity</span>
                                     <input type="checkbox" id="pref-continuity" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
                                 </label>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s;">
+                                    <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-volume-up" style="margin-right: 0.5rem; color: #E91E63;"></i>Sound Effects</span>
+                                    <input type="checkbox" id="pref-soundEnabled" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                                </label>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s;">
+                                    <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-music" style="margin-right: 0.5rem; color: #3F51B5;"></i>Background Music</span>
+                                    <input type="checkbox" id="pref-musicEnabled" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                                </label>
                             </div>
                             <div id="prefSaveStatus" style="margin-top: 1rem; padding: 0.75rem; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 8px; font-size: 0.85rem; color: var(--text-secondary);">
                                 <i class="fas fa-info-circle" style="color: var(--primary-green); margin-right: 0.5rem;"></i>
@@ -622,6 +630,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const showFpsEl = document.getElementById('pref-showFps');
                                 const showGridEl = document.getElementById('pref-showGrid');
                                 const continuityEl = document.getElementById('pref-continuity');
+                                const soundEnabledEl = document.getElementById('pref-soundEnabled');
+                                const musicEnabledEl = document.getElementById('pref-musicEnabled');
 
                                 if (darkModeEl) darkModeEl.checked = prefs.darkMode === true;
                                 if (showMassEl) showMassEl.checked = prefs.showMass === true;
@@ -629,6 +639,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (showFpsEl) showFpsEl.checked = prefs.showFps === true;
                                 if (showGridEl) showGridEl.checked = prefs.showGrid === true;
                                 if (continuityEl) continuityEl.checked = prefs.continuity === true;
+                                if (soundEnabledEl) soundEnabledEl.checked = prefs.soundEnabled === true;
+                                if (musicEnabledEl) musicEnabledEl.checked = prefs.musicEnabled === true;
                             })
                             .catch(error => {
                                 console.warn('Failed to load preferences, using defaults:', error);
@@ -640,6 +652,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const showFpsEl = document.getElementById('pref-showFps');
                                 const showGridEl = document.getElementById('pref-showGrid');
                                 const continuityEl = document.getElementById('pref-continuity');
+                                const soundEnabledEl = document.getElementById('pref-soundEnabled');
+                                const musicEnabledEl = document.getElementById('pref-musicEnabled');
 
                                 if (darkModeEl) darkModeEl.checked = defaults.darkMode !== false;
                                 if (showMassEl) showMassEl.checked = defaults.showMass !== false;
@@ -647,6 +661,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (showFpsEl) showFpsEl.checked = defaults.showFps === true;
                                 if (showGridEl) showGridEl.checked = defaults.showGrid !== false;
                                 if (continuityEl) continuityEl.checked = defaults.continuity !== false;
+                                if (soundEnabledEl) soundEnabledEl.checked = defaults.soundEnabled === true;
+                                if (musicEnabledEl) musicEnabledEl.checked = defaults.musicEnabled === true;
                             });
 
                         // Add change listeners to save preferences
@@ -662,7 +678,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     'showBorder': 'show_border',
                                     'showFps': 'show_fps',
                                     'showGrid': 'show_grid',
-                                    'continuity': 'continuity'
+                                    'continuity': 'continuity',
+                                    'soundEnabled': 'sound_enabled',
+                                    'musicEnabled': 'music_enabled'
                                 };
 
                                 const dbPrefName = prefMap[prefName];
