@@ -1,37 +1,37 @@
+// Sound utility functions - global scope for inline onclick handlers
+function isLandingSoundEnabled() {
+    // Check if sound is enabled via the preference checkbox
+    const soundEnabledEl = document.getElementById('pref-soundEnabled');
+    if (soundEnabledEl) {
+        return soundEnabledEl.checked;
+    }
+
+    // Fallback: check DEFAULT_PREFERENCES or use true as default
+    const defaults = window.DEFAULT_PREFERENCES || {};
+    return defaults.soundEnabled !== false; // Default to true
+}
+
+function playClickSound() {
+    if (!isLandingSoundEnabled()) return;
+
+    try {
+        const clickSound = document.getElementById('click_sound');
+        if (clickSound) {
+            clickSound.currentTime = 0; // Reset to start
+            clickSound.play().catch(function(e) {
+                console.log('Click sound playback failed:', e);
+            });
+        }
+    } catch (e) {
+        console.log('Click sound not available:', e);
+    }
+}
+
 // Landing page JavaScript
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
     const TRANSITION_DELAY = 300;
     const GAME_URL = 'index.html';
-
-    // Sound utility functions
-    function isLandingSoundEnabled() {
-        // Check if sound is enabled via the preference checkbox
-        const soundEnabledEl = document.getElementById('pref-soundEnabled');
-        if (soundEnabledEl) {
-            return soundEnabledEl.checked;
-        }
-
-        // Fallback: check DEFAULT_PREFERENCES or use true as default
-        const defaults = window.DEFAULT_PREFERENCES || {};
-        return defaults.soundEnabled !== false; // Default to true
-    }
-
-    function playClickSound() {
-        if (!isLandingSoundEnabled()) return;
-
-        try {
-            const clickSound = document.getElementById('click_sound');
-            if (clickSound) {
-                clickSound.currentTime = 0; // Reset to start
-                clickSound.play().catch(function(e) {
-                    console.log('Click sound playback failed:', e);
-                });
-            }
-        } catch (e) {
-            console.log('Click sound not available:', e);
-        }
-    }
 
     function playMenuSelectionSound() {
         if (!isLandingSoundEnabled()) return;
