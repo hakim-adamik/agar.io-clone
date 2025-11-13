@@ -497,6 +497,17 @@ class Arena {
                 cellGotEaten.mass
             );
 
+            // Notify the eating player about successful kill
+            const eatingPlayer = this.map.players.data[eater.playerIndex];
+            const eatenPlayer = this.map.players.data[gotEaten.playerIndex];
+
+            if (eatingPlayer && eatenPlayer && this.sockets[eatingPlayer.id]) {
+                this.sockets[eatingPlayer.id].emit("playerEaten", {
+                    eatenPlayerName: eatenPlayer.name,
+                    massGained: cellGotEaten.mass
+                });
+            }
+
             const playerDied = this.map.players.removeCell(
                 gotEaten.playerIndex,
                 gotEaten.cellIndex

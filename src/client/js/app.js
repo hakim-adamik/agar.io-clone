@@ -1104,6 +1104,25 @@ function setupSocket(socket) {
         // Player join notification removed (chat feature removed)
     });
 
+    socket.on("playerEaten", (data) => {
+        // Play player eaten sound when current player eats another player
+        console.log(`🍽️ Player eaten: ${data.eatenPlayerName} (+${data.massGained} mass)`);
+
+        if (global.soundEnabled) {
+            try {
+                var playerEatenSound = document.getElementById('player_eaten_sound');
+                if (playerEatenSound) {
+                    playerEatenSound.currentTime = 0; // Reset to start
+                    playerEatenSound.play().catch(function(e) {
+                        console.log('Player eaten sound playback failed:', e);
+                    });
+                }
+            } catch (e) {
+                console.log('Player eaten sound not available:', e);
+            }
+        }
+    });
+
     function renderLeaderboard(data) {
         leaderboard = data.leaderboard;
         var statusEl = document.getElementById("status");
@@ -1290,6 +1309,30 @@ function setupSocket(socket) {
                         } else {
                             // Cell count changed (split/merge) - reset velocities
                             prediction.cellVelocities = [];
+
+                            // Detect merge vs split
+                            var previousCellCount = prediction.previous.cells.length;
+                            var currentCellCount = prediction.current.cells.length;
+
+                            if (currentCellCount < previousCellCount) {
+                                // MERGE DETECTED! Cells merged back together
+                                console.log(`🔄 Cells merged! ${previousCellCount} → ${currentCellCount}`);
+
+                                // Play remerge sound if sound is enabled
+                                if (global.soundEnabled) {
+                                    try {
+                                        var remergeSoundEl = document.getElementById('remerge_cell');
+                                        if (remergeSoundEl) {
+                                            remergeSoundEl.currentTime = 0; // Reset to start
+                                            remergeSoundEl.play().catch(function(e) {
+                                                console.log('Remerge sound playback failed:', e);
+                                            });
+                                        }
+                                    } catch (e) {
+                                        console.log('Remerge sound not available:', e);
+                                    }
+                                }
+                            }
                         }
                     }
 

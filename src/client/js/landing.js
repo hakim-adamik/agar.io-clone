@@ -4,6 +4,51 @@ document.addEventListener('DOMContentLoaded', function() {
     const TRANSITION_DELAY = 300;
     const GAME_URL = 'index.html';
 
+    // Sound utility functions
+    function isLandingSoundEnabled() {
+        // Check if sound is enabled via the preference checkbox
+        const soundEnabledEl = document.getElementById('pref-soundEnabled');
+        if (soundEnabledEl) {
+            return soundEnabledEl.checked;
+        }
+
+        // Fallback: check DEFAULT_PREFERENCES or use true as default
+        const defaults = window.DEFAULT_PREFERENCES || {};
+        return defaults.soundEnabled !== false; // Default to true
+    }
+
+    function playClickSound() {
+        if (!isLandingSoundEnabled()) return;
+
+        try {
+            const clickSound = document.getElementById('click_sound');
+            if (clickSound) {
+                clickSound.currentTime = 0; // Reset to start
+                clickSound.play().catch(function(e) {
+                    console.log('Click sound playback failed:', e);
+                });
+            }
+        } catch (e) {
+            console.log('Click sound not available:', e);
+        }
+    }
+
+    function playMenuSelectionSound() {
+        if (!isLandingSoundEnabled()) return;
+
+        try {
+            const menuSound = document.getElementById('menu_selection_sound');
+            if (menuSound) {
+                menuSound.currentTime = 0; // Reset to start
+                menuSound.play().catch(function(e) {
+                    console.log('Menu selection sound playback failed:', e);
+                });
+            }
+        } catch (e) {
+            console.log('Menu selection sound not available:', e);
+        }
+    }
+
     // Cached DOM elements
     const elements = {
         playBtn: document.getElementById('playBtn'),
@@ -372,6 +417,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const tabs = document.querySelectorAll('.tab-btn[data-period]');
             tabs.forEach(tab => {
                 tab.addEventListener('click', function() {
+                    // Play click sound for leaderboard tabs
+                    playClickSound();
+
                     // Update active tab styling
                     tabs.forEach(t => {
                         t.classList.remove('active');
@@ -471,9 +519,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Event listeners
-    elements.playBtn?.addEventListener('click', redirectToGame);
-    elements.howToPlayBtn?.addEventListener('click', () => showModal('tutorialModal'));
+    elements.playBtn?.addEventListener('click', () => {
+        playMenuSelectionSound(); // Play menu selection sound for Play button
+        redirectToGame();
+    });
+    elements.howToPlayBtn?.addEventListener('click', () => {
+        playClickSound(); // Play click sound for How to Play button
+        showModal('tutorialModal');
+    });
     elements.startFromTutorial?.addEventListener('click', () => {
+        playMenuSelectionSound(); // Play menu selection sound for Got It! Let's Play button
         // Close the tutorial modal first
         if (elements.tutorialModal) {
             closeModal(elements.tutorialModal);
@@ -522,6 +577,9 @@ document.addEventListener('DOMContentLoaded', function() {
         item.addEventListener('click', function() {
             const section = this.dataset.section;
 
+            // Play menu selection sound for main nav buttons
+            playMenuSelectionSound();
+
             // Update active state
             elements.navItems.forEach(nav => nav.classList.remove('active'));
             this.classList.add('active');
@@ -552,7 +610,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         `).join('')}
                     </div>
-                    <button class="modal-button" onclick="this.closest('.modal').classList.remove('show')">Close</button>
+                    <button class="modal-button" onclick="playClickSound(); this.closest('.modal').classList.remove('show')">Close</button>
                 `;
             } else if (template.dynamic && template.getContent) {
                 // Handle dynamic content (like profile and leaderboard)
@@ -580,6 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const authBtn = document.querySelector('.auth-trigger-btn');
                 if (authBtn) {
                     authBtn.addEventListener('click', (e) => {
+                        playClickSound(); // Play click sound for sign in button
                         e.preventDefault();
                         e.stopPropagation();
                         closeModal(modal);
@@ -590,6 +649,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const logoutBtn = document.querySelector('.logout-btn');
                 if (logoutBtn) {
                     logoutBtn.addEventListener('click', () => {
+                        playClickSound(); // Play click sound for logout button
                         // Trigger logout through Privy
                         if (window.PrivyAuth && typeof window.PrivyAuth.logout === 'function') {
                             // Use Privy's logout if available
@@ -608,9 +668,43 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
 
+                // Handle social links clicks
+                const socialLinks = document.querySelectorAll('.social-link');
+                socialLinks.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        playClickSound(); // Play click sound for social buttons
+                        console.log('Social button clicked:', e.currentTarget);
+                    });
+                });
+
+                // Handle support center buttons clicks
+                const tutorialSteps = document.querySelectorAll('.tutorial-step');
+                tutorialSteps.forEach(step => {
+                    step.addEventListener('click', () => {
+                        playClickSound(); // Play click sound for support center buttons
+                        console.log('Support center button clicked:', step);
+                    });
+                });
+
+                // Handle edit name button click
+                const editBtn = document.querySelector('.edit-btn');
+                if (editBtn) {
+                    editBtn.addEventListener('click', () => {
+                        playClickSound(); // Play click sound for edit name button
+                    });
+                }
+
+
                 // Handle preferences toggles if user is authenticated
                 const prefToggles = document.querySelectorAll('.pref-toggle');
                 if (prefToggles.length > 0) {
+                    // Add click sound to all preference toggles
+                    prefToggles.forEach(toggle => {
+                        toggle.addEventListener('change', () => {
+                            playClickSound(); // Play click sound for preference toggles
+                        });
+                    });
                     // Load current preferences from server
                     const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
                     if (userData && userData.dbUserId) {
