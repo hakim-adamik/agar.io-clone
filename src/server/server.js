@@ -503,7 +503,8 @@ const addPlayerToArena = async (socket) => {
     const preferredArenaId = socket.handshake.query.arenaId || null;
     const userId = socket.handshake.query.userId || null;
     const playerName = socket.handshake.query.playerName || `Guest_${Math.floor(Math.random() * 10000)}`;
-    // Find or create arena
+
+    // Find or create arena (can be the same arena after death - that's fine!)
     const arena = arenaManager.findAvailableArena(preferredArenaId);
 
     // Store arena ID on socket BEFORE joining room
