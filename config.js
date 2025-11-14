@@ -5,10 +5,8 @@ module.exports = {
     foodMass: 1,
     fireFood: 20,
     limitSplit: 16,
-    //defaultPlayerMass: 10,
-    // FIXME DEBUG TBR
-    defaultPlayerMass: 160,
-    minSplitMass: 10,
+    defaultPlayerMass: 20,
+    minSplitMass: 20,
     virus: {
         fill: "#33ff33",
         stroke: "#19D119",

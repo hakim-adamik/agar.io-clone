@@ -259,24 +259,24 @@ function startGame(type) {
 
     // Function to continue game start after preferences are loaded
     function continueGameStart() {
-        // Seamless transition from landing to game
-        var landingView = document.getElementById("landingView");
-        var gameView = document.getElementById("gameView");
+    // Seamless transition from landing to game
+    var landingView = document.getElementById("landingView");
+    var gameView = document.getElementById("gameView");
 
-        if (landingView && gameView) {
-            // Completely hide the landing view
-            landingView.style.display = "none";
-            gameView.style.display = "block";
-            setTimeout(function () {
-                document.getElementById("gameAreaWrapper").style.opacity = 1;
-            }, 50);
+    if (landingView && gameView) {
+        // Completely hide the landing view
+        landingView.style.display = "none";
+        gameView.style.display = "block";
+        setTimeout(function () {
+            document.getElementById("gameAreaWrapper").style.opacity = 1;
+        }, 50);
 
             // Start background music if enabled (after preferences are loaded)
             setupBackgroundMusic();
-        } else {
-            // Fallback for old flow
-            document.getElementById("startMenuWrapper").style.maxHeight = "0px";
-            document.getElementById("gameAreaWrapper").style.opacity = 1;
+    } else {
+        // Fallback for old flow
+        document.getElementById("startMenuWrapper").style.maxHeight = "0px";
+        document.getElementById("gameAreaWrapper").style.opacity = 1;
 
             // Start background music (fallback flow) if enabled
             setupBackgroundMusic();
@@ -303,33 +303,33 @@ function startGame(type) {
 
         // Now create the new socket
         {
-            // Get user data from localStorage (if authenticated)
-            let userData = null;
-            try {
-                const privyUserStr = localStorage.getItem("privy_user");
-                if (privyUserStr) {
-                    userData = JSON.parse(privyUserStr);
-                }
-            } catch (e) {
-                console.error("[Socket] Failed to parse user data:", e);
+        // Get user data from localStorage (if authenticated)
+        let userData = null;
+        try {
+            const privyUserStr = localStorage.getItem("privy_user");
+            if (privyUserStr) {
+                userData = JSON.parse(privyUserStr);
             }
+        } catch (e) {
+            console.error("[Socket] Failed to parse user data:", e);
+        }
 
-            // Build query params including user data
-            const queryParams = {
-                type: type,
-                arenaId: global.arenaId || null,
-                userId: userData?.dbUserId || null,
-                playerName:
-                    playerNameInput.value ||
-                    userData?.username ||
-                    `Guest_${Math.floor(Math.random() * 10000)}`,
-            };
+        // Build query params including user data
+        const queryParams = {
+            type: type,
+            arenaId: global.arenaId || null,
+            userId: userData?.dbUserId || null,
+            playerName:
+                playerNameInput.value ||
+                userData?.username ||
+                `Guest_${Math.floor(Math.random() * 10000)}`,
+        };
 
-            // Convert to query string
-            const query = Object.keys(queryParams)
-                .filter((key) => queryParams[key] !== null)
-                .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
-                .join("&");
+        // Convert to query string
+        const query = Object.keys(queryParams)
+            .filter((key) => queryParams[key] !== null)
+            .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
+            .join("&");
 
             // Clean up any existing socket connection
             if (socket) {
@@ -344,30 +344,30 @@ function startGame(type) {
             createNewSocket(query);
 
             function createNewSocket(queryString) {
-                // Socket.io configuration optimized for real-time gaming
-                socket = io({
+        // Socket.io configuration optimized for real-time gaming
+        socket = io({
                     query: queryString,
-                    // Prioritize WebSocket, fallback to polling
-                    transports: ['websocket', 'polling'],
-                    // Reconnection settings
-                    reconnection: true,
-                    reconnectionDelay: 1000,      // Start with 1s delay
-                    reconnectionDelayMax: 5000,   // Max 5s between attempts
-                    reconnectionAttempts: 10,     // Try 10 times before giving up
-                    // Timeouts
-                    timeout: 20000,               // 20s connection timeout
-                    // Upgrade settings
-                    upgrade: true,
-                    rememberUpgrade: true,
-                    // Ping/pong already configured server-side
-                });
-                setupSocket(socket);
+            // Prioritize WebSocket, fallback to polling
+            transports: ['websocket', 'polling'],
+            // Reconnection settings
+            reconnection: true,
+            reconnectionDelay: 1000,      // Start with 1s delay
+            reconnectionDelayMax: 5000,   // Max 5s between attempts
+            reconnectionAttempts: 10,     // Try 10 times before giving up
+            // Timeouts
+            timeout: 20000,               // 20s connection timeout
+            // Upgrade settings
+            upgrade: true,
+            rememberUpgrade: true,
+            // Ping/pong already configured server-side
+        });
+        setupSocket(socket);
 
                 // Now that socket is created, we can emit and set it up
-                if (!global.animLoopHandle) animloop();
-                socket.emit("respawn");
-                window.canvas.socket = socket;
-                global.socket = socket;
+    if (!global.animLoopHandle) animloop();
+    socket.emit("respawn");
+    window.canvas.socket = socket;
+    global.socket = socket;
             } // Close createNewSocket function
         } // Close socket creation block
     } // Close continueGameStart function
@@ -428,7 +428,7 @@ function animateScore() {
         // Add counting class for subtle animation
         scoreValueEl.classList.add('counting');
         setTimeout(() => scoreValueEl.classList.remove('counting'), 50);
-    } else {
+            } else {
         displayedScore = targetScore;
     }
 
@@ -2339,8 +2339,8 @@ function displayLastScore(isDeath = false) {
                     lastScoreBox.style.display = "flex";
                 } else {
                     // Normal score display: format score and reset styling
-                    var formattedScore = parseFloat(lastScore);
-                    lastScoreValue.textContent = formattedScore;
+                var formattedScore = parseFloat(lastScore);
+                lastScoreValue.textContent = formattedScore;
                     lastScoreValue.style.color = ""; // Reset color
                     lastScoreValue.style.display = ""; // Show score value
 
@@ -2359,7 +2359,7 @@ function displayLastScore(isDeath = false) {
                         encourageMsg.remove();
                     }
 
-                    lastScoreBox.style.display = "flex";
+                lastScoreBox.style.display = "flex";
                 }
             } else {
                 lastScoreBox.style.display = "none";
@@ -2403,16 +2403,16 @@ window.addEventListener('beforeunload', function() {
 
 // Display last score when DOM is ready, but not on page refresh
 (function() {
-    if (document.readyState === "loading") {
+if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", function() {
             // Check if this is a page refresh
             const isRefresh = sessionStorage.getItem('pageRefreshing') === 'true';
             if (isRefresh) {
                 // Clear the refresh flag and don't show last score
                 sessionStorage.removeItem('pageRefreshing');
-            } else {
-                displayLastScore();
-            }
+} else {
+    displayLastScore();
+}
         });
     } else {
         // Check if this is a page refresh
