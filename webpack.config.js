@@ -10,26 +10,26 @@ module.exports = (isProduction) => ({
         rules: getRules(isProduction)
     },
     optimization: isProduction ? {
-        minimize: false  // Disable minification to avoid terser-webpack-plugin issues
+        minimize: true,
+        minimizer: [
+            new (require('terser-webpack-plugin'))({
+                terserOptions: {
+                    compress: {
+                        drop_console: false, // Keep console logs for compatibility
+                        drop_debugger: false,
+                        passes: 1 // Single pass to avoid over-optimization
+                    },
+                    mangle: false, // Don't mangle names to preserve compatibility
+                    format: {
+                        comments: false
+                    }
+                },
+                extractComments: false
+            })
+        ]
     } : {}
 });
 
 function getRules(isProduction) {
-    if (isProduction) {
-        return [
-            {
-                test: /\.(?:js|mjs|cjs)$/,
-                exclude: /node_modules/,
-                use: {
-                    loader: 'babel-loader',
-                    options: {
-                        presets: [
-                            ['@babel/preset-env', { targets: "defaults" }]
-                        ]
-                    }
-                }
-            }
-        ]
-    }
-    return [];
+    return [];  // Disable all webpack rules to test if Babel is causing issues
 }

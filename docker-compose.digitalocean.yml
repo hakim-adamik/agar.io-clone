@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.digitalocean
+      args:
+        - PRIVY_APP_ID=${PRIVY_APP_ID}
     container_name: agar-game-server
     restart: unless-stopped
     ports:

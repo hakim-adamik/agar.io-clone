@@ -2329,3 +2329,6 @@ window.addEventListener('beforeunload', function() {
         }
     }
 })();
+
+// Export functions to global scope for landing page integration
+window.startGame = startGame;

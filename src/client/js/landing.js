@@ -62,6 +62,82 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Modal content templates
     const modalTemplates = {
+        playChoice: {
+            title: 'Welcome to the Arena',
+            dynamic: true,
+            getContent: function() {
+                return `
+                    <div style="text-align: center; padding: 0.5rem 0;">
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1rem 0; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));"
+                             class="play-options-grid">
+                            <!-- Guest Option (shows first on desktop, second on mobile) -->
+                            <div class="play-option-card guest-option" style="background: linear-gradient(135deg, rgba(108, 117, 125, 0.15), rgba(73, 80, 87, 0.1)); border: 1px solid rgba(108, 117, 125, 0.3); border-radius: 16px; padding: 1.5rem; text-align: center; position: relative; cursor: pointer; transition: all 0.3s ease; display: flex; flex-direction: column; min-height: 320px;"
+                                 onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 25px rgba(108, 117, 125, 0.3)'"
+                                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
+                                 onclick="window.playAsGuest()">
+                                <div style="width: 70px; height: 70px; margin: 0 auto 1rem; background: linear-gradient(135deg, #6c757d, #495057); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-user-secret" style="font-size: 1.8rem; color: white;"></i>
+                                </div>
+                                <h3 style="color: white; margin-bottom: 0.5rem; font-size: 1.2rem;">Play as Guest</h3>
+                                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: auto; line-height: 1.3;">
+                                    Jump in immediately and enjoy the game for free
+                                </p>
+                                <div style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 6px; padding: 0.6rem; margin: 1rem 0;">
+                                    <p style="color: #FFC107; margin: 0; font-size: 0.75rem;">
+                                        <i class="fas fa-info-circle" style="margin-right: 0.4rem;"></i>
+                                        No earnings or progress saved
+                                    </p>
+                                </div>
+                                <button class="modal-button" style="background: linear-gradient(135deg, #6c757d, #495057); border: none; width: 100%; padding: 0.75rem; font-weight: 600; margin-top: auto;">
+                                    Play Now
+                                </button>
+                            </div>
+
+                            <!-- Sign Up Option (shows second on desktop, first on mobile) -->
+                            <div class="play-option-card signup-option" style="background: linear-gradient(135deg, rgba(74, 144, 226, 0.15), rgba(80, 227, 194, 0.1)); border: 1px solid rgba(74, 144, 226, 0.3); border-radius: 16px; padding: 1.5rem; text-align: center; position: relative; cursor: pointer; transition: all 0.3s ease; display: flex; flex-direction: column; min-height: 320px;"
+                                 onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 25px rgba(74, 144, 226, 0.3)'"
+                                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
+                                 onclick="window.signUpToPlay()">
+                                <div style="position: absolute; top: -8px; right: 12px; background: linear-gradient(135deg, #FFD700, #FFA500); color: white; padding: 0.2rem 0.6rem; border-radius: 16px; font-size: 0.65rem; font-weight: bold; text-transform: uppercase;">
+                                    Recommended
+                                </div>
+                                <div style="width: 70px; height: 70px; margin: 0 auto 1rem; background: linear-gradient(135deg, #4a90e2, #50e3c2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-trophy" style="font-size: 1.8rem; color: white;"></i>
+                                </div>
+                                <h3 style="color: white; margin-bottom: 0.5rem; font-size: 1.2rem;">Sign Up & Compete</h3>
+                                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: auto; line-height: 1.3;">
+                                    Are you bullish enough to dominate the arena?
+                                </p>
+                                <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 6px; padding: 0.6rem; margin: 1rem 0;">
+                                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                                        <div style="display: flex; align-items: center; color: #4CAF50; font-size: 0.75rem;">
+                                            <i class="fas fa-check" style="margin-right: 0.4rem;"></i>
+                                            Earn virtual currency
+                                        </div>
+                                        <div style="display: flex; align-items: center; color: #4CAF50; font-size: 0.75rem;">
+                                            <i class="fas fa-check" style="margin-right: 0.4rem;"></i>
+                                            Track your progress
+                                        </div>
+                                        <div style="display: flex; align-items: center; color: #4CAF50; font-size: 0.75rem;">
+                                            <i class="fas fa-check" style="margin-right: 0.4rem;"></i>
+                                            Compete on leaderboard
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="modal-button" style="background: linear-gradient(135deg, #4a90e2, #50e3c2); border: none; width: 100%; padding: 0.75rem; font-weight: 600; margin-top: auto;">
+                                    Sign Up Now
+                                </button>
+                            </div>
+                        </div>
+
+                        <p style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 1rem;">
+                            You can always sign up later to start earning rewards!
+                        </p>
+                    </div>
+                `;
+            }
+        },
         social: {
             title: 'Social',
             content: `
@@ -170,6 +246,28 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Wallet Balance Section -->
+                        <div class="wallet-section" style="margin: 1.5rem 0; padding: 1.5rem; background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(46, 125, 50, 0.1)); border-radius: 12px; border: 1px solid rgba(76, 175, 80, 0.2);">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #4CAF50, #2E7D32); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-wallet" style="color: white; font-size: 1.2rem;"></i>
+                                    </div>
+                                    <div>
+                                        <h3 style="color: #4CAF50; font-size: 1.1rem; margin: 0; font-weight: 600;">Wallet Balance</h3>
+                                        <div id="wallet-balance" style="font-size: 1.8rem; font-weight: bold; color: #4CAF50; margin: 0.25rem 0;">Loading...</div>
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">Virtual Currency</div>
+                                    <div>
+                                        <button id="add-funds-btn" onclick="window.checkAndAddFunds()" style="background: #4CAF50; border: none; color: white; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600;">Add Funds</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div style="margin: 1.5rem 0;">
                             <h3 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px;">
                                 <i class="fas fa-chart-line" style="margin-right: 0.5rem;"></i>Performance Stats
@@ -446,6 +544,48 @@ document.addEventListener('DOMContentLoaded', function() {
     // Make fetchLeaderboard available globally for retry button
     window.fetchLeaderboard = fetchLeaderboard;
 
+    // Play choice functions - global scope for inline onclick handlers
+    window.playAsGuest = function() {
+        playMenuSelectionSound();
+
+        // Close the play choice modal
+        const modal = document.getElementById('sectionModal');
+        if (modal) closeModal(modal);
+
+        // Start the game immediately as guest
+        redirectToGame();
+    };
+
+    window.signUpToPlay = function() {
+        playClickSound();
+
+        // Close the play choice modal
+        const modal = document.getElementById('sectionModal');
+        if (modal) closeModal(modal);
+
+        // Set a flag to indicate user wants to play after signing up
+        window._playAfterAuth = true;
+
+        // Trigger authentication flow
+        window.dispatchEvent(new CustomEvent('auth:show-privy'));
+    };
+
+    function showPlayChoiceModal() {
+        const template = modalTemplates.playChoice;
+        let modal = document.getElementById('sectionModal');
+        if (!modal) {
+            modal = createModal('sectionModal', '<div id="modalContent"></div>');
+        }
+
+        const modalContent = document.getElementById('modalContent');
+        modalContent.innerHTML = `
+            <h2>${template.title}</h2>
+            ${template.getContent()}
+        `;
+
+        showModal('sectionModal');
+    }
+
     function redirectToGame() {
         // Set the username for logged-in users
         const playerNameInput = document.getElementById("playerNameInput");
@@ -523,7 +663,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listeners
     elements.playBtn?.addEventListener('click', () => {
         playMenuSelectionSound(); // Play menu selection sound for Play button
-        redirectToGame();
+
+        // Check if user is authenticated
+        const isAuthenticated = window.PrivyAuth && window.PrivyAuth.isAuthenticated();
+
+        if (isAuthenticated) {
+            // User is logged in, go directly to game
+            redirectToGame();
+        } else {
+            // User is not logged in, show the play choice modal
+            showPlayChoiceModal();
+        }
     });
     elements.howToPlayBtn?.addEventListener('click', () => {
         playClickSound(); // Play click sound for How to Play button
@@ -625,6 +775,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (section === 'leaders') {
                     fetchLeaderboard('all');
                     setupLeaderboardTabs();
+                }
+
+                // If this is the profile section, load wallet balance
+                if (section === 'profile') {
+                    // Small delay to ensure DOM is ready
+                    setTimeout(() => {
+                        if (window.loadWalletBalance) {
+                            window.loadWalletBalance();
+                        }
+                    }, 100);
                 }
             } else {
                 modalContent.innerHTML = `
@@ -967,6 +1127,262 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     };
+
+    // Wallet Balance Functions
+    window.loadWalletBalance = async function() {
+        const walletElement = document.getElementById('wallet-balance');
+        if (!walletElement) {
+            console.warn('Wallet balance element not found');
+            return;
+        }
+
+        const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+        if (!userData.dbUserId) {
+            walletElement.textContent = '$0.00';
+            window.updateAddFundsButton(0);
+            return;
+        }
+
+        try {
+            const apiBase = window.location.port === '8080' ? `${window.location.protocol}//${window.location.hostname}:3000` : '';
+            const response = await fetch(`${apiBase}/api/user/${userData.dbUserId}/wallet`);
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch wallet balance');
+            }
+
+            const walletData = await response.json();
+            const balance = parseFloat(walletData.balance);
+
+            // Update the balance display with animation (rounded to 2 decimals for display)
+            const balanceElement = document.getElementById('wallet-balance');
+            if (balanceElement) {
+                balanceElement.style.opacity = '0.5';
+                setTimeout(() => {
+                    balanceElement.textContent = `$${balance.toFixed(2)}`;
+                    balanceElement.style.opacity = '1';
+                }, 200);
+            }
+
+            // Update Add Funds button state
+            window.updateAddFundsButton(balance);
+
+        } catch (error) {
+            console.error('Error fetching wallet balance:', error);
+            if (walletElement) {
+                walletElement.textContent = 'Error';
+            }
+            window.updateAddFundsButton(0);
+        }
+    };
+
+    // Update Add Funds button state based on balance
+    window.updateAddFundsButton = function(balance) {
+        const addFundsBtn = document.getElementById('add-funds-btn');
+        if (!addFundsBtn) return;
+
+        if (balance < 1.0) {
+            // Enable button when balance is below $1
+            addFundsBtn.disabled = false;
+            addFundsBtn.style.background = '#4CAF50';
+            addFundsBtn.style.cursor = 'pointer';
+            addFundsBtn.style.opacity = '1';
+            addFundsBtn.textContent = 'Add $1.00';
+        } else {
+            // Disable button when balance is $1 or more
+            addFundsBtn.disabled = true;
+            addFundsBtn.style.background = '#666';
+            addFundsBtn.style.cursor = 'not-allowed';
+            addFundsBtn.style.opacity = '0.5';
+            addFundsBtn.textContent = 'Reload Not Available';
+        }
+    };
+
+    // Check balance and add funds if needed
+    window.checkAndAddFunds = async function() {
+        const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+        if (!userData.dbUserId) {
+            console.error('No user ID found');
+            return;
+        }
+
+        // Get current balance first
+        try {
+            const apiBase = window.location.port === '8080' ? `${window.location.protocol}//${window.location.hostname}:3000` : '';
+            const balanceResponse = await fetch(`${apiBase}/api/user/${userData.dbUserId}/wallet`);
+
+            if (!balanceResponse.ok) {
+                throw new Error('Failed to fetch current balance');
+            }
+
+            const walletData = await balanceResponse.json();
+            const currentBalance = parseFloat(walletData.balance);
+
+            // Only add funds if balance is below $1.00
+            if (currentBalance >= 1.0) {
+                // Show message that balance is already sufficient
+                const infoMsg = document.createElement('div');
+                infoMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #2196F3; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3); z-index: 10000; font-weight: 600;';
+                infoMsg.innerHTML = `<i class="fas fa-info-circle" style="margin-right: 0.5rem;"></i>Your wallet is already at the maximum balance of $1.00`;
+                document.body.appendChild(infoMsg);
+
+                setTimeout(() => {
+                    infoMsg.remove();
+                }, 3000);
+                return;
+            }
+
+            // Calculate how much to add to reach exactly $1.00
+            const amountToAdd = 1.0 - currentBalance;
+
+            // Add funds to reach exactly $1.00
+            const addResponse = await fetch(`${apiBase}/api/user/${userData.dbUserId}/wallet/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount: amountToAdd,
+                    description: `Refilled wallet to $1.00 (added $${amountToAdd.toFixed(6)})`
+                })
+            });
+
+            if (!addResponse.ok) {
+                throw new Error('Failed to add funds');
+            }
+
+            // Refresh wallet balance
+            await window.loadWalletBalance();
+
+            // Show success message
+            const successMsg = document.createElement('div');
+            successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #4CAF50; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3); z-index: 10000; font-weight: 600;';
+            successMsg.innerHTML = `<i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i>Wallet refilled to $1.00!`;
+            document.body.appendChild(successMsg);
+
+            setTimeout(() => {
+                successMsg.remove();
+            }, 3000);
+
+        } catch (error) {
+            console.error('Error adding funds:', error);
+
+            // Show error message
+            const errorMsg = document.createElement('div');
+            errorMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #f44336; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3); z-index: 10000; font-weight: 600;';
+            errorMsg.innerHTML = `<i class="fas fa-exclamation-circle" style="margin-right: 0.5rem;"></i>Failed to add funds. Please try again.`;
+            document.body.appendChild(errorMsg);
+
+            setTimeout(() => {
+                errorMsg.remove();
+            }, 3000);
+        }
+    };
+
+    window.showAddFundsModal = function() {
+        // Show a modal for adding funds (placeholder for now)
+        const modal = document.querySelector('.modal');
+        const modalContent = modal.querySelector('.modal-content');
+
+        modalContent.innerHTML = `
+            <h2>Add Funds</h2>
+            <div style="padding: 1rem 0;">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">Add virtual currency to your wallet for in-game purchases and features.</p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; margin: 1.5rem 0;">
+                    <button onclick="window.addFunds(1)" style="background: linear-gradient(135deg, #4CAF50, #2E7D32); border: none; color: white; padding: 1rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <div style="font-size: 1.2rem;">$1.00</div>
+                        <div style="font-size: 0.75rem; opacity: 0.8;">Starter</div>
+                    </button>
+                    <button onclick="window.addFunds(5)" style="background: linear-gradient(135deg, #2196F3, #1565C0); border: none; color: white; padding: 1rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <div style="font-size: 1.2rem;">$5.00</div>
+                        <div style="font-size: 0.75rem; opacity: 0.8;">Popular</div>
+                    </button>
+                    <button onclick="window.addFunds(10)" style="background: linear-gradient(135deg, #FF9800, #F57C00); border: none; color: white; padding: 1rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <div style="font-size: 1.2rem;">$10.00</div>
+                        <div style="font-size: 0.75rem; opacity: 0.8;">Best Value</div>
+                    </button>
+                    <button onclick="window.addFunds(25)" style="background: linear-gradient(135deg, #9C27B0, #6A1B9A); border: none; color: white; padding: 1rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <div style="font-size: 1.2rem;">$25.00</div>
+                        <div style="font-size: 0.75rem; opacity: 0.8;">Premium</div>
+                    </button>
+                </div>
+
+                <div style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+                    <p style="color: #FFC107; margin: 0; font-size: 0.85rem; text-align: center;">
+                        <i class="fas fa-info-circle" style="margin-right: 0.5rem;"></i>
+                        This is virtual currency for demonstration purposes only.
+                    </p>
+                </div>
+            </div>
+            <button class="modal-button" onclick="playClickSound(); this.closest('.modal').classList.remove('show')">Close</button>
+        `;
+
+        modal.classList.add('show');
+        playMenuSelectionSound();
+    };
+
+    window.addFunds = async function(amount) {
+        const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+        if (!userData.dbUserId) {
+            console.error('No user ID found');
+            return;
+        }
+
+        try {
+            const apiBase = window.location.port === '8080' ? `${window.location.protocol}//${window.location.hostname}:3000` : '';
+            const response = await fetch(`${apiBase}/api/user/${userData.dbUserId}/wallet/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount: amount,
+                    description: `Added $${amount} via Add Funds`
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to add funds');
+            }
+
+            const result = await response.json();
+
+            // Close the modal
+            document.querySelector('.modal').classList.remove('show');
+
+            // Refresh wallet balance
+            await window.loadWalletBalance();
+
+            // Show success message
+            const successMsg = document.createElement('div');
+            successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #4CAF50; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3); z-index: 10000; font-weight: 600;';
+            successMsg.innerHTML = `<i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i>Successfully added $${amount.toFixed(6)} to your wallet!`;
+            document.body.appendChild(successMsg);
+
+            setTimeout(() => {
+                successMsg.remove();
+            }, 3000);
+
+        } catch (error) {
+            console.error('Error adding funds:', error);
+            alert('Failed to add funds. Please try again.');
+        }
+    };
+
+
+    // Listen for successful authentication to auto-redirect to game if user signed up to play
+    window.addEventListener('auth:login', function(event) {
+        // Check if user came from the "Sign Up & Compete" choice
+        if (window._playAfterAuth) {
+            window._playAfterAuth = false; // Clear the flag
+
+            // Small delay to ensure everything is loaded
+            setTimeout(() => {
+                redirectToGame();
+            }, 1500);
+        }
+    });
 
     // Initialize Privy authentication
     window.dispatchEvent(new CustomEvent('privy:init'));

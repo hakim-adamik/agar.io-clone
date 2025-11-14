@@ -1,5 +1,9 @@
 FROM node:18-alpine
 
+# Accept build arguments for environment variables
+ARG PRIVY_APP_ID
+ENV PRIVY_APP_ID=${PRIVY_APP_ID}
+
 # Install wget and PM2 for healthcheck and process management
 RUN apk add --no-cache wget
 RUN npm install -g pm2
@@ -17,8 +21,8 @@ COPY . /usr/src/app
 # Build the application (gulp build - server + static files)
 RUN npm run build
 
-# Build webpack bundles (client JS and Privy auth)
-RUN node build-webpack.js
+# Build webpack bundles (client JS and Privy auth) with environment variables
+RUN PRIVY_APP_ID=${PRIVY_APP_ID} node build-webpack.js
 
 # Expose port
 EXPOSE 3000
