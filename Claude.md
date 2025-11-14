@@ -32,6 +32,8 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 -   **Social Authentication:** Privy SDK integration for Google, Discord, Twitter, and Email login
 -   **Guest Profile System:** Clear guest status indication with invitation to sign in for rewards
 -   **Arena Monitoring:** GET /api/arenas endpoint for real-time server statistics
+-   **Virtual Wallet System:** PostgreSQL-based wallet with $1 default balance for authenticated users
+-   **Play Choice Modal:** Smart UX for unsigned users choosing between guest play vs sign-up for rewards
 
 ### 🚧 Next Steps & Roadmap
 
@@ -62,7 +64,23 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
   - [x] Start game sessions on connect
   - [x] End sessions with stats on disconnect
 
-**2. Client Integration (Next Priority)**
+**2. Virtual Wallet System (✅ Complete - November 2024)**
+- [x] ~~PostgreSQL wallet_balances table with DECIMAL(18,6) precision~~
+- [x] ~~WalletRepository with full CRUD operations (add, subtract, transfer, stats)~~
+- [x] ~~REST API endpoints for wallet management~~
+- [x] ~~Frontend wallet balance display in user profile~~
+- [x] ~~Smart add funds button (only active when balance < $1)~~
+- [x] ~~$1.000000 default balance for new users~~
+
+**3. Play Choice UX (✅ Complete - November 2024)**
+- [x] ~~"Choose Your Adventure" modal for unsigned users~~
+- [x] ~~Guest option: immediate free play with clear limitations~~
+- [x] ~~Sign-up option: highlighting earning potential and competition~~
+- [x] ~~Mobile-responsive design with proper button alignment~~
+- [x] ~~Auto-redirect to game after successful authentication~~
+- [x] ~~Engaging copy: "Are you bullish enough to dominate the arena?"~~
+
+**4. Client Integration (Next Priority)**
 - [ ] Update client to send userId with socket connection
 - [ ] Call auth API after Privy login
 - [ ] Replace mock profile data with real database queries
@@ -479,10 +497,11 @@ node --inspect bin/server/server.js
 - **User Data:** Database connected, real user profiles working ✅
 - **Profile Modal:** Shows real user data from database ✅
 - **User Preferences:** Fixed boolean handling, persistence working ✅
+- **Virtual Wallet:** Complete PostgreSQL-based wallet system with $1 default balance ✅
+- **Play Choice UX:** Smart modal for unsigned users choosing guest vs sign-up ✅
 - **Leaderboard:** API endpoint ready, client integration pending
 - **Session Tracking:** Temporarily disabled (causing disconnects) ⚠️
 - **Stats Tracking:** Basic session tracking working, real-time stats pending
-- **Wallet Features:** Not yet implemented despite Privy support
 
 ### Completed (November 2024)
 - ✅ PostgreSQL migration from SQLite to Neon cloud database
@@ -497,6 +516,13 @@ node --inspect bin/server/server.js
 - ✅ Profile modal shows real user data from database
 - ✅ Dynamic API URL detection for cross-port compatibility
 - ✅ Database persistence with PostgreSQL (Neon cloud database)
+- ✅ Virtual wallet system with PostgreSQL wallet_balances table
+- ✅ WalletRepository with full CRUD operations and transaction support
+- ✅ Wallet REST API endpoints (get, add, subtract, transfer, stats)
+- ✅ Frontend wallet balance display with smart add funds button
+- ✅ "Choose Your Adventure" play choice modal for unsigned users
+- ✅ Mobile-responsive modal design with proper button alignment
+- ✅ Auto-redirect to game after successful authentication from sign-up choice
 
 ### Known Issues
 - **Session Tracking:** Game session creation/ending temporarily disabled as it causes socket disconnects for authenticated users. Needs investigation into the disconnect flow.
@@ -520,10 +546,10 @@ node --inspect bin/server/server.js
 3. Show persistent global high scores
 4. Display user rank in leaderboard
 
-**Wallet Integration (Priority 3)**
-1. Enable Privy embedded wallets
-2. Basic wallet display in profile
-3. Plan Web3 features
+**Enhanced Wallet Features (Priority 3)**
+1. Connect wallet earning to gameplay (mass eaten, players defeated)
+2. Implement in-game purchases and spending mechanics
+3. Enable Privy embedded wallets for Web3 features
 
 **Social Features (Priority 4)**
 1. Friends system

@@ -70,7 +70,8 @@ class PreferencesRepository {
         try {
             const allowedFields = [
                 'dark_mode', 'show_mass', 'show_border', 'show_fps',
-                'show_grid', 'continuity', 'round_food', 'skin_id'
+                'show_grid', 'continuity', 'round_food', 'skin_id', 
+                'sound_enabled', 'music_enabled'
             ];
 
             const updateFields = [];

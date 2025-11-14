@@ -29,6 +29,7 @@ const AuthService = require('./services/auth-service');
 const UserRepository = require('./repositories/user-repository');
 const StatsRepository = require('./repositories/stats-repository');
 const PreferencesRepository = require('./repositories/preferences-repository');
+const WalletRepository = require('./repositories/wallet-repository');
 
 // Add middleware for JSON parsing
 app.use(express.json());
@@ -149,6 +150,8 @@ app.put('/api/user/:userId/preferences', async (req, res) => {
         const userId = parseInt(req.params.userId);
         const preferences = req.body;
 
+        console.log('[API] Updating preferences for user', userId, ':', preferences);
+
         const success = await AuthService.updateUserPreferences(userId, preferences);
 
         if (success) {
@@ -168,6 +171,8 @@ app.get('/api/user/:userId/preferences', async (req, res) => {
         const userId = parseInt(req.params.userId);
         const preferences = await PreferencesRepository.getPreferences(userId);
 
+        console.log('[API] Retrieved preferences from DB for user', userId, ':', preferences);
+
         res.json({
             darkMode: !!preferences.dark_mode,
             showMass: !!preferences.show_mass,
@@ -176,6 +181,8 @@ app.get('/api/user/:userId/preferences', async (req, res) => {
             showGrid: !!preferences.show_grid,
             continuity: !!preferences.continuity,
             roundFood: !!preferences.round_food,
+            soundEnabled: !!preferences.sound_enabled,
+            musicEnabled: !!preferences.music_enabled,
             skinId: preferences.skin_id
         });
     } catch (error) {
@@ -230,6 +237,248 @@ app.put('/api/user/:userId/profile', async (req, res) => {
     }
 });
 
+// Wallet API Endpoints
+
+/**
+ * Helper function to format balance with 6 decimal places
+ * @param {string|number} balance - Balance to format
+ * @returns {number} Formatted balance as number with 6 decimals
+ */
+function formatBalance(balance) {
+    return parseFloat(parseFloat(balance).toFixed(6));
+}
+
+// API endpoint: Get user wallet balance
+app.get('/api/user/:userId/wallet', async (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId);
+
+        if (!userId || isNaN(userId)) {
+            return res.status(400).json({ error: 'Invalid user ID' });
+        }
+
+        const wallet = await WalletRepository.getWalletByUserId(userId);
+
+        if (!wallet) {
+            return res.status(404).json({ error: 'Wallet not found' });
+        }
+
+        res.json({
+            balance: formatBalance(wallet.balance),
+            created_at: wallet.created_at,
+            updated_at: wallet.updated_at
+        });
+    } catch (error) {
+        console.error('[API] Get wallet error:', error);
+        res.status(500).json({ error: 'Failed to retrieve wallet balance' });
+    }
+});
+
+// API endpoint: Update user wallet balance
+app.put('/api/user/:userId/wallet', async (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId);
+        const { balance } = req.body;
+
+        if (!userId || isNaN(userId)) {
+            return res.status(400).json({ error: 'Invalid user ID' });
+        }
+
+        if (typeof balance !== 'number' || balance < 0) {
+            return res.status(400).json({ error: 'Balance must be a non-negative number' });
+        }
+
+        const updatedWallet = await WalletRepository.updateBalance(userId, balance);
+
+        res.json({
+            balance: formatBalance(updatedWallet.balance),
+            updated_at: updatedWallet.updated_at
+        });
+    } catch (error) {
+        console.error('[API] Update wallet error:', error);
+
+        if (error.message.includes('Wallet not found')) {
+            res.status(404).json({ error: error.message });
+        } else if (error.message.includes('negative balance')) {
+            res.status(400).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Failed to update wallet balance' });
+        }
+    }
+});
+
+// API endpoint: Add money to user wallet
+app.post('/api/user/:userId/wallet/add', async (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId);
+        const { amount, description } = req.body;
+
+        if (!userId || isNaN(userId)) {
+            return res.status(400).json({ error: 'Invalid user ID' });
+        }
+
+        if (typeof amount !== 'number' || amount <= 0) {
+            return res.status(400).json({ error: 'Amount must be a positive number' });
+        }
+
+        const updatedWallet = await WalletRepository.addBalance(userId, amount);
+
+        console.log(`[API] Added $${amount} to user ${userId} wallet${description ? ` (${description})` : ''}`);
+
+        res.json({
+            balance: formatBalance(updatedWallet.balance),
+            amount_added: formatBalance(amount),
+            description: description || 'Balance added',
+            updated_at: updatedWallet.updated_at
+        });
+    } catch (error) {
+        console.error('[API] Add wallet balance error:', error);
+
+        if (error.message.includes('Wallet not found')) {
+            res.status(404).json({ error: error.message });
+        } else if (error.message.includes('Amount must be positive')) {
+            res.status(400).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Failed to add balance' });
+        }
+    }
+});
+
+// API endpoint: Subtract money from user wallet
+app.post('/api/user/:userId/wallet/subtract', async (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId);
+        const { amount, description } = req.body;
+
+        if (!userId || isNaN(userId)) {
+            return res.status(400).json({ error: 'Invalid user ID' });
+        }
+
+        if (typeof amount !== 'number' || amount <= 0) {
+            return res.status(400).json({ error: 'Amount must be a positive number' });
+        }
+
+        const updatedWallet = await WalletRepository.subtractBalance(userId, amount);
+
+        console.log(`[API] Subtracted $${amount} from user ${userId} wallet${description ? ` (${description})` : ''}`);
+
+        res.json({
+            balance: formatBalance(updatedWallet.balance),
+            amount_subtracted: formatBalance(amount),
+            description: description || 'Balance deducted',
+            updated_at: updatedWallet.updated_at
+        });
+    } catch (error) {
+        console.error('[API] Subtract wallet balance error:', error);
+
+        if (error.message.includes('Insufficient balance')) {
+            res.status(400).json({ error: error.message });
+        } else if (error.message.includes('Wallet not found')) {
+            res.status(404).json({ error: error.message });
+        } else if (error.message.includes('Amount must be positive')) {
+            res.status(400).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Failed to subtract balance' });
+        }
+    }
+});
+
+// API endpoint: Transfer money between users
+app.post('/api/wallet/transfer', async (req, res) => {
+    try {
+        const { fromUserId, toUserId, amount, description } = req.body;
+
+        if (!fromUserId || !toUserId || isNaN(fromUserId) || isNaN(toUserId)) {
+            return res.status(400).json({ error: 'Valid fromUserId and toUserId are required' });
+        }
+
+        if (fromUserId === toUserId) {
+            return res.status(400).json({ error: 'Cannot transfer to the same user' });
+        }
+
+        if (typeof amount !== 'number' || amount <= 0) {
+            return res.status(400).json({ error: 'Amount must be a positive number' });
+        }
+
+        const transfer = await WalletRepository.transferBalance(
+            parseInt(fromUserId),
+            parseInt(toUserId),
+            amount
+        );
+
+        console.log(`[API] Transferred $${amount} from user ${fromUserId} to user ${toUserId}${description ? ` (${description})` : ''}`);
+
+        res.json({
+            success: true,
+            amount_transferred: formatBalance(amount),
+            description: description || 'Balance transfer',
+            from_wallet: {
+                user_id: fromUserId,
+                new_balance: formatBalance(transfer.fromWallet.balance)
+            },
+            to_wallet: {
+                user_id: toUserId,
+                new_balance: formatBalance(transfer.toWallet.balance)
+            }
+        });
+    } catch (error) {
+        console.error('[API] Transfer wallet balance error:', error);
+
+        if (error.message.includes('Insufficient balance')) {
+            res.status(400).json({ error: error.message });
+        } else if (error.message.includes('wallet not found')) {
+            res.status(404).json({ error: error.message });
+        } else if (error.message.includes('Amount must be positive')) {
+            res.status(400).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Failed to transfer balance' });
+        }
+    }
+});
+
+// API endpoint: Get wallet leaderboard
+app.get('/api/wallet/leaderboard', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 10;
+
+        if (limit < 1 || limit > 100) {
+            return res.status(400).json({ error: 'Limit must be between 1 and 100' });
+        }
+
+        const topWallets = await WalletRepository.getTopWallets(limit);
+
+        res.json({
+            leaderboard: topWallets.map((wallet, index) => ({
+                rank: index + 1,
+                username: wallet.username,
+                balance: formatBalance(wallet.balance),
+                avatar_url: wallet.avatar_url
+            }))
+        });
+    } catch (error) {
+        console.error('[API] Get wallet leaderboard error:', error);
+        res.status(500).json({ error: 'Failed to retrieve wallet leaderboard' });
+    }
+});
+
+// API endpoint: Get wallet statistics
+app.get('/api/wallet/stats', async (req, res) => {
+    try {
+        const stats = await WalletRepository.getWalletStats();
+
+        res.json({
+            total_wallets: parseInt(stats.total_wallets),
+            total_balance: formatBalance(stats.total_balance || 0),
+            average_balance: formatBalance(stats.average_balance || 0),
+            min_balance: formatBalance(stats.min_balance || 0),
+            max_balance: formatBalance(stats.max_balance || 0)
+        });
+    } catch (error) {
+        console.error('[API] Get wallet stats error:', error);
+        res.status(500).json({ error: 'Failed to retrieve wallet statistics' });
+    }
+});
+
 io.on('connection', function (socket) {
     let type = socket.handshake.query.type;
     console.log('[SERVER] User connected: ', type);
@@ -254,7 +503,8 @@ const addPlayerToArena = async (socket) => {
     const preferredArenaId = socket.handshake.query.arenaId || null;
     const userId = socket.handshake.query.userId || null;
     const playerName = socket.handshake.query.playerName || `Guest_${Math.floor(Math.random() * 10000)}`;
-    // Find or create arena
+
+    // Find or create arena (can be the same arena after death - that's fine!)
     const arena = arenaManager.findAvailableArena(preferredArenaId);
 
     // Store arena ID on socket BEFORE joining room

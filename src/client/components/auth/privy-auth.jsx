@@ -14,11 +14,8 @@ const PRIVY_CONFIG = {
             logo: '/favicon.ico'
         },
         // Configure login methods
-        loginMethods: ['google', 'discord', 'email'],
-        // Configure embedded wallets (optional, for future Web3 features)
-        embeddedWallets: {
-            createOnLogin: 'users-without-wallets'
-        }
+        loginMethods: ['google', 'discord', 'email']
+        // Embedded wallets disabled - requires HTTPS
     }
 };
 

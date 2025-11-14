@@ -20,12 +20,14 @@ DROPLET_IP="${DROPLET_IP:-}"
 DROPLET_USER="${DROPLET_USER:-root}"
 APP_DIR="/opt/agar-game"
 DOMAIN="${DOMAIN:-}"  # Optional: your domain name
+PRIVY_APP_ID="${PRIVY_APP_ID:-cmhkpg56r02vbjr0cdeex8n7i}"  # Default Privy App ID
 
 echo -e "${BLUE}📋 Configuration:${NC}"
 echo "  Droplet IP: ${DROPLET_IP:-Not set}"
 echo "  User: $DROPLET_USER"
 echo "  App Directory: $APP_DIR"
 echo "  Domain: ${DOMAIN:-None (using IP)}"
+echo "  Privy App ID: $PRIVY_APP_ID"
 echo ""
 
 # Step 1: Check prerequisites
@@ -194,17 +196,22 @@ echo ""
 # Step 6: Build and start the application
 echo -e "${YELLOW}🚀 Building and starting application...${NC}"
 
-ssh $DROPLET_USER@$DROPLET_IP << ENDSSH
+# Pass variables through SSH using EOF instead of 'ENDSSH' to allow variable expansion
+ssh $DROPLET_USER@$DROPLET_IP << EOF
 set -e
 cd $APP_DIR
+
+# Set environment variables for Docker Compose
+export PRIVY_APP_ID="$PRIVY_APP_ID"
+export DATABASE_URL="postgresql://neondb_owner:npg_X0hNZFwe8Lrk@ep-wild-bar-agks6pgk-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require"
 
 # Stop existing containers
 echo "Stopping existing containers..."
 docker-compose -f docker-compose.digitalocean.yml down 2>/dev/null || true
 
-# Build the application
-echo "Building Docker image..."
-docker-compose -f docker-compose.digitalocean.yml build
+# Build the application with build arguments
+echo "Building Docker image with PRIVY_APP_ID=$PRIVY_APP_ID..."
+docker-compose -f docker-compose.digitalocean.yml build --build-arg PRIVY_APP_ID=$PRIVY_APP_ID
 
 # Start the application
 echo "Starting application..."
@@ -224,7 +231,7 @@ else
 fi
 
 echo "✅ Deployment complete"
-ENDSSH
+EOF
 
 echo -e "${GREEN}✅ Application deployed successfully${NC}"
 echo ""
