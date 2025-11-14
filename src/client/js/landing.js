@@ -1130,9 +1130,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Wallet Balance Functions
     window.loadWalletBalance = async function() {
+        const walletElement = document.getElementById('wallet-balance');
+        if (!walletElement) {
+            console.warn('Wallet balance element not found');
+            return;
+        }
+
         const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
         if (!userData.dbUserId) {
-            document.getElementById('wallet-balance').textContent = '$0.00';
+            walletElement.textContent = '$0.00';
             window.updateAddFundsButton(0);
             return;
         }
@@ -1163,7 +1169,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } catch (error) {
             console.error('Error fetching wallet balance:', error);
-            document.getElementById('wallet-balance').textContent = 'Error';
+            if (walletElement) {
+                walletElement.textContent = 'Error';
+            }
             window.updateAddFundsButton(0);
         }
     };
