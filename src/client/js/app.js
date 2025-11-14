@@ -2183,3 +2183,6 @@ if (document.readyState === "loading") {
 } else {
     displayLastScore();
 }
+
+// Export functions to global scope for landing page integration
+window.startGame = startGame;
