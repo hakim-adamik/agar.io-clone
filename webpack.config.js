@@ -7,10 +7,7 @@ module.exports = (isProduction) => ({
     entry: "./src/client/js/app.js",
     mode: isProduction ? 'production' : 'development',
     output: {
-        path: path.resolve(__dirname, 'bin/client/js'),
-        filename: 'app.js',
-        library: "app",
-        publicPath: '/js/'
+        filename: 'app.js'
     },
     devtool: isProduction ? 'source-map' : 'eval-source-map',
     module: {

@@ -7,8 +7,7 @@ module.exports = {
     entry: './src/client/components/auth/privy-auth.jsx',
     output: {
         path: path.resolve(__dirname, 'bin/client/auth'),
-        filename: 'privy-auth-bundle.js',
-        publicPath: '/auth/'
+        filename: 'privy-auth-bundle.js'
     },
     module: {
         rules: [
