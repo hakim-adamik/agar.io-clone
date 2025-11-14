@@ -259,24 +259,24 @@ function startGame(type) {
 
     // Function to continue game start after preferences are loaded
     function continueGameStart() {
-        // Seamless transition from landing to game
-        var landingView = document.getElementById("landingView");
-        var gameView = document.getElementById("gameView");
+    // Seamless transition from landing to game
+    var landingView = document.getElementById("landingView");
+    var gameView = document.getElementById("gameView");
 
-        if (landingView && gameView) {
-            // Completely hide the landing view
-            landingView.style.display = "none";
-            gameView.style.display = "block";
-            setTimeout(function () {
-                document.getElementById("gameAreaWrapper").style.opacity = 1;
-            }, 50);
+    if (landingView && gameView) {
+        // Completely hide the landing view
+        landingView.style.display = "none";
+        gameView.style.display = "block";
+        setTimeout(function () {
+            document.getElementById("gameAreaWrapper").style.opacity = 1;
+        }, 50);
 
             // Start background music if enabled (after preferences are loaded)
             setupBackgroundMusic();
-        } else {
-            // Fallback for old flow
-            document.getElementById("startMenuWrapper").style.maxHeight = "0px";
-            document.getElementById("gameAreaWrapper").style.opacity = 1;
+    } else {
+        // Fallback for old flow
+        document.getElementById("startMenuWrapper").style.maxHeight = "0px";
+        document.getElementById("gameAreaWrapper").style.opacity = 1;
 
             // Start background music (fallback flow) if enabled
             setupBackgroundMusic();
@@ -303,33 +303,33 @@ function startGame(type) {
 
         // Now create the new socket
         {
-            // Get user data from localStorage (if authenticated)
-            let userData = null;
-            try {
-                const privyUserStr = localStorage.getItem("privy_user");
-                if (privyUserStr) {
-                    userData = JSON.parse(privyUserStr);
-                }
-            } catch (e) {
-                console.error("[Socket] Failed to parse user data:", e);
+        // Get user data from localStorage (if authenticated)
+        let userData = null;
+        try {
+            const privyUserStr = localStorage.getItem("privy_user");
+            if (privyUserStr) {
+                userData = JSON.parse(privyUserStr);
             }
+        } catch (e) {
+            console.error("[Socket] Failed to parse user data:", e);
+        }
 
-            // Build query params including user data
-            const queryParams = {
-                type: type,
-                arenaId: global.arenaId || null,
-                userId: userData?.dbUserId || null,
-                playerName:
-                    playerNameInput.value ||
-                    userData?.username ||
-                    `Guest_${Math.floor(Math.random() * 10000)}`,
-            };
+        // Build query params including user data
+        const queryParams = {
+            type: type,
+            arenaId: global.arenaId || null,
+            userId: userData?.dbUserId || null,
+            playerName:
+                playerNameInput.value ||
+                userData?.username ||
+                `Guest_${Math.floor(Math.random() * 10000)}`,
+        };
 
-            // Convert to query string
-            const query = Object.keys(queryParams)
-                .filter((key) => queryParams[key] !== null)
-                .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
-                .join("&");
+        // Convert to query string
+        const query = Object.keys(queryParams)
+            .filter((key) => queryParams[key] !== null)
+            .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
+            .join("&");
 
             // Clean up any existing socket connection
             if (socket) {
@@ -344,30 +344,30 @@ function startGame(type) {
             createNewSocket(query);
 
             function createNewSocket(queryString) {
-                // Socket.io configuration optimized for real-time gaming
-                socket = io({
+        // Socket.io configuration optimized for real-time gaming
+        socket = io({
                     query: queryString,
-                    // Prioritize WebSocket, fallback to polling
-                    transports: ['websocket', 'polling'],
-                    // Reconnection settings
-                    reconnection: true,
-                    reconnectionDelay: 1000,      // Start with 1s delay
-                    reconnectionDelayMax: 5000,   // Max 5s between attempts
-                    reconnectionAttempts: 10,     // Try 10 times before giving up
-                    // Timeouts
-                    timeout: 20000,               // 20s connection timeout
-                    // Upgrade settings
-                    upgrade: true,
-                    rememberUpgrade: true,
-                    // Ping/pong already configured server-side
-                });
-                setupSocket(socket);
+            // Prioritize WebSocket, fallback to polling
+            transports: ['websocket', 'polling'],
+            // Reconnection settings
+            reconnection: true,
+            reconnectionDelay: 1000,      // Start with 1s delay
+            reconnectionDelayMax: 5000,   // Max 5s between attempts
+            reconnectionAttempts: 10,     // Try 10 times before giving up
+            // Timeouts
+            timeout: 20000,               // 20s connection timeout
+            // Upgrade settings
+            upgrade: true,
+            rememberUpgrade: true,
+            // Ping/pong already configured server-side
+        });
+        setupSocket(socket);
 
                 // Now that socket is created, we can emit and set it up
-                if (!global.animLoopHandle) animloop();
-                socket.emit("respawn");
-                window.canvas.socket = socket;
-                global.socket = socket;
+    if (!global.animLoopHandle) animloop();
+    socket.emit("respawn");
+    window.canvas.socket = socket;
+    global.socket = socket;
             } // Close createNewSocket function
         } // Close socket creation block
     } // Close continueGameStart function
@@ -390,207 +390,6 @@ function validNick() {
     debug("Regex Test", regex.exec(playerNameInput.value));
     return regex.exec(playerNameInput.value) !== null;
 }
-
-// Remove landing page code - handled by landing.js
-/*
-var modalTemplates = {
-    social: {
-        title: '<i class="fab fa-discord"></i> Social',
-        content: `
-            <div class="social-links" style="display: grid; gap: 1rem; margin-top: 1.5rem; padding-top: 0.5rem;">
-                <a href="#" class="social-link" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 10px; color: #fff; text-decoration: none; transition: all 0.3s; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <i class="fab fa-discord" style="font-size: 1.5rem; color: #7289da; width: 40px;"></i>
-                    <span>Join our Discord Server</span>
-                </a>
-                <a href="#" class="social-link" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 10px; color: #fff; text-decoration: none; transition: all 0.3s; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <i class="fab fa-telegram" style="font-size: 1.5rem; color: #0088cc; width: 40px;"></i>
-                    <span>Telegram Community</span>
-                </a>
-                <a href="#" class="social-link" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 10px; color: #fff; text-decoration: none; transition: all 0.3s; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <i class="fa-brands fa-x-twitter" style="font-size: 1.5rem; color: white; width: 40px;"></i>
-                    <span>Follow on X</span>
-                </a>
-                <a href="#" class="social-link" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 10px; color: #fff; text-decoration: none; transition: all 0.3s; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <i class="fab fa-youtube" style="font-size: 1.5rem; color: #ff0000; width: 40px;"></i>
-                    <span>YouTube Channel</span>
-                </a>
-            </div>
-        `
-    },
-    support: {
-        title: 'Support Center',
-        useGrid: true,
-        items: [
-            { icon: 'fas fa-book', title: 'Game Guide', desc: 'Browse comprehensive guides and tutorials' },
-            { icon: 'fas fa-question-circle', title: 'FAQ', desc: 'Find answers to frequently asked questions' },
-            { icon: 'fab fa-discord', title: 'Community', desc: 'Get help from our amazing player community' },
-            { icon: 'fas fa-bug', title: 'Report Bug', desc: 'Help us improve by reporting issues' }
-        ]
-    },
-    leaders: {
-        title: '<i class="fas fa-trophy"></i> Leaderboard',
-        content: `
-            <div style="display: flex; gap: 0.5rem; margin: 1.5rem 0;">
-                <button class="tab-btn active" style="padding: 0.5rem 1rem; background: var(--primary-green, #84cc16); color: white; border: none; border-radius: 20px; cursor: pointer;">Today</button>
-                <button class="tab-btn" style="padding: 0.5rem 1rem; background: transparent; color: var(--text-secondary, #94a3b8); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; cursor: pointer;">This Week</button>
-                <button class="tab-btn" style="padding: 0.5rem 1rem; background: transparent; color: var(--text-secondary, #94a3b8); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; cursor: pointer;">All Time</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                <div style="display: flex; align-items: center; padding: 1rem; background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1)); border: 1px solid rgba(255, 215, 0, 0.5); border-radius: 10px;">
-                    <span style="font-weight: bold; font-size: 1.4rem; color: gold; width: 40px; text-align: center;">1</span>
-                    <span style="flex: 1; margin-left: 1rem;">ChampionPlayer</span>
-                    <span style="font-weight: bold; color: var(--primary-green, #84cc16);">52,450</span>
-                </div>
-                <div style="display: flex; align-items: center; padding: 1rem; background: linear-gradient(135deg, rgba(192, 192, 192, 0.2), rgba(192, 192, 192, 0.1)); border: 1px solid rgba(192, 192, 192, 0.5); border-radius: 10px;">
-                    <span style="font-weight: bold; font-size: 1.3rem; color: silver; width: 40px; text-align: center;">2</span>
-                    <span style="flex: 1; margin-left: 1rem;">ProGamer2024</span>
-                    <span style="font-weight: bold; color: var(--primary-green, #84cc16);">48,320</span>
-                </div>
-            </div>
-        `
-    },
-    profile: {
-        title: '<i class="fas fa-user-circle"></i> Player Profile',
-        content: `
-            <div style="padding: 1.5rem; background: rgba(74, 144, 226, 0.1); border-radius: 10px; margin: 1.5rem 0; display: flex; align-items: center; gap: 1.5rem;">
-                <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white;">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div>
-                    <h3 style="margin-bottom: 0.25rem;">Guest Player</h3>
-                    <p style="color: var(--text-secondary, #94a3b8); font-size: 0.9rem;">Not logged in</p>
-                </div>
-            </div>
-            <div style="text-align: center; padding: 2rem; margin: 2rem 0;">
-                <i class="fas fa-lock" style="font-size: 3rem; color: var(--text-secondary, #94a3b8); margin-bottom: 1rem; display: block;"></i>
-                <p style="color: var(--text-secondary, #94a3b8); margin-bottom: 1.5rem; font-size: 1rem;">Sign in to track your progress and compete on the leaderboard!</p>
-                <button class="modal-button auth-trigger-btn" style="padding: 0.75rem 2rem; font-size: 1rem;">Sign In / Register</button>
-            </div>
-        `
-    }
-};
-
-function initLandingPage() {
-    // Play button - instant game start
-    var playBtn = document.getElementById("playBtn");
-    if (playBtn) {
-        playBtn.onclick = function() {
-            playerNameInput.value = generateGuestName();
-            startGame("player");
-        };
-    }
-
-    // How to play button
-    var howToPlayBtn = document.getElementById("howToPlayBtn");
-    if (howToPlayBtn) {
-        howToPlayBtn.onclick = function() {
-            showModal("tutorialModal");
-        };
-    }
-
-    // Start from tutorial
-    var startFromTutorial = document.getElementById("startFromTutorial");
-    if (startFromTutorial) {
-        startFromTutorial.onclick = function() {
-            closeModal(document.getElementById("tutorialModal"));
-            playerNameInput.value = generateGuestName();
-            startGame("player");
-        };
-    }
-
-    // Navigation items
-    var navItems = document.querySelectorAll(".nav-item");
-    navItems.forEach(function(item) {
-        item.addEventListener("click", function() {
-            var section = this.dataset.section;
-
-            // Update active state
-            navItems.forEach(nav => nav.classList.remove("active"));
-            this.classList.add("active");
-
-            // Show modal content
-            var template = modalTemplates[section];
-            if (!template) return;
-
-            var modal = document.getElementById("sectionModal");
-            if (!modal) return;
-
-            var modalContent = document.getElementById("modalContent");
-            if (template.useGrid) {
-                modalContent.innerHTML = `
-                    <h2>${template.title}</h2>
-                    <div class="tutorial-content">
-                        ${template.items.map(item => `
-                            <div class="tutorial-step">
-                                <i class="${item.icon}"></i>
-                                <h3>${item.title}</h3>
-                                <p>${item.desc}</p>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <button class="modal-button" onclick="closeModal(document.getElementById('sectionModal'))">Close</button>
-                `;
-            } else {
-                modalContent.innerHTML = `
-                    <h2>${template.title}</h2>
-                    ${template.content}
-                `;
-            }
-
-            showModal("sectionModal");
-        });
-    });
-
-    // Initialize modal close buttons
-    document.querySelectorAll(".modal").forEach(function(modal) {
-        var closeBtn = modal.querySelector(".close-modal");
-        if (closeBtn) {
-            closeBtn.addEventListener("click", function() {
-                closeModal(modal);
-            });
-        }
-        modal.addEventListener("click", function(e) {
-            if (e.target === modal) closeModal(modal);
-        });
-    });
-
-    // Initialize parallax effect
-    initParallax();
-}
-
-function showModal(modalId) {
-    var modal = document.getElementById(modalId);
-    if (modal) modal.classList.add("show");
-}
-
-function closeModal(modal) {
-    modal.classList.remove("show");
-    document.querySelectorAll(".nav-item").forEach(nav => nav.classList.remove("active"));
-}
-
-function initParallax() {
-    var mouseX = 0, mouseY = 0;
-    var targetX = 0, targetY = 0;
-
-    document.addEventListener("mousemove", function(e) {
-        mouseX = (e.clientX / window.innerWidth - 0.5) * 20;
-        mouseY = (e.clientY / window.innerHeight - 0.5) * 20;
-    });
-
-    function animate() {
-        targetX += (mouseX - targetX) * 0.1;
-        targetY += (mouseY - targetY) * 0.1;
-
-        var previewCells = document.querySelector(".preview-cells");
-        if (previewCells) {
-            previewCells.style.transform = `translate(${targetX}px, ${targetY}px)`;
-        }
-        requestAnimationFrame(animate);
-    }
-    animate();
-}
-
-*/
 
 // Enhanced player score display update
 var lastScore = 0;
@@ -629,7 +428,7 @@ function animateScore() {
         // Add counting class for subtle animation
         scoreValueEl.classList.add('counting');
         setTimeout(() => scoreValueEl.classList.remove('counting'), 50);
-    } else {
+            } else {
         displayedScore = targetScore;
     }
 
@@ -683,6 +482,7 @@ function setupLeaderboardToggle() {
         }
     });
 }
+
 
 window.onload = function () {
     // Landing page is handled by landing.js
@@ -1058,6 +858,8 @@ function setupSocket(socket) {
         console.log("[Socket] Reconnected after " + attemptNumber + " attempts");
         // Optionally show success message briefly
         if (global.gameStart) {
+            // Reset animations on reconnect to ensure clean state
+            cellAnimations.reset();
             // Request fresh game state after reconnection
             socket.emit("respawn");
         }
@@ -1118,6 +920,15 @@ function setupSocket(socket) {
             global.arenaId = gameSizes.arenaId;
             console.log(`[CLIENT] Joined arena: ${gameSizes.arenaId}`);
         }
+
+        // Reset cell animations for new game session
+        cellAnimations.reset();
+
+        // Reset smooth camera for new game session
+        smoothCamera.enabled = false;
+        smoothCamera.x = 0;
+        smoothCamera.y = 0;
+
         c.focus();
         global.game.width = gameSizes.width;
         global.game.height = gameSizes.height;
@@ -1238,21 +1049,6 @@ function setupSocket(socket) {
             }
             lastPositionUpdateTime = updateTime;
 
-            // Performance monitoring: log if processing takes too long
-            /*
-            if (window.DEBUG_MODE) {
-                var entityCount = userData.length + foodsList.length + massList.length + virusList.length;
-                if (entityCount > 200) {
-                    console.warn('[PERF] Large update:', {
-                        players: userData.length,
-                        food: foodsList.length,
-                        mass: massList.length,
-                        viruses: virusList.length,
-                        total: entityCount
-                    });
-                }
-            }
-            */
 
             if (global.playerType == "player") {
                 var now = getTime();
@@ -1286,6 +1082,11 @@ function setupSocket(socket) {
                     player.y = playerData.y;
                     player.cells = playerData.cells;
                     prediction.enabled = true;
+
+                    // Initialize smooth camera
+                    smoothCamera.x = playerData.x;
+                    smoothCamera.y = playerData.y;
+                    smoothCamera.enabled = true;
                 } else {
                     // Subsequent updates - shift states and calculate velocity (using optimized cloning)
                     prediction.previous = prediction.current;
@@ -1408,6 +1209,9 @@ function setupSocket(socket) {
                 currentPlayerIds[userData[i].id] = true;
             }
 
+            // Add current player to active IDs for animation cleanup
+            currentPlayerIds[player.id] = true;
+
             // Remove disconnected players from prediction states
             for (var playerId in prediction.otherPlayers.states) {
                 if (!currentPlayerIds[playerId] && playerId != player.id) {
@@ -1415,9 +1219,18 @@ function setupSocket(socket) {
                 }
             }
 
+            // Clean up animation states for disconnected players
+            cellAnimations.cleanupDisconnectedPlayers(currentPlayerIds);
+
             for (var i = 0; i < userData.length; i++) {
                 var user = userData[i];
-                if (user.id === player.id) continue; // Skip current player
+
+                // Detect merges for all players (including current player in userData)
+                if (cellAnimations && user && user.cells) {
+                    cellAnimations.detectMerges(user.id, user.cells);
+                }
+
+                if (user.id === player.id) continue; // Skip current player for prediction
 
                 var playerId = user.id;
                 if (!prediction.otherPlayers.states[playerId]) {
@@ -1686,6 +1499,253 @@ var prediction = {
     }
 };
 
+// Smooth camera interpolation to prevent jumps when cells merge
+var smoothCamera = {
+    enabled: false,
+    // Rendered camera position (smoothly interpolated)
+    x: 0,
+    y: 0,
+    // Interpolation speed (0-1, higher = faster)
+    lerpSpeed: 0.15
+};
+
+// Cell merge animation system
+class CellAnimations {
+    constructor(duration = 500) {
+        // FIXME Smooth merging animation is currently a bit buggy
+        // Need to fix it then enable it again
+        this.enabled = false;
+
+        // Map of "playerId_cellIndex" -> { startRadius, targetRadius, startTime, duration }
+        this.animations = {};
+
+        // Animation duration in milliseconds
+        this.duration = duration;
+
+        // Track cell states to detect merges
+        // Map of playerId -> [{ x, y, mass, radius }]
+        this.previousCellStates = {};
+    }
+
+    // Start a new merge animation for a cell
+    startAnimation(playerId, cellIndex, startRadius, targetRadius) {
+        const key = `${playerId}_${cellIndex}`;
+
+        // Check if there's already an animation in progress
+        const existingAnimation = this.animations[key];
+        if (existingAnimation) {
+            const targetDiff = Math.abs(existingAnimation.targetRadius - targetRadius);
+            if (targetDiff < 5) {
+                // Target is very similar, don't restart the animation
+                return;
+            }
+
+            // Target changed significantly (another merge happened during animation)
+            // Use the current animated radius as the new starting point for smooth continuation
+            const now = getTime();
+            const elapsed = now - existingAnimation.startTime;
+
+            if (elapsed < existingAnimation.duration) {
+                // Animation still in progress - calculate current radius
+                const progress = elapsed / existingAnimation.duration;
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                const currentRadius = existingAnimation.startRadius +
+                    (existingAnimation.targetRadius - existingAnimation.startRadius) * easeProgress;
+
+                // Start new animation from current position
+                startRadius = currentRadius;
+            }
+        }
+
+        const now = getTime();
+        this.animations[key] = {
+            startRadius: startRadius,
+            targetRadius: targetRadius,
+            startTime: now,
+            duration: this.duration
+        };
+    }
+
+    // Get the current animated radius for a cell
+    getAnimatedRadius(playerId, cellIndex, actualRadius) {
+        if (!this.enabled) {
+            return actualRadius; // Animations disabled
+        }
+
+        const key = `${playerId}_${cellIndex}`;
+        const animation = this.animations[key];
+
+        if (!animation) {
+            return actualRadius; // No animation, use actual radius
+        }
+
+        const now = getTime();
+        const elapsed = now - animation.startTime;
+
+        if (elapsed >= animation.duration) {
+            // Animation complete
+            delete this.animations[key];
+            return actualRadius;
+        }
+
+        // Ease-out interpolation for smooth animation
+        const progress = elapsed / animation.duration;
+        const easeProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
+
+        const currentRadius = animation.startRadius + (animation.targetRadius - animation.startRadius) * easeProgress;
+        return currentRadius;
+    }
+
+    // Detect merges by comparing cell states
+    detectMerges(playerId, newCells) {
+        if (!this.enabled) {
+            return; // Animations disabled, skip merge detection
+        }
+
+        const previousCells = this.previousCellStates[playerId];
+
+        if (!previousCells || previousCells.length === 0) {
+            // First time seeing this player, just store the state
+            this.previousCellStates[playerId] = this.cloneCellStates(newCells);
+            return;
+        }
+
+        // If cell count decreased, cells merged
+        if (newCells.length < previousCells.length) {
+            // Find which cells grew (received mass from merged cells)
+            for (let i = 0; i < newCells.length; i++) {
+                const newCell = newCells[i];
+
+                if (!newCell || typeof newCell.x !== 'number' || typeof newCell.y !== 'number') {
+                    continue; // Skip invalid cells
+                }
+
+                // Find all nearby previous cells (potential merge candidates)
+                const nearbyCells = this.findNearbyCells(newCell, previousCells, 200);
+
+                if (nearbyCells && nearbyCells.length > 0) {
+                    // Use the largest nearby cell's radius as the starting point
+                    const largestPrevCell = nearbyCells.reduce((max, cell) =>
+                        (cell && cell.radius > max.radius) ? cell : max
+                    );
+
+                    if (largestPrevCell && newCell.mass > largestPrevCell.mass * 1.2) {
+                        // Mass increased significantly, this cell absorbed another
+                        // Start animation from the largest cell's radius to new radius
+                        this.startAnimation(playerId, i, largestPrevCell.radius, newCell.radius);
+                    }
+                }
+            }
+        } else if (newCells.length === previousCells.length) {
+            // Same number of cells, check if any grew significantly
+            for (let i = 0; i < newCells.length; i++) {
+                const newCell = newCells[i];
+                const matchedPrevCell = this.findMatchingCell(newCell, previousCells);
+
+                if (matchedPrevCell && newCell.mass > matchedPrevCell.mass * 1.2) {
+                    // Mass increased significantly (ate something big or merged)
+                    this.startAnimation(playerId, i, matchedPrevCell.radius, newCell.radius);
+                }
+            }
+        }
+
+        // Update stored state
+        this.previousCellStates[playerId] = this.cloneCellStates(newCells);
+    }
+
+    // Find matching cell in previous state by proximity
+    findMatchingCell(cell, previousCells) {
+        let closestCell = null;
+        let closestDistance = Infinity;
+
+        for (let i = 0; i < previousCells.length; i++) {
+            const prevCell = previousCells[i];
+            const dx = cell.x - prevCell.x;
+            const dy = cell.y - prevCell.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Cell should be relatively close (within 200 units)
+            if (distance < 200 && distance < closestDistance) {
+                closestDistance = distance;
+                closestCell = prevCell;
+            }
+        }
+
+        return closestCell;
+    }
+
+    // Find all nearby cells within a given distance
+    findNearbyCells(cell, previousCells, maxDistance) {
+        const nearbyCells = [];
+
+        if (!cell || !previousCells || !Array.isArray(previousCells)) {
+            return nearbyCells;
+        }
+
+        for (let i = 0; i < previousCells.length; i++) {
+            const prevCell = previousCells[i];
+            if (!prevCell || typeof prevCell.x !== 'number' || typeof prevCell.y !== 'number') {
+                continue;
+            }
+
+            const dx = cell.x - prevCell.x;
+            const dy = cell.y - prevCell.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < maxDistance) {
+                nearbyCells.push(prevCell);
+            }
+        }
+
+        return nearbyCells;
+    }
+
+    // Clone cell states for comparison
+    cloneCellStates(cells) {
+        const cloned = [];
+        if (!cells || !Array.isArray(cells)) {
+            return cloned;
+        }
+
+        for (let i = 0; i < cells.length; i++) {
+            const cell = cells[i];
+            if (cell && typeof cell.x === 'number' && typeof cell.y === 'number' &&
+                typeof cell.mass === 'number' && typeof cell.radius === 'number') {
+                cloned.push({
+                    x: cell.x,
+                    y: cell.y,
+                    mass: cell.mass,
+                    radius: cell.radius
+                });
+            }
+        }
+        return cloned;
+    }
+
+    // Clean up old player states
+    cleanupDisconnectedPlayers(activePlayerIds) {
+        for (const playerId in this.previousCellStates) {
+            if (!activePlayerIds[playerId]) {
+                delete this.previousCellStates[playerId];
+            }
+        }
+
+        // Also clean up animations for disconnected players
+        for (const key in this.animations) {
+            const playerId = key.split('_')[0];
+            if (!activePlayerIds[playerId]) {
+                delete this.animations[key];
+            }
+        }
+    }
+
+    // Reset all animations and states
+    reset() {
+        this.animations = {};
+        this.previousCellStates = {};
+    }
+}
+
 // Initialize FPS counter visibility from localStorage
 (function () {
     global.fpsCounter = fpsCounter;
@@ -1716,6 +1776,9 @@ var getTime = (function () {
         };
     }
 })();
+
+// Create cell animations instance after getTime is available
+var cellAnimations = new CellAnimations();
 
 function animloop() {
     var currentTime = getTime();
@@ -1882,6 +1945,17 @@ function gameLoop() {
             player.y = prediction.predicted.y;
             player.cells = prediction.predicted.cells;
 
+            // Apply smooth camera interpolation to prevent jarring jumps
+            if (smoothCamera.enabled) {
+                // Lerp camera position towards actual player position
+                smoothCamera.x += (player.x - smoothCamera.x) * smoothCamera.lerpSpeed;
+                smoothCamera.y += (player.y - smoothCamera.y) * smoothCamera.lerpSpeed;
+
+                // Override player position with smooth camera for rendering
+                player.x = smoothCamera.x;
+                player.y = smoothCamera.y;
+            }
+
             // Also update predicted cells in users array (for cell rendering)
             for (var i = 0; i < users.length; i++) {
                 if (users[i].id === player.id) {
@@ -1997,13 +2071,24 @@ function gameLoop() {
                 let screenY =
                     users[i].cells[j].y - player.y + global.screen.height / 2;
 
-                // Client-side viewport culling for cells
+                // Get animated radius for smooth merge animation
+                let actualRadius = users[i].cells[j].radius;
+                let animatedRadius = actualRadius;
+                try {
+                    if (cellAnimations) {
+                        animatedRadius = cellAnimations.getAnimatedRadius(users[i].id, j, actualRadius);
+                    }
+                } catch (err) {
+                    console.error('[CellAnimations] Error getting animated radius:', err);
+                }
+
+                // Client-side viewport culling for cells (use animated radius for visibility check)
                 if (
                     isEntityVisible(
                         {
                             x: screenX,
                             y: screenY,
-                            radius: users[i].cells[j].radius,
+                            radius: animatedRadius,
                         },
                         global.screen
                     )
@@ -2014,7 +2099,7 @@ function gameLoop() {
                         mass: users[i].cells[j].mass,
                         score: users[i].cells[j].score || 0,
                         name: users[i].name,
-                        radius: users[i].cells[j].radius,
+                        radius: animatedRadius, // Use animated radius for rendering
                         x: screenX,
                         y: screenY,
                         isCurrentPlayer: isCurrentPlayer,
@@ -2170,6 +2255,17 @@ function cleanupGame() {
         }
     };
 
+    // Reset smooth camera
+    smoothCamera = {
+        enabled: false,
+        x: 0,
+        y: 0,
+        lerpSpeed: 0.15
+    };
+
+    // Reset cell animations
+    cellAnimations.reset();
+
     // Reset player
     player = {
         id: -1,
@@ -2243,8 +2339,8 @@ function displayLastScore(isDeath = false) {
                     lastScoreBox.style.display = "flex";
                 } else {
                     // Normal score display: format score and reset styling
-                    var formattedScore = parseFloat(lastScore);
-                    lastScoreValue.textContent = formattedScore;
+                var formattedScore = parseFloat(lastScore);
+                lastScoreValue.textContent = formattedScore;
                     lastScoreValue.style.color = ""; // Reset color
                     lastScoreValue.style.display = ""; // Show score value
 
@@ -2263,7 +2359,7 @@ function displayLastScore(isDeath = false) {
                         encourageMsg.remove();
                     }
 
-                    lastScoreBox.style.display = "flex";
+                lastScoreBox.style.display = "flex";
                 }
             } else {
                 lastScoreBox.style.display = "none";
@@ -2307,16 +2403,16 @@ window.addEventListener('beforeunload', function() {
 
 // Display last score when DOM is ready, but not on page refresh
 (function() {
-    if (document.readyState === "loading") {
+if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", function() {
             // Check if this is a page refresh
             const isRefresh = sessionStorage.getItem('pageRefreshing') === 'true';
             if (isRefresh) {
                 // Clear the refresh flag and don't show last score
                 sessionStorage.removeItem('pageRefreshing');
-            } else {
-                displayLastScore();
-            }
+} else {
+    displayLastScore();
+}
         });
     } else {
         // Check if this is a page refresh

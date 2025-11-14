@@ -5,8 +5,8 @@ module.exports = {
     foodMass: 1,
     fireFood: 20,
     limitSplit: 16,
-    defaultPlayerMass: 10,
-    minSplitMass: 10,
+    defaultPlayerMass: 20,
+    minSplitMass: 20,
     virus: {
         fill: "#33ff33",
         stroke: "#19D119",
@@ -24,7 +24,7 @@ module.exports = {
     gameMass: 20000,
     maxFood: 1000,
     maxVirus: 50,
-    slowBase: 10,
+    slowBase: 20,
     networkUpdateFactor: 60,
     maxHeartbeatInterval: 5000,
     foodUniformDisposition: true,
@@ -36,8 +36,20 @@ module.exports = {
     arenaCleanupTimeout: 60000, // Milliseconds before cleaning empty arenas (60 seconds)
     maxTotalArenas: 50, // Maximum concurrent arenas (resource limit)
 
+    // Cell movement physics
+    minSpeed: 6.5, // Base movement speed for cells (reduced from 6.25 to slow down convergence)
+    splitCellSpeed: 15, // Initial speed when a cell splits
+    speedDecrement: 0.5, // How quickly split speed decreases
+    minDistance: 50, // Minimum distance from cursor where cells slow down
+    pushingAwaySpeed: 1.5, // Speed at which overlapping cells push away from each other
+    mergeOverlapThreshold: 0.9, // Cells must overlap by this fraction of their radius to merge (0.3 = 30% overlap required)
+    cellInertia: 0.10, // How much inertia cells have (0-1, lower = more inertia/smoother turning, higher = sharper turns)
+    splitControlDelay: 600, // Time in ms before split cells respond to cursor (maintains split momentum)
+
     massLossRate: 1,
     minMassLoss: 50,
+    mergeTimer: 1000, // Time in milliseconds before cells can merge after they are fully separated (0 = immediate merge once separated)
+
     sqlinfo: {
         fileName: "db.sqlite3",
     },

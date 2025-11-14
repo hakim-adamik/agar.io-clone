@@ -4,20 +4,22 @@ const util = require('../lib/util');
 const sat = require('sat');
 const gameLogic = require('../game-logic');
 
-const MIN_SPEED = 6.25;
-const SPLIT_CELL_SPEED = 20;
-const SPEED_DECREMENT = 0.5;
-const MIN_DISTANCE = 50;
-const PUSHING_AWAY_SPEED = 1.1;
-const MERGE_TIMER = 15;
-
 class Cell {
-    constructor(x, y, mass, speed) {
+    constructor(x, y, mass, speed, config) {
         this.x = x;
         this.y = y;
         this.mass = mass;
         this.radius = util.massToRadius(mass);
         this.speed = speed;
+        this.config = config; // Store config for movement calculations
+
+        // Velocity for inertia-based movement
+        this.velocityX = 0;
+        this.velocityY = 0;
+
+        // Split state tracking
+        this.splitTime = null; // When this cell was created from a split
+        this.isSplitCell = false;
     }
 
     setMass(mass) {
@@ -42,29 +44,62 @@ class Cell {
             x: playerX - this.x + playerTarget.x,
             y: playerY - this.y + playerTarget.y
         };
-        var dist = Math.hypot(target.y, target.x)
+        var dist = Math.hypot(target.y, target.x);
         var deg = Math.atan2(target.y, target.x);
         var slowDown = 1;
-        if (this.speed <= MIN_SPEED) {
+        if (this.speed <= this.config.minSpeed) {
             slowDown = util.mathLog(this.mass, slowBase) - initMassLog + 1;
         }
 
-        var deltaY = this.speed * Math.sin(deg) / slowDown;
-        var deltaX = this.speed * Math.cos(deg) / slowDown;
+        // Calculate cursor influence based on split state
+        var cursorInfluence = 1.0; // Default: full cursor control
 
-        if (this.speed > MIN_SPEED) {
-            this.speed -= SPEED_DECREMENT;
-        }
-        if (dist < (MIN_DISTANCE + this.radius)) {
-            deltaY *= dist / (MIN_DISTANCE + this.radius);
-            deltaX *= dist / (MIN_DISTANCE + this.radius);
+        if (this.isSplitCell && this.splitTime !== null) {
+            var splitAge = Date.now() - this.splitTime;
+            var splitDelay = this.config.splitControlDelay || 400;
+
+            if (splitAge < splitDelay) {
+                // During split phase: gradually increase cursor influence from 0% to 100%
+                cursorInfluence = splitAge / splitDelay;
+            } else {
+                // Split phase over, clear split state
+                this.isSplitCell = false;
+                this.splitTime = null;
+            }
         }
 
-        if (!isNaN(deltaY)) {
-            this.y += deltaY;
+        // Calculate target velocity (direction we want to go)
+        var targetVelocityX = this.speed * Math.cos(deg) / slowDown;
+        var targetVelocityY = this.speed * Math.sin(deg) / slowDown;
+
+        // Apply distance-based slowdown
+        if (dist < (this.config.minDistance + this.radius)) {
+            var distanceFactor = dist / (this.config.minDistance + this.radius);
+            targetVelocityX *= distanceFactor;
+            targetVelocityY *= distanceFactor;
         }
-        if (!isNaN(deltaX)) {
-            this.x += deltaX;
+
+        // Blend between current velocity (split momentum) and target velocity (cursor direction)
+        // During split: mostly maintains current direction, gradually transitions to cursor
+        var inertiaFactor = this.config.cellInertia || 0.15;
+        var blendedTargetX = this.velocityX + (targetVelocityX - this.velocityX) * cursorInfluence;
+        var blendedTargetY = this.velocityY + (targetVelocityY - this.velocityY) * cursorInfluence;
+
+        // Interpolate current velocity towards blended target
+        this.velocityX += (blendedTargetX - this.velocityX) * inertiaFactor;
+        this.velocityY += (blendedTargetY - this.velocityY) * inertiaFactor;
+
+        // Apply velocity to position
+        if (!isNaN(this.velocityX)) {
+            this.x += this.velocityX;
+        }
+        if (!isNaN(this.velocityY)) {
+            this.y += this.velocityY;
+        }
+
+        // Decrease speed after split
+        if (this.speed > this.config.minSpeed) {
+            this.speed -= this.config.speedDecrement;
         }
     }
 
@@ -83,20 +118,23 @@ class Cell {
 }
 
 exports.Player = class {
-    constructor(id) {
+    constructor(id, config) {
         this.id = id;
         this.hue = Math.round(Math.random() * 360);
         this.name = null;
         this.admin = false;
         this.screenWidth = null;
         this.screenHeight = null;
-        this.timeToMerge = null;
+        this.config = config; // Store config for all settings
+        this.timeToMerge = null; // Global timer for when cells can merge
+        this.lastSplitTime = 0; // Track last split to prevent spam
+        this.isSplitting = false; // Flag to prevent concurrent splits
         this.setLastHeartbeat();
     }
 
     /* Initalizes things that change with every respawn */
     init(position, defaultPlayerMass) {
-        this.cells = [new Cell(position.x, position.y, defaultPlayerMass, MIN_SPEED)];
+        this.cells = [new Cell(position.x, position.y, defaultPlayerMass, this.config.minSpeed, this.config)];
         this.massTotal = defaultPlayerMass;
         this.defaultPlayerMass = defaultPlayerMass;
         this.x = position.x;
@@ -132,11 +170,17 @@ exports.Player = class {
         this.lastHeartbeat = Date.now();
     }
 
-    setLastSplit() {
-        this.timeToMerge = Date.now() + 1000 * MERGE_TIMER;
+    setMergeTimer() {
+        // Set timer for when cells can merge
+        this.timeToMerge = Date.now() + this.config.mergeTimer;
     }
 
     loseMassIfNeeded(massLossRate, defaultPlayerMass, minMassLoss) {
+        // Safety check: ensure cells array exists
+        if (!this.cells) {
+            return;
+        }
+
         for (let i in this.cells) {
             if (this.cells[i].mass * (1 - (massLossRate / 1000)) > defaultPlayerMass && this.massTotal > minMassLoss) {
                 var massLoss = this.cells[i].mass * (massLossRate / 1000);
@@ -160,24 +204,67 @@ exports.Player = class {
     // Splits a cell into multiple cells with identical mass
     // Creates n-1 new cells, and lowers the mass of the original cell
     // If the resulting cells would be smaller than minSplitMass, creates fewer and bigger cells.
-    splitCell(cellIndex, maxRequestedPieces, minSplitMass) {
+    // splitDirection is optional {x, y} for user-initiated splits towards cursor
+    splitCell(cellIndex, maxRequestedPieces, minSplitMass, splitDirection = null) {
         let cellToSplit = this.cells[cellIndex];
         let maxAllowedPieces = Math.floor(cellToSplit.mass / minSplitMass); // If we split the cell ino more pieces, they will be too small.
         let piecesToCreate = Math.min(maxAllowedPieces, maxRequestedPieces);
-        if (piecesToCreate === 0) {
-            return;
+
+        if (piecesToCreate <= 1) {
+            return; // Need at least 2 pieces to split
         }
+
         let newCellsMass = cellToSplit.mass / piecesToCreate;
-        for (let i = 0; i < piecesToCreate - 1; i++) {
-            this.cells.push(new Cell(cellToSplit.x, cellToSplit.y, newCellsMass, SPLIT_CELL_SPEED));
+
+        // Calculate split velocity if direction provided
+        let splitVelocityX = 0;
+        let splitVelocityY = 0;
+
+        if (splitDirection) {
+            let angle = Math.atan2(splitDirection.y, splitDirection.x);
+            splitVelocityX = this.config.splitCellSpeed * Math.cos(angle);
+            splitVelocityY = this.config.splitCellSpeed * Math.sin(angle);
         }
+
+        for (let i = 0; i < piecesToCreate - 1; i++) {
+            let newCell = new Cell(cellToSplit.x, cellToSplit.y, newCellsMass, this.config.splitCellSpeed, this.config);
+
+            if (splitDirection) {
+                // Mark as split cell and set initial velocity in split direction
+                newCell.isSplitCell = true;
+                newCell.splitTime = Date.now();
+                newCell.velocityX = splitVelocityX;
+                newCell.velocityY = splitVelocityY;
+            } else {
+                // No direction (virus split): inherit parent velocity
+                newCell.velocityX = cellToSplit.velocityX;
+                newCell.velocityY = cellToSplit.velocityY;
+            }
+
+            this.cells.push(newCell);
+        }
+
         cellToSplit.setMass(newCellsMass);
-        this.setLastSplit();
+
+        // Mark the original cell as split to maintain its current momentum (reduced cursor influence)
+        // but DON'T change its velocity - it keeps moving in its current direction
+        if (splitDirection) {
+            cellToSplit.isSplitCell = true;
+            cellToSplit.splitTime = Date.now();
+            // Keep cellToSplit.velocityX and velocityY unchanged - maintains current momentum
+        }
+
+        this.setMergeTimer();
     }
 
     // Performs a split resulting from colliding with a virus.
     // The player will have the highest possible number of cells.
     virusSplit(cellIndexes, maxCells, minSplitMass) {
+        // Safety check: ensure cells array exists
+        if (!this.cells || this.cells.length === 0) {
+            return;
+        }
+
         for (let cellIndex of cellIndexes) {
             this.splitCell(cellIndex, maxCells - this.cells.length + 1, minSplitMass);
         }
@@ -186,9 +273,37 @@ exports.Player = class {
     // Performs a split initiated by the player.
     // Tries to split every cell in half.
     userSplit(maxCells, minSplitMass) {
+        // Prevent concurrent split execution (critical section)
+        if (this.isSplitting) {
+            return; // Already processing a split
+        }
+
+        // Safety check: ensure cells array exists
+        if (!this.cells || this.cells.length === 0) {
+            return;
+        }
+
+        // Prevent split spam with cooldown (150ms minimum between splits)
+        const now = Date.now();
+        const splitCooldown = 150; // milliseconds
+        if (now - this.lastSplitTime < splitCooldown) {
+            return; // Too soon since last split
+        }
+
+        // If already at max cells, can't split anymore
+        if (this.cells.length >= maxCells) {
+            return;
+        }
+
+        // Set flag to block concurrent splits
+        this.isSplitting = true;
+
+        // Update last split time
+        this.lastSplitTime = now;
+
         let cellsToCreate;
         if (this.cells.length > maxCells / 2) { // Not every cell can be split
-            cellsToCreate = maxCells - this.cells.length + 1;
+            cellsToCreate = maxCells - this.cells.length;
 
             this.cells.sort(function (a, b) { // Sort the cells so the biggest ones will be split
                 return b.mass - a.mass;
@@ -198,8 +313,18 @@ exports.Player = class {
         }
 
         for (let i = 0; i < cellsToCreate; i++) {
-            this.splitCell(i, 2, minSplitMass);
+            // Calculate split direction: from cell towards cursor
+            let cell = this.cells[i];
+            let splitDirection = {
+                x: this.x - cell.x + this.target.x,
+                y: this.y - cell.y + this.target.y
+            };
+
+            this.splitCell(i, 2, minSplitMass, splitDirection);
         }
+
+        // Clear flag after split operations complete
+        this.isSplitting = false;
     }
 
     // Loops trough cells, and calls callback with colliding ones
@@ -223,37 +348,86 @@ exports.Player = class {
         this.cells = util.removeNulls(this.cells);
     }
 
-    mergeCollidingCells() {
-        this.enumerateCollidingCells(function (cells, cellAIndex, cellBIndex) {
-            cells[cellAIndex].addMass(cells[cellBIndex].mass);
-            cells[cellBIndex] = null;
-        });
-    }
+    // Loops through cells and calls callback only for cells that overlap enough to merge
+    // Requires cells to overlap by mergeOverlapThreshold fraction of their radius
+    enumerateMergingCells(callback) {
+        const overlapThreshold = this.config.mergeOverlapThreshold || 0;
 
-    pushAwayCollidingCells() {
-        this.enumerateCollidingCells(function (cells, cellAIndex, cellBIndex) {
-            let cellA = cells[cellAIndex],
-                cellB = cells[cellBIndex],
-                vector = new sat.Vector(cellB.x - cellA.x, cellB.y - cellA.y); // vector pointing from A to B
-            vector = vector.normalize().scale(PUSHING_AWAY_SPEED, PUSHING_AWAY_SPEED);
-            if (vector.len() == 0) { // The two cells are perfectly on the top of each other
-                vector = new sat.Vector(0, 1);
+        for (let cellAIndex = 0; cellAIndex < this.cells.length; cellAIndex++) {
+            let cellA = this.cells[cellAIndex];
+            if (!cellA) continue;
+
+            for (let cellBIndex = cellAIndex + 1; cellBIndex < this.cells.length; cellBIndex++) {
+                let cellB = this.cells[cellBIndex];
+                if (!cellB) continue;
+
+                // Calculate distance between cell centers
+                let dx = cellB.x - cellA.x;
+                let dy = cellB.y - cellA.y;
+                let distance = Math.hypot(dx, dy);
+
+                // Calculate required distance for merging (with overlap threshold)
+                // Average radius of both cells, then subtract overlap threshold
+                let avgRadius = (cellA.radius + cellB.radius) / 2;
+                let requiredDistance = cellA.radius + cellB.radius - (avgRadius * overlapThreshold);
+
+                // Only merge if cells overlap enough
+                if (distance < requiredDistance) {
+                    callback(this.cells, cellAIndex, cellBIndex);
+                }
             }
+        }
 
-            cellA.x -= vector.x;
-            cellA.y -= vector.y;
-
-            cellB.x += vector.x;
-            cellB.y += vector.y;
-        });
+        this.cells = util.removeNulls(this.cells);
     }
 
     move(slowBase, gameWidth, gameHeight, initMassLog) {
+        // Safety check: ensure cells array exists
+        if (!this.cells || this.cells.length === 0) {
+            return;
+        }
+
         if (this.cells.length > 1) {
-            if (this.timeToMerge < Date.now()) {
-                this.mergeCollidingCells();
+            // Check if merge timer has elapsed
+            if (this.timeToMerge !== null && Date.now() >= this.timeToMerge) {
+                // Timer elapsed - merge cells that overlap enough
+                this.enumerateMergingCells((cells, cellAIndex, cellBIndex) => {
+                    // Check if cells still exist (may have been merged in previous iteration)
+                    let cellA = cells[cellAIndex];
+                    let cellB = cells[cellBIndex];
+
+                    if (!cellA || !cellB) {
+                        return; // One or both cells already merged, skip
+                    }
+
+                    // Always keep the larger cell's position
+                    if (cellA.mass >= cellB.mass) {
+                        // Cell A is larger - add B's mass to A, delete B
+                        cellA.addMass(cellB.mass);
+                        cells[cellBIndex] = null;
+                    } else {
+                        // Cell B is larger - add A's mass to B, delete A
+                        cellB.addMass(cellA.mass);
+                        cells[cellAIndex] = null;
+                    }
+                });
+                this.cells = util.removeNulls(this.cells);
             } else {
-                this.pushAwayCollidingCells();
+                // Timer not elapsed - push cells apart
+                this.enumerateCollidingCells((cells, cellAIndex, cellBIndex) => {
+                    let cellA = cells[cellAIndex];
+                    let cellB = cells[cellBIndex];
+                    let vector = new sat.Vector(cellB.x - cellA.x, cellB.y - cellA.y);
+                    vector = vector.normalize().scale(this.config.pushingAwaySpeed, this.config.pushingAwaySpeed);
+                    if (vector.len() == 0) {
+                        vector = new sat.Vector(0, 1);
+                    }
+
+                    cellA.x -= vector.x;
+                    cellA.y -= vector.y;
+                    cellB.x += vector.x;
+                    cellB.y += vector.y;
+                });
             }
         }
 
