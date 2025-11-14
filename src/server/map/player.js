@@ -12,9 +12,6 @@ class Cell {
         this.radius = util.massToRadius(mass);
         this.speed = speed;
         this.config = config; // Store config for movement calculations
-        this.canMerge = true; // Track if this specific cell is allowed to merge
-        this.hasSeparated = true; // Track if this cell has separated from siblings after split
-        this.timeToMerge = null; // Per-cell merge timer
     }
 
     setMass(mass) {
@@ -88,6 +85,7 @@ exports.Player = class {
         this.screenWidth = null;
         this.screenHeight = null;
         this.config = config; // Store config for all settings
+        this.timeToMerge = null; // Global timer for when cells can merge
         this.setLastHeartbeat();
     }
 
@@ -129,13 +127,9 @@ exports.Player = class {
         this.lastHeartbeat = Date.now();
     }
 
-    markCellsAsSplit() {
-        // Mark all cells as needing to separate before they can merge
-        for (let cell of this.cells) {
-            cell.canMerge = false;
-            cell.hasSeparated = false;
-            cell.timeToMerge = null;
-        }
+    setMergeTimer() {
+        // Set timer for when cells can merge
+        this.timeToMerge = Date.now() + this.config.mergeTimer;
     }
 
     loseMassIfNeeded(massLossRate, defaultPlayerMass, minMassLoss) {
@@ -174,7 +168,7 @@ exports.Player = class {
             this.cells.push(new Cell(cellToSplit.x, cellToSplit.y, newCellsMass, this.config.splitCellSpeed, this.config));
         }
         cellToSplit.setMass(newCellsMass);
-        this.markCellsAsSplit();
+        this.setMergeTimer();
     }
 
     // Performs a split resulting from colliding with a virus.
@@ -225,62 +219,54 @@ exports.Player = class {
         this.cells = util.removeNulls(this.cells);
     }
 
+    // Loops through cells and calls callback only for cells that overlap enough to merge
+    // Requires cells to overlap by mergeOverlapThreshold fraction of their radius
+    enumerateMergingCells(callback) {
+        const overlapThreshold = this.config.mergeOverlapThreshold || 0;
+
+        for (let cellAIndex = 0; cellAIndex < this.cells.length; cellAIndex++) {
+            let cellA = this.cells[cellAIndex];
+            if (!cellA) continue;
+
+            for (let cellBIndex = cellAIndex + 1; cellBIndex < this.cells.length; cellBIndex++) {
+                let cellB = this.cells[cellBIndex];
+                if (!cellB) continue;
+
+                // Calculate distance between cell centers
+                let dx = cellB.x - cellA.x;
+                let dy = cellB.y - cellA.y;
+                let distance = Math.hypot(dx, dy);
+
+                // Calculate required distance for merging (with overlap threshold)
+                // Average radius of both cells, then subtract overlap threshold
+                let avgRadius = (cellA.radius + cellB.radius) / 2;
+                let requiredDistance = cellA.radius + cellB.radius - (avgRadius * overlapThreshold);
+
+                // Only merge if cells overlap enough
+                if (distance < requiredDistance) {
+                    callback(this.cells, cellAIndex, cellBIndex);
+                }
+            }
+        }
+
+        this.cells = util.removeNulls(this.cells);
+    }
+
     move(slowBase, gameWidth, gameHeight, initMassLog) {
         if (this.cells.length > 1) {
-            // Track which cells are currently colliding with any other cell
-            const collidingCellIndexes = new Set();
-
-            // Check all pairs for collisions
-            for (let cellAIndex = 0; cellAIndex < this.cells.length; cellAIndex++) {
-                let cellA = this.cells[cellAIndex];
-                if (!cellA) continue;
-
-                for (let cellBIndex = cellAIndex + 1; cellBIndex < this.cells.length; cellBIndex++) {
-                    let cellB = this.cells[cellBIndex];
-                    if (!cellB) continue;
-
-                    let colliding = sat.testCircleCircle(cellA.toCircle(), cellB.toCircle());
-                    if (colliding) {
-                        collidingCellIndexes.add(cellAIndex);
-                        collidingCellIndexes.add(cellBIndex);
-                    }
-                }
-            }
-
-            // Update separation status and timers for each cell
-            const now = Date.now();
-            for (let i = 0; i < this.cells.length; i++) {
-                let cell = this.cells[i];
-                if (!cell) continue;
-
-                // If this cell is not colliding with anyone and hasn't separated yet
-                if (!collidingCellIndexes.has(i) && !cell.hasSeparated) {
-                    // Mark as separated and start merge timer
-                    cell.hasSeparated = true;
-                    cell.timeToMerge = now + this.config.mergeTimer;
-                }
-
-                // Update canMerge status based on timer
-                if (cell.hasSeparated && cell.timeToMerge !== null && now >= cell.timeToMerge) {
-                    cell.canMerge = true;
-                }
-            }
-
-            // Merge or push away cells based on their individual merge status
-            this.enumerateCollidingCells((cells, cellAIndex, cellBIndex) => {
-                let cellA = cells[cellAIndex];
-                let cellB = cells[cellBIndex];
-
-                // Only merge if BOTH cells are allowed to merge
-                if (cellA.canMerge && cellB.canMerge) {
-                    cellA.addMass(cellB.mass);
-                    // Reset merge state for the merged cell
-                    cellA.canMerge = true;
-                    cellA.hasSeparated = true;
-                    cellA.timeToMerge = null;
+            // Check if merge timer has elapsed
+            if (this.timeToMerge !== null && Date.now() >= this.timeToMerge) {
+                // Timer elapsed - merge cells that overlap enough
+                this.enumerateMergingCells((cells, cellAIndex, cellBIndex) => {
+                    cells[cellAIndex].addMass(cells[cellBIndex].mass);
                     cells[cellBIndex] = null;
-                } else {
-                    // Push them apart
+                });
+                this.cells = util.removeNulls(this.cells);
+            } else {
+                // Timer not elapsed - push cells apart
+                this.enumerateCollidingCells((cells, cellAIndex, cellBIndex) => {
+                    let cellA = cells[cellAIndex];
+                    let cellB = cells[cellBIndex];
                     let vector = new sat.Vector(cellB.x - cellA.x, cellB.y - cellA.y);
                     vector = vector.normalize().scale(this.config.pushingAwaySpeed, this.config.pushingAwaySpeed);
                     if (vector.len() == 0) {
@@ -291,10 +277,8 @@ exports.Player = class {
                     cellA.y -= vector.y;
                     cellB.x += vector.x;
                     cellB.y += vector.y;
-                }
-            });
-
-            this.cells = util.removeNulls(this.cells);
+                });
+            }
         }
 
         let xSum = 0, ySum = 0;

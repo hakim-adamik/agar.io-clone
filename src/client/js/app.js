@@ -866,6 +866,8 @@ function setupSocket(socket) {
         console.log("[Socket] Reconnected after " + attemptNumber + " attempts");
         // Optionally show success message briefly
         if (global.gameStart) {
+            // Reset animations on reconnect to ensure clean state
+            cellAnimations.reset();
             // Request fresh game state after reconnection
             socket.emit("respawn");
         }
@@ -926,6 +928,10 @@ function setupSocket(socket) {
             global.arenaId = gameSizes.arenaId;
             console.log(`[CLIENT] Joined arena: ${gameSizes.arenaId}`);
         }
+
+        // Reset cell animations for new game session
+        cellAnimations.reset();
+
         c.focus();
         global.game.width = gameSizes.width;
         global.game.height = gameSizes.height;
@@ -1116,6 +1122,9 @@ function setupSocket(socket) {
                 currentPlayerIds[userData[i].id] = true;
             }
 
+            // Add current player to active IDs for animation cleanup
+            currentPlayerIds[player.id] = true;
+
             // Remove disconnected players from prediction states
             for (var playerId in prediction.otherPlayers.states) {
                 if (!currentPlayerIds[playerId] && playerId != player.id) {
@@ -1123,9 +1132,22 @@ function setupSocket(socket) {
                 }
             }
 
+            // Clean up animation states for disconnected players
+            cellAnimations.cleanupDisconnectedPlayers(currentPlayerIds);
+
             for (var i = 0; i < userData.length; i++) {
                 var user = userData[i];
-                if (user.id === player.id) continue; // Skip current player
+
+                // Detect merges for all players (including current player in userData)
+                try {
+                    if (cellAnimations && user && user.cells) {
+                        cellAnimations.detectMerges(user.id, user.cells);
+                    }
+                } catch (err) {
+                    console.error('[CellAnimations] Error detecting merges:', err);
+                }
+
+                if (user.id === player.id) continue; // Skip current player for prediction
 
                 var playerId = user.id;
                 if (!prediction.otherPlayers.states[playerId]) {
@@ -1342,6 +1364,233 @@ var prediction = {
     }
 };
 
+// Cell merge animation system
+class CellAnimations {
+    constructor(duration = 500) {
+        // Map of "playerId_cellIndex" -> { startRadius, targetRadius, startTime, duration }
+        this.animations = {};
+
+        // Animation duration in milliseconds
+        this.duration = duration;
+
+        // Track cell states to detect merges
+        // Map of playerId -> [{ x, y, mass, radius }]
+        this.previousCellStates = {};
+    }
+
+    // Start a new merge animation for a cell
+    startAnimation(playerId, cellIndex, startRadius, targetRadius) {
+        const key = `${playerId}_${cellIndex}`;
+
+        // Don't restart an animation that's already in progress
+        // Only start a new one if there's no existing animation or if the target changed significantly
+        const existingAnimation = this.animations[key];
+        if (existingAnimation) {
+            const targetDiff = Math.abs(existingAnimation.targetRadius - targetRadius);
+            if (targetDiff < 5) {
+                // Target is similar, don't restart the animation
+                return;
+            }
+        }
+
+        const now = getTime();
+        this.animations[key] = {
+            startRadius: startRadius,
+            targetRadius: targetRadius,
+            startTime: now,
+            duration: this.duration
+        };
+        console.log(`[CellAnimations] Started animation for ${key}: ${startRadius.toFixed(1)} → ${targetRadius.toFixed(1)}`);
+    }
+
+    // Get the current animated radius for a cell
+    getAnimatedRadius(playerId, cellIndex, actualRadius) {
+        const key = `${playerId}_${cellIndex}`;
+        const animation = this.animations[key];
+
+        if (!animation) {
+            return actualRadius; // No animation, use actual radius
+        }
+
+        const now = getTime();
+        const elapsed = now - animation.startTime;
+
+        if (elapsed >= animation.duration) {
+            // Animation complete
+            console.log(`[CellAnimations] Animation complete for ${key}`);
+            delete this.animations[key];
+            return actualRadius;
+        }
+
+        // Ease-out interpolation for smooth animation
+        const progress = elapsed / animation.duration;
+        const easeProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
+
+        const currentRadius = animation.startRadius + (animation.targetRadius - animation.startRadius) * easeProgress;
+
+        // Log occasionally to avoid spam (only first few frames)
+        if (elapsed < 100) {
+            console.log(`[CellAnimations] Animating ${key}: progress=${(progress*100).toFixed(1)}%, radius=${currentRadius.toFixed(1)}`);
+        }
+
+        return currentRadius;
+    }
+
+    // Detect merges by comparing cell states
+    detectMerges(playerId, newCells) {
+        const previousCells = this.previousCellStates[playerId];
+
+        if (!previousCells || previousCells.length === 0) {
+            // First time seeing this player, just store the state
+            this.previousCellStates[playerId] = this.cloneCellStates(newCells);
+            return;
+        }
+
+        // If cell count decreased, cells merged
+        if (newCells.length < previousCells.length) {
+            // Find which cells grew (received mass from merged cells)
+            for (let i = 0; i < newCells.length; i++) {
+                const newCell = newCells[i];
+
+                if (!newCell || typeof newCell.x !== 'number' || typeof newCell.y !== 'number') {
+                    continue; // Skip invalid cells
+                }
+
+                // Find all nearby previous cells (potential merge candidates)
+                const nearbyCells = this.findNearbyCells(newCell, previousCells, 200);
+
+                if (nearbyCells && nearbyCells.length > 0) {
+                    // Use the largest nearby cell's radius as the starting point
+                    const largestPrevCell = nearbyCells.reduce((max, cell) =>
+                        (cell && cell.radius > max.radius) ? cell : max
+                    );
+
+                    if (largestPrevCell && newCell.mass > largestPrevCell.mass * 1.2) {
+                        // Mass increased significantly, this cell absorbed another
+                        // Start animation from the largest cell's radius to new radius
+                        this.startAnimation(playerId, i, largestPrevCell.radius, newCell.radius);
+                    }
+                }
+            }
+        } else if (newCells.length === previousCells.length) {
+            // Same number of cells, check if any grew significantly
+            for (let i = 0; i < newCells.length; i++) {
+                const newCell = newCells[i];
+                const matchedPrevCell = this.findMatchingCell(newCell, previousCells);
+
+                if (matchedPrevCell && newCell.mass > matchedPrevCell.mass * 1.2) {
+                    // Mass increased significantly (ate something big or merged)
+                    this.startAnimation(playerId, i, matchedPrevCell.radius, newCell.radius);
+                }
+            }
+        }
+
+        // Update stored state
+        this.previousCellStates[playerId] = this.cloneCellStates(newCells);
+    }
+
+    // Find matching cell in previous state by proximity
+    findMatchingCell(cell, previousCells) {
+        let closestCell = null;
+        let closestDistance = Infinity;
+
+        for (let i = 0; i < previousCells.length; i++) {
+            const prevCell = previousCells[i];
+            const dx = cell.x - prevCell.x;
+            const dy = cell.y - prevCell.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Cell should be relatively close (within 200 units)
+            if (distance < 200 && distance < closestDistance) {
+                closestDistance = distance;
+                closestCell = prevCell;
+            }
+        }
+
+        return closestCell;
+    }
+
+    // Find all nearby cells within a given distance
+    findNearbyCells(cell, previousCells, maxDistance) {
+        const nearbyCells = [];
+
+        if (!cell || !previousCells || !Array.isArray(previousCells)) {
+            return nearbyCells;
+        }
+
+        for (let i = 0; i < previousCells.length; i++) {
+            const prevCell = previousCells[i];
+            if (!prevCell || typeof prevCell.x !== 'number' || typeof prevCell.y !== 'number') {
+                continue;
+            }
+
+            const dx = cell.x - prevCell.x;
+            const dy = cell.y - prevCell.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < maxDistance) {
+                nearbyCells.push(prevCell);
+            }
+        }
+
+        return nearbyCells;
+    }
+
+    // Clone cell states for comparison
+    cloneCellStates(cells) {
+        const cloned = [];
+        if (!cells || !Array.isArray(cells)) {
+            return cloned;
+        }
+
+        for (let i = 0; i < cells.length; i++) {
+            const cell = cells[i];
+            if (cell && typeof cell.x === 'number' && typeof cell.y === 'number' &&
+                typeof cell.mass === 'number' && typeof cell.radius === 'number') {
+                cloned.push({
+                    x: cell.x,
+                    y: cell.y,
+                    mass: cell.mass,
+                    radius: cell.radius
+                });
+            }
+        }
+        return cloned;
+    }
+
+    // Clean up old player states
+    cleanupDisconnectedPlayers(activePlayerIds) {
+        for (const playerId in this.previousCellStates) {
+            if (!activePlayerIds[playerId]) {
+                delete this.previousCellStates[playerId];
+            }
+        }
+
+        // Also clean up animations for disconnected players
+        for (const key in this.animations) {
+            const playerId = key.split('_')[0];
+            if (!activePlayerIds[playerId]) {
+                delete this.animations[key];
+            }
+        }
+    }
+
+    // Reset all animations and states
+    reset() {
+        this.animations = {};
+        this.previousCellStates = {};
+        console.log('[CellAnimations] Reset - animations and states cleared');
+    }
+
+    // Debug helper to log active animations count
+    logActiveAnimations() {
+        const count = Object.keys(this.animations).length;
+        if (count > 0) {
+            console.log(`[CellAnimations] Active animations: ${count}`, Object.keys(this.animations));
+        }
+    }
+}
+
 // Initialize FPS counter visibility from localStorage
 (function () {
     global.fpsCounter = fpsCounter;
@@ -1372,6 +1621,20 @@ var getTime = (function () {
         };
     }
 })();
+
+// Create cell animations instance after getTime is available
+var cellAnimations = new CellAnimations();
+console.log('[CellAnimations] Initialized with duration:', cellAnimations.duration);
+
+// Debug: log active animations periodically
+var lastAnimationLogTime = 0;
+function debugLogAnimations() {
+    var now = Date.now();
+    if (now - lastAnimationLogTime > 2000) {  // Every 2 seconds
+        cellAnimations.logActiveAnimations();
+        lastAnimationLogTime = now;
+    }
+}
 
 function animloop() {
     var currentTime = getTime();
@@ -1493,6 +1756,9 @@ var socketEmitInterval = 16; // ~60fps for socket updates (every ~16ms)
 
 function gameLoop() {
     if (global.gameStart) {
+        // Debug: log active animations periodically
+        debugLogAnimations();
+
         // Client-side prediction: extrapolate positions forward based on velocity
         if (prediction.enabled) {
             var now = getTime();
@@ -1653,13 +1919,28 @@ function gameLoop() {
                 let screenY =
                     users[i].cells[j].y - player.y + global.screen.height / 2;
 
-                // Client-side viewport culling for cells
+                // Get animated radius for smooth merge animation
+                let actualRadius = users[i].cells[j].radius;
+                let animatedRadius = actualRadius;
+                try {
+                    if (cellAnimations) {
+                        animatedRadius = cellAnimations.getAnimatedRadius(users[i].id, j, actualRadius);
+                        // Log if animation is different from actual (only occasionally to avoid spam)
+                        if (Math.abs(animatedRadius - actualRadius) > 0.1 && Math.random() < 0.01) {
+                            console.log(`[Render] Cell ${users[i].id}_${j}: actual=${actualRadius.toFixed(1)}, animated=${animatedRadius.toFixed(1)}`);
+                        }
+                    }
+                } catch (err) {
+                    console.error('[CellAnimations] Error getting animated radius:', err);
+                }
+
+                // Client-side viewport culling for cells (use animated radius for visibility check)
                 if (
                     isEntityVisible(
                         {
                             x: screenX,
                             y: screenY,
-                            radius: users[i].cells[j].radius,
+                            radius: animatedRadius,
                         },
                         global.screen
                     )
@@ -1670,7 +1951,7 @@ function gameLoop() {
                         mass: users[i].cells[j].mass,
                         score: users[i].cells[j].score || 0,
                         name: users[i].name,
-                        radius: users[i].cells[j].radius,
+                        radius: animatedRadius, // Use animated radius for rendering
                         x: screenX,
                         y: screenY,
                         isCurrentPlayer: isCurrentPlayer,
@@ -1797,6 +2078,9 @@ function cleanupGame() {
             timestamp: 0
         }
     };
+
+    // Reset cell animations
+    cellAnimations.reset();
 
     // Reset player
     player = {

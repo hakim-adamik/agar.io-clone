@@ -7,7 +7,7 @@ module.exports = {
     limitSplit: 16,
     //defaultPlayerMass: 10,
     // FIXME DEBUG TBR
-    defaultPlayerMass: 100,
+    defaultPlayerMass: 160,
     minSplitMass: 10,
     virus: {
         fill: "#33ff33",
@@ -39,11 +39,12 @@ module.exports = {
     maxTotalArenas: 50, // Maximum concurrent arenas (resource limit)
 
     // Cell movement physics
-    minSpeed: 6.5, // Base movement speed for cells (reduced from 6.25 to slow down convergence)
+    minSpeed: 5.5, // Base movement speed for cells (reduced from 6.25 to slow down convergence)
     splitCellSpeed: 20, // Initial speed when a cell splits
     speedDecrement: 0.5, // How quickly split speed decreases
-    minDistance: 150, // Minimum distance from cursor where cells slow down
-    pushingAwaySpeed: 1.1, // Speed at which overlapping cells push away from each other
+    minDistance: 50, // Minimum distance from cursor where cells slow down
+    pushingAwaySpeed: 1.5, // Speed at which overlapping cells push away from each other
+    mergeOverlapThreshold: 0.9, // Cells must overlap by this fraction of their radius to merge (0.3 = 30% overlap required)
 
     massLossRate: 1,
     minMassLoss: 50,
