@@ -162,14 +162,29 @@ class Arena {
     setupPlayerEvents(socket, currentPlayer) {
         // Respawn handler - client sends this first to request spawn
         socket.on("respawn", () => {
+            // Remove any existing player data
             this.map.players.removePlayerByID(currentPlayer.id);
+
+            // IMPORTANT: Reinitialize the player with fresh state
+            // This ensures they get new cells and can move
+            currentPlayer.init(
+                this.generateSpawnpoint(),
+                this.config.defaultPlayerMass
+            );
+
+            // Reset player stats for fresh spawn
+            currentPlayer.cells = [];
+            currentPlayer.massTotal = 0;
+
+            // Send welcome with the reinitialized player
             socket.emit("welcome", currentPlayer, {
                 width: this.config.gameWidth,
                 height: this.config.gameHeight,
                 arenaId: this.id,
             });
+
             console.log(
-                `[ARENA ${this.id}] User ${currentPlayer.name} respawned`
+                `[ARENA ${this.id}] User ${currentPlayer.name} respawned with fresh state`
             );
             this.lastActivityAt = Date.now();
         });
@@ -518,8 +533,20 @@ class Arena {
                 this.broadcastToArena("playerDied", {
                     name: playerGotEaten.name,
                 });
+
+                // Send RIP event to the dead player
                 this.sockets[playerGotEaten.id].emit("RIP");
+
+                // Remove player from map
                 this.map.players.removePlayerByIndex(gotEaten.playerIndex);
+
+                // IMPORTANT: Clean up socket connection to force fresh respawn
+                // Remove from sockets dictionary
+                delete this.sockets[playerGotEaten.id];
+
+                // Force disconnect to ensure clean reconnection
+                // The socket will be disconnected by the client, but we remove our reference
+                console.log(`[ARENA ${this.id}] Player ${playerGotEaten.name} died and removed from arena`);
             }
         });
     }

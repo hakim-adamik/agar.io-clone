@@ -1486,6 +1486,9 @@ function setupSocket(socket) {
         viruses = [];
         fireFood = [];
 
+        // Clear arena ID to avoid conflicts - server will assign the appropriate arena
+        global.arenaId = null;
+
         // Stop background music when player dies
         try {
             const backgroundMusic = document.getElementById('background_music');
@@ -2062,13 +2065,13 @@ function resize() {
 
 // Exit Game Functionality
 var exitCountdownTimer = null;
-var exitCountdownValue = 5;
+var exitCountdownValue = 4;
 var exitCountdownActive = false;
 
 function exitGame() {
     // Start countdown
     exitCountdownActive = true;
-    exitCountdownValue = 5;
+    exitCountdownValue = 4;
 
     // Start countdown timer
     exitCountdownTimer = setInterval(function () {
