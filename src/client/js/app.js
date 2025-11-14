@@ -62,7 +62,7 @@ function applyDefaultGameSettings() {
 
 // Load user preferences from server
 function loadUserPreferences(userId) {
-    fetch("/api/user/" + userId + "/preferences")
+    return fetch("/api/user/" + userId + "/preferences")
         .then(function (response) {
             if (!response.ok) throw new Error("Failed to load preferences");
             return response.json();
@@ -126,6 +126,16 @@ function applyUserPreferences(prefs) {
         global.showGrid = prefs.showGrid === true;
     }
 
+    // Apply sound enabled
+    if (prefs.soundEnabled !== undefined) {
+        global.soundEnabled = prefs.soundEnabled === true;
+    }
+
+    // Apply music enabled
+    if (prefs.musicEnabled !== undefined) {
+        global.musicEnabled = prefs.musicEnabled === true;
+    }
+
     // Sync checkbox states
     syncSettingsCheckboxes();
 }
@@ -164,6 +174,14 @@ function applyConfigDefaults(settings) {
 
     if (defaults.showFps !== undefined) {
         global.showFpsCounter = defaults.showFps;
+    }
+
+    if (defaults.soundEnabled !== undefined) {
+        global.soundEnabled = defaults.soundEnabled;
+    }
+
+    if (defaults.musicEnabled !== undefined) {
+        global.musicEnabled = defaults.musicEnabled;
     }
 
     // Sync checkbox states
@@ -207,95 +225,164 @@ function startGame(type) {
         .substring(0, 25);
     global.playerType = type;
 
+    global.screen.width = window.innerWidth;
+    global.screen.height = window.innerHeight;
+
+
+    // Function to set up seamless background music
+    function setupBackgroundMusic() {
+        try {
+            const backgroundMusic = document.getElementById('background_music');
+            if (backgroundMusic && global.musicEnabled) {
+                backgroundMusic.volume = 0.1; // Background music at 10% volume
+                backgroundMusic.loop = true; // Ensure looping is enabled
+
+                // Remove any existing event listeners to prevent duplicates
+                backgroundMusic.removeEventListener('ended', window.musicLoopHandler);
+
+                // Create named handler for seamless looping
+                window.musicLoopHandler = function() {
+                    if (global.musicEnabled && global.gameStart) {
+                        this.currentTime = 0;
+                        this.play().catch(console.log);
+                    }
+                };
+
+                // Add seamless looping event listener to prevent gaps
+                backgroundMusic.addEventListener('ended', window.musicLoopHandler);
+                backgroundMusic.play().catch(console.log);
+            }
+        } catch (e) {
+            console.log('Background music not available:', e);
+        }
+    }
+
+    // Function to continue game start after preferences are loaded
+    function continueGameStart() {
+        // Seamless transition from landing to game
+        var landingView = document.getElementById("landingView");
+        var gameView = document.getElementById("gameView");
+
+        if (landingView && gameView) {
+            // Completely hide the landing view
+            landingView.style.display = "none";
+            gameView.style.display = "block";
+            setTimeout(function () {
+                document.getElementById("gameAreaWrapper").style.opacity = 1;
+            }, 50);
+
+            // Start background music if enabled (after preferences are loaded)
+            setupBackgroundMusic();
+        } else {
+            // Fallback for old flow
+            document.getElementById("startMenuWrapper").style.maxHeight = "0px";
+            document.getElementById("gameAreaWrapper").style.opacity = 1;
+
+            // Start background music (fallback flow) if enabled
+            setupBackgroundMusic();
+        }
+
+        // Show the player score display when game starts
+        var playerScoreEl = document.getElementById("playerScore");
+        if (playerScoreEl) {
+            playerScoreEl.style.display = "block";
+        }
+
+        // ALWAYS create a new socket connection when starting the game
+        // Even if socket exists, we need a fresh connection after death
+        console.log("[Socket] Current socket state:", socket ? "exists" : "null");
+
+        // Clean up any existing socket first
+        if (socket) {
+            console.log("[Socket] Cleaning up existing socket before creating new one");
+            socket.disconnect();
+            socket = null;
+            window.canvas.socket = null;
+            global.socket = null;
+        }
+
+        // Now create the new socket
+        {
+            // Get user data from localStorage (if authenticated)
+            let userData = null;
+            try {
+                const privyUserStr = localStorage.getItem("privy_user");
+                if (privyUserStr) {
+                    userData = JSON.parse(privyUserStr);
+                }
+            } catch (e) {
+                console.error("[Socket] Failed to parse user data:", e);
+            }
+
+            // Build query params including user data
+            const queryParams = {
+                type: type,
+                arenaId: global.arenaId || null,
+                userId: userData?.dbUserId || null,
+                playerName:
+                    playerNameInput.value ||
+                    userData?.username ||
+                    `Guest_${Math.floor(Math.random() * 10000)}`,
+            };
+
+            // Convert to query string
+            const query = Object.keys(queryParams)
+                .filter((key) => queryParams[key] !== null)
+                .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
+                .join("&");
+
+            // Clean up any existing socket connection
+            if (socket) {
+                console.log("[Socket] Cleaning up previous connection");
+                socket.disconnect();
+                socket = null;
+                window.canvas.socket = null;
+                global.socket = null;
+            }
+
+            // Always create new socket after cleanup (with or without delay)
+            createNewSocket(query);
+
+            function createNewSocket(queryString) {
+                // Socket.io configuration optimized for real-time gaming
+                socket = io({
+                    query: queryString,
+                    // Prioritize WebSocket, fallback to polling
+                    transports: ['websocket', 'polling'],
+                    // Reconnection settings
+                    reconnection: true,
+                    reconnectionDelay: 1000,      // Start with 1s delay
+                    reconnectionDelayMax: 5000,   // Max 5s between attempts
+                    reconnectionAttempts: 10,     // Try 10 times before giving up
+                    // Timeouts
+                    timeout: 20000,               // 20s connection timeout
+                    // Upgrade settings
+                    upgrade: true,
+                    rememberUpgrade: true,
+                    // Ping/pong already configured server-side
+                });
+                setupSocket(socket);
+
+                // Now that socket is created, we can emit and set it up
+                if (!global.animLoopHandle) animloop();
+                socket.emit("respawn");
+                window.canvas.socket = socket;
+                global.socket = socket;
+            } // Close createNewSocket function
+        } // Close socket creation block
+    } // Close continueGameStart function
+
     // Load user preferences when starting the game
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
         console.log('Loading user preferences for game start, userId:', privyUser.dbUserId);
-        loadUserPreferences(privyUser.dbUserId);
+        loadUserPreferences(privyUser.dbUserId).then(continueGameStart);
     } else {
         console.log('No authenticated user, applying default settings');
         applyConfigDefaults();
+        continueGameStart();
     }
-
-    global.screen.width = window.innerWidth;
-    global.screen.height = window.innerHeight;
-
-    // Seamless transition from landing to game
-    var landingView = document.getElementById("landingView");
-    var gameView = document.getElementById("gameView");
-
-    if (landingView && gameView) {
-        // Completely hide the landing view
-        landingView.style.display = "none";
-        gameView.style.display = "block";
-        setTimeout(function () {
-            document.getElementById("gameAreaWrapper").style.opacity = 1;
-        }, 50);
-    } else {
-        // Fallback for old flow
-        document.getElementById("startMenuWrapper").style.maxHeight = "0px";
-        document.getElementById("gameAreaWrapper").style.opacity = 1;
-    }
-
-    // Show the player score display when game starts
-    var playerScoreEl = document.getElementById("playerScore");
-    if (playerScoreEl) {
-        playerScoreEl.style.display = "block";
-    }
-
-    if (!socket) {
-        // Get user data from localStorage (if authenticated)
-        let userData = null;
-        try {
-            const privyUserStr = localStorage.getItem("privy_user");
-            if (privyUserStr) {
-                userData = JSON.parse(privyUserStr);
-            }
-        } catch (e) {
-            console.error("[Socket] Failed to parse user data:", e);
-        }
-
-        // Build query params including user data
-        const queryParams = {
-            type: type,
-            arenaId: global.arenaId || null,
-            userId: userData?.dbUserId || null,
-            playerName:
-                playerNameInput.value ||
-                userData?.username ||
-                `Guest_${Math.floor(Math.random() * 10000)}`,
-        };
-
-        // Convert to query string
-        const query = Object.keys(queryParams)
-            .filter((key) => queryParams[key] !== null)
-            .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
-            .join("&");
-
-        // Socket.io configuration optimized for real-time gaming
-        socket = io({
-            query,
-            // Prioritize WebSocket, fallback to polling
-            transports: ['websocket', 'polling'],
-            // Reconnection settings
-            reconnection: true,
-            reconnectionDelay: 1000,      // Start with 1s delay
-            reconnectionDelayMax: 5000,   // Max 5s between attempts
-            reconnectionAttempts: 10,     // Try 10 times before giving up
-            // Timeouts
-            timeout: 20000,               // 20s connection timeout
-            // Upgrade settings
-            upgrade: true,
-            rememberUpgrade: true,
-            // Ping/pong already configured server-side
-        });
-        setupSocket(socket);
-    }
-    if (!global.animLoopHandle) animloop();
-    socket.emit("respawn");
-    window.canvas.socket = socket;
-    global.socket = socket;
-}
+} // End of startGame function
 
 // Checks if the nick chosen contains valid alphanumeric characters (and underscores).
 function validNick() {
@@ -809,6 +896,7 @@ var graph = c.getContext("2d");
 $("#feed").on("click touchstart", function (e) {
     e.preventDefault();
     e.stopPropagation();
+    playSoundEffect('eject_mass_sound');
     socket.emit("1");
     window.canvas.reenviar = false;
 });
@@ -817,6 +905,9 @@ $("#feed").on("click touchstart", function (e) {
 $("#split").on("click touchstart", function (e) {
     e.preventDefault();
     e.stopPropagation();
+    if (global.soundEnabled) {
+        document.getElementById('split_cell').play();
+    }
     socket.emit("2");
     window.canvas.reenviar = false;
 });
@@ -1045,6 +1136,26 @@ function setupSocket(socket) {
         // Player join notification removed (chat feature removed)
     });
 
+    socket.on("playerEaten", (data) => {
+        // Play player eaten sound when current player eats another player
+        console.log(`🍽️ Player eaten: ${data.eatenPlayerName} (+${data.massGained} mass)`);
+
+        if (global.soundEnabled) {
+            try {
+                const playerEatenSound = document.getElementById('player_eaten_sound');
+                if (playerEatenSound) {
+                    playerEatenSound.volume = 0.5;
+                    playerEatenSound.currentTime = 0;
+                    playerEatenSound.play().catch(function(e) {
+                        console.log('Player eaten sound playback failed:', e);
+                    });
+                }
+            } catch (e) {
+                console.log('Player eaten sound not available:', e);
+            }
+        }
+    });
+
     function renderLeaderboard(data) {
         leaderboard = data.leaderboard;
         var statusEl = document.getElementById("status");
@@ -1231,6 +1342,50 @@ function setupSocket(socket) {
                         } else {
                             // Cell count changed (split/merge) - reset velocities
                             prediction.cellVelocities = [];
+
+                            // Detect merge vs split
+                            var previousCellCount = prediction.previous.cells.length;
+                            var currentCellCount = prediction.current.cells.length;
+
+                            if (currentCellCount < previousCellCount) {
+                                // MERGE DETECTED! Cells merged back together
+                                console.log(`🔄 Cells merged! ${previousCellCount} → ${currentCellCount}`);
+
+                                // Play remerge sound if sound is enabled
+                                if (global.soundEnabled) {
+                                    try {
+                                        const remergeSoundEl = document.getElementById('remerge_cell');
+                                        if (remergeSoundEl) {
+                                            remergeSoundEl.volume = 0.5;
+                                            remergeSoundEl.currentTime = 0;
+                                            remergeSoundEl.play().catch(function(e) {
+                                                console.log('Remerge sound playback failed:', e);
+                                            });
+                                        }
+                                    } catch (e) {
+                                        console.log('Remerge sound not available:', e);
+                                    }
+                                }
+                            } else if (currentCellCount > previousCellCount) {
+                                // SPLIT DETECTED! Virus collision caused cell split
+                                console.log(`💥 Virus split! ${previousCellCount} → ${currentCellCount}`);
+
+                                // Play virus split sound if sound is enabled
+                                if (global.soundEnabled) {
+                                    try {
+                                        const virusSplitSound = document.getElementById('virus_split_sound');
+                                        if (virusSplitSound) {
+                                            virusSplitSound.volume = 0.5;
+                                            virusSplitSound.currentTime = 0;
+                                            virusSplitSound.play().catch(function(e) {
+                                                console.log('Virus split sound playback failed:', e);
+                                            });
+                                        }
+                                    } catch (e) {
+                                        console.log('Virus split sound not available:', e);
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -1329,9 +1484,53 @@ function setupSocket(socket) {
         }
 
         global.gameStart = false;
-        render.drawErrorMessage("You died!", graph, global.screen);
-        window.setTimeout(() => {
-            // Return to landing page instead of old menu
+
+        // Clear game state to prevent issues on quick replay
+        player = null;
+        users = [];
+        leaderboard = [];
+        target = {
+            x: global.playerX,
+            y: global.playerY
+        };
+        foods = [];
+        viruses = [];
+        fireFood = [];
+
+        // Clear arena ID to avoid conflicts - server will assign the appropriate arena
+        global.arenaId = null;
+
+        // Stop background music when player dies
+        try {
+            const backgroundMusic = document.getElementById('background_music');
+            if (backgroundMusic) {
+                backgroundMusic.pause();
+                backgroundMusic.currentTime = 0;
+            }
+        } catch (e) {
+            console.log('Error stopping background music on death:', e);
+        }
+
+        // Removed: render.drawErrorMessage("You died!", graph, global.screen);
+        // Now we go directly to landing page with notification
+
+        // Play loss sound effect when player dies
+        if (global.soundEnabled) {
+            try {
+                const lossSound = document.getElementById('loss_sound');
+                if (lossSound) {
+                    lossSound.volume = 0.7; // Slightly louder for dramatic effect
+                    lossSound.currentTime = 0;
+                    lossSound.play().catch(function(e) {
+                        console.log('Loss sound playback failed:', e);
+                    });
+                }
+            } catch (e) {
+                console.log('Loss sound not available:', e);
+            }
+        }
+
+        // Immediately return to landing page instead of old menu
             var landingView = document.getElementById("landingView");
             var gameView = document.getElementById("gameView");
 
@@ -1349,8 +1548,9 @@ function setupSocket(socket) {
                 // Show landing view
                 landingView.style.display = "block";
 
-                // Display last score
-                displayLastScore();
+                // Display last score with death styling
+                displayLastScore(true);
+
 
                 // Cleanup
                 if (global.animLoopHandle) {
@@ -1358,10 +1558,12 @@ function setupSocket(socket) {
                     global.animLoopHandle = undefined;
                 }
 
-                // Disconnect socket
+                // Disconnect socket and clear all references
                 if (socket) {
                     socket.disconnect();
                     socket = null;
+                    window.canvas.socket = null;
+                    global.socket = null;
                 }
             } else {
                 // Fallback to old menu if landing page not found
@@ -1373,7 +1575,6 @@ function setupSocket(socket) {
                     global.animLoopHandle = undefined;
                 }
             }
-        }, 2500);
     });
 
     socket.on("kick", function (reason) {
@@ -1847,7 +2048,8 @@ function gameLoop() {
 window.addEventListener("resize", resize);
 
 function resize() {
-    if (!socket) return;
+    // Check both socket and player exist before trying to resize
+    if (!socket || !player) return;
 
     player.screenWidth =
         c.width =
@@ -1875,13 +2077,13 @@ function resize() {
 
 // Exit Game Functionality
 var exitCountdownTimer = null;
-var exitCountdownValue = 5;
+var exitCountdownValue = 4;
 var exitCountdownActive = false;
 
 function exitGame() {
     // Start countdown
     exitCountdownActive = true;
-    exitCountdownValue = 5;
+    exitCountdownValue = 4;
 
     // Start countdown timer
     exitCountdownTimer = setInterval(function () {
@@ -1891,6 +2093,22 @@ function exitGame() {
             clearInterval(exitCountdownTimer);
             exitCountdownTimer = null;
             exitCountdownActive = false;
+
+            // Play end of game sound for successful exit
+            if (global.soundEnabled) {
+                try {
+                    const endGameSound = document.getElementById('end_of_game_sound');
+                    if (endGameSound) {
+                        endGameSound.volume = 0.6; // Moderate volume for ending
+                        endGameSound.currentTime = 0;
+                        endGameSound.play().catch(function(e) {
+                            console.log('End of game sound playback failed:', e);
+                        });
+                    }
+                } catch (e) {
+                    console.log('End of game sound not available:', e);
+                }
+            }
 
             // Cleanup and return to landing page
             cleanupGame();
@@ -1909,6 +2127,17 @@ function cleanupGame() {
     if (global.animLoopHandle) {
         window.cancelAnimationFrame(global.animLoopHandle);
         global.animLoopHandle = null;
+    }
+
+    // Stop background music
+    try {
+        const backgroundMusic = document.getElementById('background_music');
+        if (backgroundMusic) {
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+        }
+    } catch (e) {
+        console.log('Error stopping background music:', e);
     }
 
     // Set game state to stopped
@@ -1984,7 +2213,7 @@ function saveLastScore(score) {
 }
 
 // Display last score on landing page
-function displayLastScore() {
+function displayLastScore(isDeath = false) {
     try {
         var lastScore = localStorage.getItem("lastScore");
         var lastScoreBox = document.getElementById("lastScoreBox");
@@ -1992,10 +2221,50 @@ function displayLastScore() {
 
         if (lastScoreValue && lastScoreBox) {
             if (lastScore) {
-                // Format score to remove trailing zeros
-                var formattedScore = parseFloat(lastScore);
-                lastScoreValue.textContent = formattedScore;
-                lastScoreBox.style.display = "flex";
+                if (isDeath) {
+                    // Death: Show encouraging message without amount
+                    lastScoreValue.style.display = "none"; // Hide the score value
+
+                    // Update the label to show loss message
+                    const lastScoreLabel = lastScoreBox.querySelector('span:first-child');
+                    if (lastScoreLabel) {
+                        lastScoreLabel.textContent = "You lost ! Jump back in and prove them wrong !";
+                        lastScoreLabel.style.color = "#ff4757"; // Red for loss
+                        lastScoreLabel.style.fontSize = "1.1rem";
+                        lastScoreLabel.style.fontWeight = "bold";
+                    }
+
+                    // Remove any encouraging message (we don't need it anymore)
+                    const encourageMsg = lastScoreBox.querySelector('.encourage-message');
+                    if (encourageMsg) {
+                        encourageMsg.remove();
+                    }
+
+                    lastScoreBox.style.display = "flex";
+                } else {
+                    // Normal score display: format score and reset styling
+                    var formattedScore = parseFloat(lastScore);
+                    lastScoreValue.textContent = formattedScore;
+                    lastScoreValue.style.color = ""; // Reset color
+                    lastScoreValue.style.display = ""; // Show score value
+
+                    // Reset label
+                    const lastScoreLabel = lastScoreBox.querySelector('span:first-child');
+                    if (lastScoreLabel) {
+                        lastScoreLabel.textContent = "Last Score";
+                        lastScoreLabel.style.color = "";
+                        lastScoreLabel.style.fontSize = "";
+                        lastScoreLabel.style.fontWeight = "";
+                    }
+
+                    // Remove encourage message if it exists
+                    const encourageMsg = lastScoreBox.querySelector('.encourage-message');
+                    if (encourageMsg) {
+                        encourageMsg.remove();
+                    }
+
+                    lastScoreBox.style.display = "flex";
+                }
             } else {
                 lastScoreBox.style.display = "none";
             }
@@ -2005,18 +2274,58 @@ function displayLastScore() {
     }
 }
 
+
 // Initialize exit functionality - Keyboard ESC key trigger
 document.addEventListener("keydown", function (event) {
     // Check if ESC key is pressed and game is active
     if (event.key === "Escape" && global.gameStart) {
         event.preventDefault();
+        // Play escape sound directly (helper function not in global scope)
+        if (global.soundEnabled) {
+            try {
+                const escapeSound = document.getElementById('escape_sound');
+                if (escapeSound) {
+                    escapeSound.volume = 0.5;
+                    escapeSound.currentTime = 0;
+                    escapeSound.play().catch(function(e) {
+                        console.log('Escape sound playback failed:', e);
+                    });
+                }
+            } catch (e) {
+                console.log('Escape sound not available:', e);
+            }
+        }
         exitGame();
     }
 });
 
-// Display last score when DOM is ready
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", displayLastScore);
-} else {
-    displayLastScore();
-}
+// Clear any previous game state flags on page load/refresh
+window.addEventListener('beforeunload', function() {
+    // Mark that we're about to refresh/leave the page
+    sessionStorage.setItem('pageRefreshing', 'true');
+});
+
+// Display last score when DOM is ready, but not on page refresh
+(function() {
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function() {
+            // Check if this is a page refresh
+            const isRefresh = sessionStorage.getItem('pageRefreshing') === 'true';
+            if (isRefresh) {
+                // Clear the refresh flag and don't show last score
+                sessionStorage.removeItem('pageRefreshing');
+            } else {
+                displayLastScore();
+            }
+        });
+    } else {
+        // Check if this is a page refresh
+        const isRefresh = sessionStorage.getItem('pageRefreshing') === 'true';
+        if (isRefresh) {
+            // Clear the refresh flag and don't show last score
+            sessionStorage.removeItem('pageRefreshing');
+        } else {
+            displayLastScore();
+        }
+    }
+})();

@@ -13,7 +13,9 @@ const DEFAULT_PREFERENCES = {
     showGrid: true,        // Show background grid
     continuity: true,      // Continue moving when mouse leaves screen
     showFps: false,        // Hide FPS counter for cleaner UI
-    roundFood: true        // Use round food particles (always true now)
+    roundFood: true,       // Use round food particles (always true now)
+    soundEnabled: true,    // Enable sound effects by default
+    musicEnabled: true     // Enable background music by default
 };
 
 // Export for Node.js (server)

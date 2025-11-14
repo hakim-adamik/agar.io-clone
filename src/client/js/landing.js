@@ -1,8 +1,55 @@
+// Sound utility functions - global scope for inline onclick handlers
+function isLandingSoundEnabled() {
+    // Check if sound is enabled via the preference checkbox
+    const soundEnabledEl = document.getElementById('pref-soundEnabled');
+    if (soundEnabledEl) {
+        return soundEnabledEl.checked;
+    }
+
+    // Fallback: check DEFAULT_PREFERENCES or use true as default
+    const defaults = window.DEFAULT_PREFERENCES || {};
+    return defaults.soundEnabled !== false; // Default to true
+}
+
+function playClickSound() {
+    if (!isLandingSoundEnabled()) return;
+
+    try {
+        const clickSound = document.getElementById('click_sound');
+        if (clickSound) {
+            clickSound.volume = 0.5; // 50% volume for UI sounds
+            clickSound.currentTime = 0; // Reset to start
+            clickSound.play().catch(function(e) {
+                console.log('Click sound playback failed:', e);
+            });
+        }
+    } catch (e) {
+        console.log('Click sound not available:', e);
+    }
+}
+
 // Landing page JavaScript
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
     const TRANSITION_DELAY = 300;
     const GAME_URL = 'index.html';
+
+    function playMenuSelectionSound() {
+        if (!isLandingSoundEnabled()) return;
+
+        try {
+            const menuSound = document.getElementById('menu_selection_sound');
+            if (menuSound) {
+                menuSound.volume = 0.5; // 50% volume for UI sounds
+                menuSound.currentTime = 0; // Reset to start
+                menuSound.play().catch(function(e) {
+                    console.log('Menu selection sound playback failed:', e);
+                });
+            }
+        } catch (e) {
+            console.log('Menu selection sound not available:', e);
+        }
+    }
 
     // Cached DOM elements
     const elements = {
@@ -180,6 +227,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s;">
                                     <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-infinity" style="margin-right: 0.5rem; color: #00BCD4;"></i>Continuity</span>
                                     <input type="checkbox" id="pref-continuity" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                                </label>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s;">
+                                    <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-volume-up" style="margin-right: 0.5rem; color: #E91E63;"></i>Sound Effects</span>
+                                    <input type="checkbox" id="pref-soundEnabled" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                                </label>
+                                <label style="display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s;">
+                                    <span style="display: flex; align-items: center; font-size: 0.9rem;"><i class="fas fa-music" style="margin-right: 0.5rem; color: #3F51B5;"></i>Background Music</span>
+                                    <input type="checkbox" id="pref-musicEnabled" class="pref-toggle" style="width: 20px; height: 20px; cursor: pointer;">
                                 </label>
                             </div>
                             <div id="prefSaveStatus" style="margin-top: 1rem; padding: 0.75rem; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 8px; font-size: 0.85rem; color: var(--text-secondary);">
@@ -364,6 +419,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const tabs = document.querySelectorAll('.tab-btn[data-period]');
             tabs.forEach(tab => {
                 tab.addEventListener('click', function() {
+                    // Play click sound for leaderboard tabs
+                    playClickSound();
+
                     // Update active tab styling
                     tabs.forEach(t => {
                         t.classList.remove('active');
@@ -463,9 +521,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Event listeners
-    elements.playBtn?.addEventListener('click', redirectToGame);
-    elements.howToPlayBtn?.addEventListener('click', () => showModal('tutorialModal'));
+    elements.playBtn?.addEventListener('click', () => {
+        playMenuSelectionSound(); // Play menu selection sound for Play button
+        redirectToGame();
+    });
+    elements.howToPlayBtn?.addEventListener('click', () => {
+        playClickSound(); // Play click sound for How to Play button
+        showModal('tutorialModal');
+    });
     elements.startFromTutorial?.addEventListener('click', () => {
+        playMenuSelectionSound(); // Play menu selection sound for Got It! Let's Play button
         // Close the tutorial modal first
         if (elements.tutorialModal) {
             closeModal(elements.tutorialModal);
@@ -514,6 +579,9 @@ document.addEventListener('DOMContentLoaded', function() {
         item.addEventListener('click', function() {
             const section = this.dataset.section;
 
+            // Play menu selection sound for main nav buttons
+            playMenuSelectionSound();
+
             // Update active state
             elements.navItems.forEach(nav => nav.classList.remove('active'));
             this.classList.add('active');
@@ -544,7 +612,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         `).join('')}
                     </div>
-                    <button class="modal-button" onclick="this.closest('.modal').classList.remove('show')">Close</button>
+                    <button class="modal-button" onclick="playClickSound(); this.closest('.modal').classList.remove('show')">Close</button>
                 `;
             } else if (template.dynamic && template.getContent) {
                 // Handle dynamic content (like profile and leaderboard)
@@ -572,6 +640,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const authBtn = document.querySelector('.auth-trigger-btn');
                 if (authBtn) {
                     authBtn.addEventListener('click', (e) => {
+                        playClickSound(); // Play click sound for sign in button
                         e.preventDefault();
                         e.stopPropagation();
                         closeModal(modal);
@@ -582,6 +651,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const logoutBtn = document.querySelector('.logout-btn');
                 if (logoutBtn) {
                     logoutBtn.addEventListener('click', () => {
+                        playClickSound(); // Play click sound for logout button
                         // Trigger logout through Privy
                         if (window.PrivyAuth && typeof window.PrivyAuth.logout === 'function') {
                             // Use Privy's logout if available
@@ -600,9 +670,43 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
 
+                // Handle social links clicks
+                const socialLinks = document.querySelectorAll('.social-link');
+                socialLinks.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        playClickSound(); // Play click sound for social buttons
+                        console.log('Social button clicked:', e.currentTarget);
+                    });
+                });
+
+                // Handle support center buttons clicks
+                const tutorialSteps = document.querySelectorAll('.tutorial-step');
+                tutorialSteps.forEach(step => {
+                    step.addEventListener('click', () => {
+                        playClickSound(); // Play click sound for support center buttons
+                        console.log('Support center button clicked:', step);
+                    });
+                });
+
+                // Handle edit name button click
+                const editBtn = document.querySelector('.edit-btn');
+                if (editBtn) {
+                    editBtn.addEventListener('click', () => {
+                        playClickSound(); // Play click sound for edit name button
+                    });
+                }
+
+
                 // Handle preferences toggles if user is authenticated
                 const prefToggles = document.querySelectorAll('.pref-toggle');
                 if (prefToggles.length > 0) {
+                    // Add click sound to all preference toggles
+                    prefToggles.forEach(toggle => {
+                        toggle.addEventListener('change', () => {
+                            playClickSound(); // Play click sound for preference toggles
+                        });
+                    });
                     // Load current preferences from server
                     const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
                     if (userData && userData.dbUserId) {
@@ -624,6 +728,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const showFpsEl = document.getElementById('pref-showFps');
                                 const showGridEl = document.getElementById('pref-showGrid');
                                 const continuityEl = document.getElementById('pref-continuity');
+                                const soundEnabledEl = document.getElementById('pref-soundEnabled');
+                                const musicEnabledEl = document.getElementById('pref-musicEnabled');
 
                                 if (darkModeEl) darkModeEl.checked = prefs.darkMode === true;
                                 if (showMassEl) showMassEl.checked = prefs.showMass === true;
@@ -631,6 +737,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (showFpsEl) showFpsEl.checked = prefs.showFps === true;
                                 if (showGridEl) showGridEl.checked = prefs.showGrid === true;
                                 if (continuityEl) continuityEl.checked = prefs.continuity === true;
+                                if (soundEnabledEl) soundEnabledEl.checked = prefs.soundEnabled === true;
+                                if (musicEnabledEl) musicEnabledEl.checked = prefs.musicEnabled === true;
                             })
                             .catch(error => {
                                 console.warn('Failed to load preferences, using defaults:', error);
@@ -642,6 +750,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const showFpsEl = document.getElementById('pref-showFps');
                                 const showGridEl = document.getElementById('pref-showGrid');
                                 const continuityEl = document.getElementById('pref-continuity');
+                                const soundEnabledEl = document.getElementById('pref-soundEnabled');
+                                const musicEnabledEl = document.getElementById('pref-musicEnabled');
 
                                 if (darkModeEl) darkModeEl.checked = defaults.darkMode !== false;
                                 if (showMassEl) showMassEl.checked = defaults.showMass !== false;
@@ -649,6 +759,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (showFpsEl) showFpsEl.checked = defaults.showFps === true;
                                 if (showGridEl) showGridEl.checked = defaults.showGrid !== false;
                                 if (continuityEl) continuityEl.checked = defaults.continuity !== false;
+                                if (soundEnabledEl) soundEnabledEl.checked = defaults.soundEnabled === true;
+                                if (musicEnabledEl) musicEnabledEl.checked = defaults.musicEnabled === true;
                             });
 
                         // Add change listeners to save preferences
@@ -664,7 +776,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     'showBorder': 'show_border',
                                     'showFps': 'show_fps',
                                     'showGrid': 'show_grid',
-                                    'continuity': 'continuity'
+                                    'continuity': 'continuity',
+                                    'soundEnabled': 'sound_enabled',
+                                    'musicEnabled': 'music_enabled'
                                 };
 
                                 const dbPrefName = prefMap[prefName];
