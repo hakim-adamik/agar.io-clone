@@ -1467,6 +1467,23 @@ function setupSocket(socket) {
         }
 
         render.drawErrorMessage("You died!", graph, global.screen);
+
+        // Play loss sound effect when player dies
+        if (global.soundEnabled) {
+            try {
+                const lossSound = document.getElementById('loss_sound');
+                if (lossSound) {
+                    lossSound.volume = 0.7; // Slightly louder for dramatic effect
+                    lossSound.currentTime = 0;
+                    lossSound.play().catch(function(e) {
+                        console.log('Loss sound playback failed:', e);
+                    });
+                }
+            } catch (e) {
+                console.log('Loss sound not available:', e);
+            }
+        }
+
         window.setTimeout(() => {
             // Return to landing page instead of old menu
             var landingView = document.getElementById("landingView");
@@ -2028,6 +2045,22 @@ function exitGame() {
             clearInterval(exitCountdownTimer);
             exitCountdownTimer = null;
             exitCountdownActive = false;
+
+            // Play end of game sound for successful exit
+            if (global.soundEnabled) {
+                try {
+                    const endGameSound = document.getElementById('end_of_game_sound');
+                    if (endGameSound) {
+                        endGameSound.volume = 0.6; // Moderate volume for ending
+                        endGameSound.currentTime = 0;
+                        endGameSound.play().catch(function(e) {
+                            console.log('End of game sound playback failed:', e);
+                        });
+                    }
+                } catch (e) {
+                    console.log('End of game sound not available:', e);
+                }
+            }
 
             // Cleanup and return to landing page
             cleanupGame();
