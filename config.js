@@ -40,12 +40,13 @@ module.exports = {
 
     // Cell movement physics
     minSpeed: 6.5, // Base movement speed for cells (reduced from 6.25 to slow down convergence)
-    splitCellSpeed: 20, // Initial speed when a cell splits
+    splitCellSpeed: 15, // Initial speed when a cell splits
     speedDecrement: 0.5, // How quickly split speed decreases
     minDistance: 50, // Minimum distance from cursor where cells slow down
     pushingAwaySpeed: 1.5, // Speed at which overlapping cells push away from each other
     mergeOverlapThreshold: 0.9, // Cells must overlap by this fraction of their radius to merge (0.3 = 30% overlap required)
-    cellInertia: 0.15, // How much inertia cells have (0-1, lower = more inertia/smoother turning, higher = sharper turns)
+    cellInertia: 0.10, // How much inertia cells have (0-1, lower = more inertia/smoother turning, higher = sharper turns)
+    splitControlDelay: 600, // Time in ms before split cells respond to cursor (maintains split momentum)
 
     massLossRate: 1,
     minMassLoss: 50,

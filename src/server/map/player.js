@@ -16,6 +16,10 @@ class Cell {
         // Velocity for inertia-based movement
         this.velocityX = 0;
         this.velocityY = 0;
+
+        // Split state tracking
+        this.splitTime = null; // When this cell was created from a split
+        this.isSplitCell = false;
     }
 
     setMass(mass) {
@@ -47,6 +51,23 @@ class Cell {
             slowDown = util.mathLog(this.mass, slowBase) - initMassLog + 1;
         }
 
+        // Calculate cursor influence based on split state
+        var cursorInfluence = 1.0; // Default: full cursor control
+
+        if (this.isSplitCell && this.splitTime !== null) {
+            var splitAge = Date.now() - this.splitTime;
+            var splitDelay = this.config.splitControlDelay || 400;
+
+            if (splitAge < splitDelay) {
+                // During split phase: gradually increase cursor influence from 0% to 100%
+                cursorInfluence = splitAge / splitDelay;
+            } else {
+                // Split phase over, clear split state
+                this.isSplitCell = false;
+                this.splitTime = null;
+            }
+        }
+
         // Calculate target velocity (direction we want to go)
         var targetVelocityX = this.speed * Math.cos(deg) / slowDown;
         var targetVelocityY = this.speed * Math.sin(deg) / slowDown;
@@ -58,10 +79,15 @@ class Cell {
             targetVelocityY *= distanceFactor;
         }
 
-        // Interpolate current velocity towards target velocity (adds inertia)
+        // Blend between current velocity (split momentum) and target velocity (cursor direction)
+        // During split: mostly maintains current direction, gradually transitions to cursor
         var inertiaFactor = this.config.cellInertia || 0.15;
-        this.velocityX += (targetVelocityX - this.velocityX) * inertiaFactor;
-        this.velocityY += (targetVelocityY - this.velocityY) * inertiaFactor;
+        var blendedTargetX = this.velocityX + (targetVelocityX - this.velocityX) * cursorInfluence;
+        var blendedTargetY = this.velocityY + (targetVelocityY - this.velocityY) * cursorInfluence;
+
+        // Interpolate current velocity towards blended target
+        this.velocityX += (blendedTargetX - this.velocityX) * inertiaFactor;
+        this.velocityY += (blendedTargetY - this.velocityY) * inertiaFactor;
 
         // Apply velocity to position
         if (!isNaN(this.velocityX)) {
@@ -176,7 +202,8 @@ exports.Player = class {
     // Splits a cell into multiple cells with identical mass
     // Creates n-1 new cells, and lowers the mass of the original cell
     // If the resulting cells would be smaller than minSplitMass, creates fewer and bigger cells.
-    splitCell(cellIndex, maxRequestedPieces, minSplitMass) {
+    // splitDirection is optional {x, y} for user-initiated splits towards cursor
+    splitCell(cellIndex, maxRequestedPieces, minSplitMass, splitDirection = null) {
         let cellToSplit = this.cells[cellIndex];
         let maxAllowedPieces = Math.floor(cellToSplit.mass / minSplitMass); // If we split the cell ino more pieces, they will be too small.
         let piecesToCreate = Math.min(maxAllowedPieces, maxRequestedPieces);
@@ -184,14 +211,45 @@ exports.Player = class {
             return;
         }
         let newCellsMass = cellToSplit.mass / piecesToCreate;
+
+        // Calculate split velocity if direction provided
+        let splitVelocityX = 0;
+        let splitVelocityY = 0;
+
+        if (splitDirection) {
+            let angle = Math.atan2(splitDirection.y, splitDirection.x);
+            splitVelocityX = this.config.splitCellSpeed * Math.cos(angle);
+            splitVelocityY = this.config.splitCellSpeed * Math.sin(angle);
+        }
+
         for (let i = 0; i < piecesToCreate - 1; i++) {
             let newCell = new Cell(cellToSplit.x, cellToSplit.y, newCellsMass, this.config.splitCellSpeed, this.config);
-            // Inherit parent cell's velocity for smooth continuation
-            newCell.velocityX = cellToSplit.velocityX;
-            newCell.velocityY = cellToSplit.velocityY;
+
+            if (splitDirection) {
+                // Mark as split cell and set initial velocity in split direction
+                newCell.isSplitCell = true;
+                newCell.splitTime = Date.now();
+                newCell.velocityX = splitVelocityX;
+                newCell.velocityY = splitVelocityY;
+            } else {
+                // No direction (virus split): inherit parent velocity
+                newCell.velocityX = cellToSplit.velocityX;
+                newCell.velocityY = cellToSplit.velocityY;
+            }
+
             this.cells.push(newCell);
         }
+
         cellToSplit.setMass(newCellsMass);
+
+        // Mark the original cell as split to maintain its current momentum (reduced cursor influence)
+        // but DON'T change its velocity - it keeps moving in its current direction
+        if (splitDirection) {
+            cellToSplit.isSplitCell = true;
+            cellToSplit.splitTime = Date.now();
+            // Keep cellToSplit.velocityX and velocityY unchanged - maintains current momentum
+        }
+
         this.setMergeTimer();
     }
 
@@ -228,7 +286,14 @@ exports.Player = class {
         }
 
         for (let i = 0; i < cellsToCreate; i++) {
-            this.splitCell(i, 2, minSplitMass);
+            // Calculate split direction: from cell towards cursor
+            let cell = this.cells[i];
+            let splitDirection = {
+                x: this.x - cell.x + this.target.x,
+                y: this.y - cell.y + this.target.y
+            };
+
+            this.splitCell(i, 2, minSplitMass, splitDirection);
         }
     }
 
