@@ -40,10 +40,10 @@ module.exports = (isProduction) => ({
             new TerserPlugin({
                 terserOptions: {
                     compress: {
-                        drop_console: true,
-                        drop_debugger: true,
-                        pure_funcs: ['console.log', 'console.info'],
-                        passes: 2
+                        drop_console: false,
+                        drop_debugger: false,
+                        pure_funcs: [],
+                        passes: 1
                     },
                     mangle: {
                         safari10: true
