@@ -133,6 +133,11 @@ exports.Player = class {
     }
 
     loseMassIfNeeded(massLossRate, defaultPlayerMass, minMassLoss) {
+        // Safety check: ensure cells array exists
+        if (!this.cells) {
+            return;
+        }
+
         for (let i in this.cells) {
             if (this.cells[i].mass * (1 - (massLossRate / 1000)) > defaultPlayerMass && this.massTotal > minMassLoss) {
                 var massLoss = this.cells[i].mass * (massLossRate / 1000);
@@ -174,6 +179,11 @@ exports.Player = class {
     // Performs a split resulting from colliding with a virus.
     // The player will have the highest possible number of cells.
     virusSplit(cellIndexes, maxCells, minSplitMass) {
+        // Safety check: ensure cells array exists
+        if (!this.cells || this.cells.length === 0) {
+            return;
+        }
+
         for (let cellIndex of cellIndexes) {
             this.splitCell(cellIndex, maxCells - this.cells.length + 1, minSplitMass);
         }
@@ -182,6 +192,11 @@ exports.Player = class {
     // Performs a split initiated by the player.
     // Tries to split every cell in half.
     userSplit(maxCells, minSplitMass) {
+        // Safety check: ensure cells array exists
+        if (!this.cells || this.cells.length === 0) {
+            return;
+        }
+
         let cellsToCreate;
         if (this.cells.length > maxCells / 2) { // Not every cell can be split
             cellsToCreate = maxCells - this.cells.length + 1;
@@ -253,13 +268,34 @@ exports.Player = class {
     }
 
     move(slowBase, gameWidth, gameHeight, initMassLog) {
+        // Safety check: ensure cells array exists
+        if (!this.cells || this.cells.length === 0) {
+            return;
+        }
+
         if (this.cells.length > 1) {
             // Check if merge timer has elapsed
             if (this.timeToMerge !== null && Date.now() >= this.timeToMerge) {
                 // Timer elapsed - merge cells that overlap enough
                 this.enumerateMergingCells((cells, cellAIndex, cellBIndex) => {
-                    cells[cellAIndex].addMass(cells[cellBIndex].mass);
-                    cells[cellBIndex] = null;
+                    // Check if cells still exist (may have been merged in previous iteration)
+                    let cellA = cells[cellAIndex];
+                    let cellB = cells[cellBIndex];
+
+                    if (!cellA || !cellB) {
+                        return; // One or both cells already merged, skip
+                    }
+
+                    // Always keep the larger cell's position
+                    if (cellA.mass >= cellB.mass) {
+                        // Cell A is larger - add B's mass to A, delete B
+                        cellA.addMass(cellB.mass);
+                        cells[cellBIndex] = null;
+                    } else {
+                        // Cell B is larger - add A's mass to B, delete A
+                        cellB.addMass(cellA.mass);
+                        cells[cellAIndex] = null;
+                    }
                 });
                 this.cells = util.removeNulls(this.cells);
             } else {

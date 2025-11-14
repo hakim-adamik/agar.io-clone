@@ -932,6 +932,11 @@ function setupSocket(socket) {
         // Reset cell animations for new game session
         cellAnimations.reset();
 
+        // Reset smooth camera for new game session
+        smoothCamera.enabled = false;
+        smoothCamera.x = 0;
+        smoothCamera.y = 0;
+
         c.focus();
         global.game.width = gameSizes.width;
         global.game.height = gameSizes.height;
@@ -1039,6 +1044,11 @@ function setupSocket(socket) {
                     player.y = playerData.y;
                     player.cells = playerData.cells;
                     prediction.enabled = true;
+
+                    // Initialize smooth camera
+                    smoothCamera.x = playerData.x;
+                    smoothCamera.y = playerData.y;
+                    smoothCamera.enabled = true;
                 } else {
                     // Subsequent updates - shift states and calculate velocity (using optimized cloning)
                     prediction.previous = prediction.current;
@@ -1139,12 +1149,8 @@ function setupSocket(socket) {
                 var user = userData[i];
 
                 // Detect merges for all players (including current player in userData)
-                try {
-                    if (cellAnimations && user && user.cells) {
-                        cellAnimations.detectMerges(user.id, user.cells);
-                    }
-                } catch (err) {
-                    console.error('[CellAnimations] Error detecting merges:', err);
+                if (cellAnimations && user && user.cells) {
+                    cellAnimations.detectMerges(user.id, user.cells);
                 }
 
                 if (user.id === player.id) continue; // Skip current player for prediction
@@ -1364,6 +1370,16 @@ var prediction = {
     }
 };
 
+// Smooth camera interpolation to prevent jumps when cells merge
+var smoothCamera = {
+    enabled: false,
+    // Rendered camera position (smoothly interpolated)
+    x: 0,
+    y: 0,
+    // Interpolation speed (0-1, higher = faster)
+    lerpSpeed: 0.15
+};
+
 // Cell merge animation system
 class CellAnimations {
     constructor(duration = 500) {
@@ -1382,14 +1398,29 @@ class CellAnimations {
     startAnimation(playerId, cellIndex, startRadius, targetRadius) {
         const key = `${playerId}_${cellIndex}`;
 
-        // Don't restart an animation that's already in progress
-        // Only start a new one if there's no existing animation or if the target changed significantly
+        // Check if there's already an animation in progress
         const existingAnimation = this.animations[key];
         if (existingAnimation) {
             const targetDiff = Math.abs(existingAnimation.targetRadius - targetRadius);
             if (targetDiff < 5) {
-                // Target is similar, don't restart the animation
+                // Target is very similar, don't restart the animation
                 return;
+            }
+
+            // Target changed significantly (another merge happened during animation)
+            // Use the current animated radius as the new starting point for smooth continuation
+            const now = getTime();
+            const elapsed = now - existingAnimation.startTime;
+
+            if (elapsed < existingAnimation.duration) {
+                // Animation still in progress - calculate current radius
+                const progress = elapsed / existingAnimation.duration;
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                const currentRadius = existingAnimation.startRadius +
+                    (existingAnimation.targetRadius - existingAnimation.startRadius) * easeProgress;
+
+                // Start new animation from current position
+                startRadius = currentRadius;
             }
         }
 
@@ -1400,7 +1431,6 @@ class CellAnimations {
             startTime: now,
             duration: this.duration
         };
-        console.log(`[CellAnimations] Started animation for ${key}: ${startRadius.toFixed(1)} → ${targetRadius.toFixed(1)}`);
     }
 
     // Get the current animated radius for a cell
@@ -1417,7 +1447,6 @@ class CellAnimations {
 
         if (elapsed >= animation.duration) {
             // Animation complete
-            console.log(`[CellAnimations] Animation complete for ${key}`);
             delete this.animations[key];
             return actualRadius;
         }
@@ -1427,12 +1456,6 @@ class CellAnimations {
         const easeProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
 
         const currentRadius = animation.startRadius + (animation.targetRadius - animation.startRadius) * easeProgress;
-
-        // Log occasionally to avoid spam (only first few frames)
-        if (elapsed < 100) {
-            console.log(`[CellAnimations] Animating ${key}: progress=${(progress*100).toFixed(1)}%, radius=${currentRadius.toFixed(1)}`);
-        }
-
         return currentRadius;
     }
 
@@ -1579,15 +1602,6 @@ class CellAnimations {
     reset() {
         this.animations = {};
         this.previousCellStates = {};
-        console.log('[CellAnimations] Reset - animations and states cleared');
-    }
-
-    // Debug helper to log active animations count
-    logActiveAnimations() {
-        const count = Object.keys(this.animations).length;
-        if (count > 0) {
-            console.log(`[CellAnimations] Active animations: ${count}`, Object.keys(this.animations));
-        }
     }
 }
 
@@ -1624,17 +1638,6 @@ var getTime = (function () {
 
 // Create cell animations instance after getTime is available
 var cellAnimations = new CellAnimations();
-console.log('[CellAnimations] Initialized with duration:', cellAnimations.duration);
-
-// Debug: log active animations periodically
-var lastAnimationLogTime = 0;
-function debugLogAnimations() {
-    var now = Date.now();
-    if (now - lastAnimationLogTime > 2000) {  // Every 2 seconds
-        cellAnimations.logActiveAnimations();
-        lastAnimationLogTime = now;
-    }
-}
 
 function animloop() {
     var currentTime = getTime();
@@ -1756,9 +1759,6 @@ var socketEmitInterval = 16; // ~60fps for socket updates (every ~16ms)
 
 function gameLoop() {
     if (global.gameStart) {
-        // Debug: log active animations periodically
-        debugLogAnimations();
-
         // Client-side prediction: extrapolate positions forward based on velocity
         if (prediction.enabled) {
             var now = getTime();
@@ -1803,6 +1803,17 @@ function gameLoop() {
             player.x = prediction.predicted.x;
             player.y = prediction.predicted.y;
             player.cells = prediction.predicted.cells;
+
+            // Apply smooth camera interpolation to prevent jarring jumps
+            if (smoothCamera.enabled) {
+                // Lerp camera position towards actual player position
+                smoothCamera.x += (player.x - smoothCamera.x) * smoothCamera.lerpSpeed;
+                smoothCamera.y += (player.y - smoothCamera.y) * smoothCamera.lerpSpeed;
+
+                // Override player position with smooth camera for rendering
+                player.x = smoothCamera.x;
+                player.y = smoothCamera.y;
+            }
 
             // Also update predicted cells in users array (for cell rendering)
             for (var i = 0; i < users.length; i++) {
@@ -1925,10 +1936,6 @@ function gameLoop() {
                 try {
                     if (cellAnimations) {
                         animatedRadius = cellAnimations.getAnimatedRadius(users[i].id, j, actualRadius);
-                        // Log if animation is different from actual (only occasionally to avoid spam)
-                        if (Math.abs(animatedRadius - actualRadius) > 0.1 && Math.random() < 0.01) {
-                            console.log(`[Render] Cell ${users[i].id}_${j}: actual=${actualRadius.toFixed(1)}, animated=${animatedRadius.toFixed(1)}`);
-                        }
                     }
                 } catch (err) {
                     console.error('[CellAnimations] Error getting animated radius:', err);
@@ -2077,6 +2084,14 @@ function cleanupGame() {
             states: {},
             timestamp: 0
         }
+    };
+
+    // Reset smooth camera
+    smoothCamera = {
+        enabled: false,
+        x: 0,
+        y: 0,
+        lerpSpeed: 0.15
     };
 
     // Reset cell animations

@@ -39,7 +39,7 @@ module.exports = {
     maxTotalArenas: 50, // Maximum concurrent arenas (resource limit)
 
     // Cell movement physics
-    minSpeed: 5.5, // Base movement speed for cells (reduced from 6.25 to slow down convergence)
+    minSpeed: 4.5, // Base movement speed for cells (reduced from 6.25 to slow down convergence)
     splitCellSpeed: 20, // Initial speed when a cell splits
     speedDecrement: 0.5, // How quickly split speed decreases
     minDistance: 50, // Minimum distance from cursor where cells slow down
