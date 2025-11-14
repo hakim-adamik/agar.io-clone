@@ -322,14 +322,11 @@ function startGame(type) {
                 console.log("[Socket] Cleaning up previous connection");
                 socket.disconnect();
                 socket = null;
-
-                // Small delay to ensure cleanup completes
-                setTimeout(() => {
-                    createNewSocket(query);
-                }, 100);
-                return;
+                window.canvas.socket = null;
+                global.socket = null;
             }
 
+            // Always create new socket after cleanup (with or without delay)
             createNewSocket(query);
 
             function createNewSocket(queryString) {
@@ -2037,7 +2034,8 @@ function gameLoop() {
 window.addEventListener("resize", resize);
 
 function resize() {
-    if (!socket) return;
+    // Check both socket and player exist before trying to resize
+    if (!socket || !player) return;
 
     player.screenWidth =
         c.width =
