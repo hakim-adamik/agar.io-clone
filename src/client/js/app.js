@@ -288,7 +288,21 @@ function startGame(type) {
             playerScoreEl.style.display = "block";
         }
 
-        if (!socket) {
+        // ALWAYS create a new socket connection when starting the game
+        // Even if socket exists, we need a fresh connection after death
+        console.log("[Socket] Current socket state:", socket ? "exists" : "null");
+
+        // Clean up any existing socket first
+        if (socket) {
+            console.log("[Socket] Cleaning up existing socket before creating new one");
+            socket.disconnect();
+            socket = null;
+            window.canvas.socket = null;
+            global.socket = null;
+        }
+
+        // Now create the new socket
+        {
             // Get user data from localStorage (if authenticated)
             let userData = null;
             try {
@@ -355,7 +369,7 @@ function startGame(type) {
                 window.canvas.socket = socket;
                 global.socket = socket;
             } // Close createNewSocket function
-        } // Close if (!socket) block
+        } // Close socket creation block
     } // Close continueGameStart function
 
     // Load user preferences when starting the game
