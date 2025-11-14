@@ -209,9 +209,9 @@ export DATABASE_URL="postgresql://neondb_owner:npg_X0hNZFwe8Lrk@ep-wild-bar-agks
 echo "Stopping existing containers..."
 docker-compose -f docker-compose.digitalocean.yml down 2>/dev/null || true
 
-# Build the application
-echo "Building Docker image..."
-docker-compose -f docker-compose.digitalocean.yml build
+# Build the application with build arguments
+echo "Building Docker image with PRIVY_APP_ID=$PRIVY_APP_ID..."
+docker-compose -f docker-compose.digitalocean.yml build --build-arg PRIVY_APP_ID=$PRIVY_APP_ID
 
 # Start the application
 echo "Starting application..."
