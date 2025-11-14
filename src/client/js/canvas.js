@@ -132,12 +132,37 @@ class Canvas {
     keyInput(event) {
     	var key = event.which || event.keyCode;
     	if (key === global.KEY_FIREFOOD && this.parent.reenviar) {
+            if (global.soundEnabled) {
+                try {
+                    const ejectMassSound = document.getElementById('eject_mass_sound');
+                    if (ejectMassSound) {
+                        ejectMassSound.volume = 0.5;
+                        ejectMassSound.currentTime = 0;
+                        ejectMassSound.play().catch(function(e) {
+                            console.log('Eject mass sound playback failed:', e);
+                        });
+                    }
+                } catch (e) {
+                    console.log('Eject mass sound not available:', e);
+                }
+            }
             this.parent.socket.emit('1');
             this.parent.reenviar = false;
         }
         else if (key === global.KEY_SPLIT && this.parent.reenviar) {
             if (global.soundEnabled) {
-                document.getElementById('split_cell').play();
+                try {
+                    const splitSound = document.getElementById('split_cell');
+                    if (splitSound) {
+                        splitSound.volume = 0.5;
+                        splitSound.currentTime = 0;
+                        splitSound.play().catch(function(e) {
+                            console.log('Split sound playback failed:', e);
+                        });
+                    }
+                } catch (e) {
+                    console.log('Split sound not available:', e);
+                }
             }
             this.parent.socket.emit('2');
             this.parent.reenviar = false;

@@ -228,12 +228,13 @@ function startGame(type) {
     global.screen.width = window.innerWidth;
     global.screen.height = window.innerHeight;
 
+
     // Function to set up seamless background music
     function setupBackgroundMusic() {
         try {
             const backgroundMusic = document.getElementById('background_music');
             if (backgroundMusic && global.musicEnabled) {
-                backgroundMusic.volume = 0.3; // Set volume to 30%
+                backgroundMusic.volume = 0.1; // Background music at 10% volume
                 backgroundMusic.loop = true; // Ensure looping is enabled
 
                 // Remove any existing event listeners to prevent duplicates
@@ -865,6 +866,7 @@ var graph = c.getContext("2d");
 $("#feed").on("click touchstart", function (e) {
     e.preventDefault();
     e.stopPropagation();
+    playSoundEffect('eject_mass_sound');
     socket.emit("1");
     window.canvas.reenviar = false;
 });
@@ -1110,9 +1112,10 @@ function setupSocket(socket) {
 
         if (global.soundEnabled) {
             try {
-                var playerEatenSound = document.getElementById('player_eaten_sound');
+                const playerEatenSound = document.getElementById('player_eaten_sound');
                 if (playerEatenSound) {
-                    playerEatenSound.currentTime = 0; // Reset to start
+                    playerEatenSound.volume = 0.5;
+                    playerEatenSound.currentTime = 0;
                     playerEatenSound.play().catch(function(e) {
                         console.log('Player eaten sound playback failed:', e);
                     });
@@ -1321,15 +1324,35 @@ function setupSocket(socket) {
                                 // Play remerge sound if sound is enabled
                                 if (global.soundEnabled) {
                                     try {
-                                        var remergeSoundEl = document.getElementById('remerge_cell');
+                                        const remergeSoundEl = document.getElementById('remerge_cell');
                                         if (remergeSoundEl) {
-                                            remergeSoundEl.currentTime = 0; // Reset to start
+                                            remergeSoundEl.volume = 0.5;
+                                            remergeSoundEl.currentTime = 0;
                                             remergeSoundEl.play().catch(function(e) {
                                                 console.log('Remerge sound playback failed:', e);
                                             });
                                         }
                                     } catch (e) {
                                         console.log('Remerge sound not available:', e);
+                                    }
+                                }
+                            } else if (currentCellCount > previousCellCount) {
+                                // SPLIT DETECTED! Virus collision caused cell split
+                                console.log(`💥 Virus split! ${previousCellCount} → ${currentCellCount}`);
+
+                                // Play virus split sound if sound is enabled
+                                if (global.soundEnabled) {
+                                    try {
+                                        const virusSplitSound = document.getElementById('virus_split_sound');
+                                        if (virusSplitSound) {
+                                            virusSplitSound.volume = 0.5;
+                                            virusSplitSound.currentTime = 0;
+                                            virusSplitSound.play().catch(function(e) {
+                                                console.log('Virus split sound playback failed:', e);
+                                            });
+                                        }
+                                    } catch (e) {
+                                        console.log('Virus split sound not available:', e);
                                     }
                                 }
                             }
@@ -2123,6 +2146,21 @@ document.addEventListener("keydown", function (event) {
     // Check if ESC key is pressed and game is active
     if (event.key === "Escape" && global.gameStart) {
         event.preventDefault();
+        // Play escape sound directly (helper function not in global scope)
+        if (global.soundEnabled) {
+            try {
+                const escapeSound = document.getElementById('escape_sound');
+                if (escapeSound) {
+                    escapeSound.volume = 0.5;
+                    escapeSound.currentTime = 0;
+                    escapeSound.play().catch(function(e) {
+                        console.log('Escape sound playback failed:', e);
+                    });
+                }
+            } catch (e) {
+                console.log('Escape sound not available:', e);
+            }
+        }
         exitGame();
     }
 });
