@@ -12,6 +12,10 @@ class Cell {
         this.radius = util.massToRadius(mass);
         this.speed = speed;
         this.config = config; // Store config for movement calculations
+
+        // Velocity for inertia-based movement
+        this.velocityX = 0;
+        this.velocityY = 0;
     }
 
     setMass(mass) {
@@ -36,29 +40,40 @@ class Cell {
             x: playerX - this.x + playerTarget.x,
             y: playerY - this.y + playerTarget.y
         };
-        var dist = Math.hypot(target.y, target.x)
+        var dist = Math.hypot(target.y, target.x);
         var deg = Math.atan2(target.y, target.x);
         var slowDown = 1;
         if (this.speed <= this.config.minSpeed) {
             slowDown = util.mathLog(this.mass, slowBase) - initMassLog + 1;
         }
 
-        var deltaY = this.speed * Math.sin(deg) / slowDown;
-        var deltaX = this.speed * Math.cos(deg) / slowDown;
+        // Calculate target velocity (direction we want to go)
+        var targetVelocityX = this.speed * Math.cos(deg) / slowDown;
+        var targetVelocityY = this.speed * Math.sin(deg) / slowDown;
 
+        // Apply distance-based slowdown
+        if (dist < (this.config.minDistance + this.radius)) {
+            var distanceFactor = dist / (this.config.minDistance + this.radius);
+            targetVelocityX *= distanceFactor;
+            targetVelocityY *= distanceFactor;
+        }
+
+        // Interpolate current velocity towards target velocity (adds inertia)
+        var inertiaFactor = this.config.cellInertia || 0.15;
+        this.velocityX += (targetVelocityX - this.velocityX) * inertiaFactor;
+        this.velocityY += (targetVelocityY - this.velocityY) * inertiaFactor;
+
+        // Apply velocity to position
+        if (!isNaN(this.velocityX)) {
+            this.x += this.velocityX;
+        }
+        if (!isNaN(this.velocityY)) {
+            this.y += this.velocityY;
+        }
+
+        // Decrease speed after split
         if (this.speed > this.config.minSpeed) {
             this.speed -= this.config.speedDecrement;
-        }
-        if (dist < (this.config.minDistance + this.radius)) {
-            deltaY *= dist / (this.config.minDistance + this.radius);
-            deltaX *= dist / (this.config.minDistance + this.radius);
-        }
-
-        if (!isNaN(deltaY)) {
-            this.y += deltaY;
-        }
-        if (!isNaN(deltaX)) {
-            this.x += deltaX;
         }
     }
 
@@ -170,7 +185,11 @@ exports.Player = class {
         }
         let newCellsMass = cellToSplit.mass / piecesToCreate;
         for (let i = 0; i < piecesToCreate - 1; i++) {
-            this.cells.push(new Cell(cellToSplit.x, cellToSplit.y, newCellsMass, this.config.splitCellSpeed, this.config));
+            let newCell = new Cell(cellToSplit.x, cellToSplit.y, newCellsMass, this.config.splitCellSpeed, this.config);
+            // Inherit parent cell's velocity for smooth continuation
+            newCell.velocityX = cellToSplit.velocityX;
+            newCell.velocityY = cellToSplit.velocityY;
+            this.cells.push(newCell);
         }
         cellToSplit.setMass(newCellsMass);
         this.setMergeTimer();
