@@ -2012,13 +2012,13 @@ function resize() {
 
 // Exit Game Functionality
 var exitCountdownTimer = null;
-var exitCountdownValue = 5;
+var exitCountdownValue = 4;
 var exitCountdownActive = false;
 
 function exitGame() {
     // Start countdown
     exitCountdownActive = true;
-    exitCountdownValue = 5;
+    exitCountdownValue = 4;
 
     // Start countdown timer
     exitCountdownTimer = setInterval(function () {
