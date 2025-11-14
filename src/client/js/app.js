@@ -6,20 +6,6 @@ var global = require("./global");
 var playerNameInput = document.getElementById("playerNameInput");
 var socket;
 
-// Debug mode flag (accessible from browser console via window.DEBUG_MODE)
-/*
-window.DEBUG_MODE = false;
-window.enableDebug = function() {
-    window.DEBUG_MODE = true;
-    console.log("%c[DEBUG MODE ENABLED]", "color: green; font-weight: bold");
-    console.log("Performance warnings will be logged when large updates occur.");
-};
-window.disableDebug = function() {
-    window.DEBUG_MODE = false;
-    console.log("%c[DEBUG MODE DISABLED]", "color: orange; font-weight: bold");
-};
-*/
-
 var debug = function (args) {
     if (console && console.log) {
         console.log(args);
@@ -297,207 +283,6 @@ function validNick() {
     debug("Regex Test", regex.exec(playerNameInput.value));
     return regex.exec(playerNameInput.value) !== null;
 }
-
-// Remove landing page code - handled by landing.js
-/*
-var modalTemplates = {
-    social: {
-        title: '<i class="fab fa-discord"></i> Social',
-        content: `
-            <div class="social-links" style="display: grid; gap: 1rem; margin-top: 1.5rem; padding-top: 0.5rem;">
-                <a href="#" class="social-link" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 10px; color: #fff; text-decoration: none; transition: all 0.3s; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <i class="fab fa-discord" style="font-size: 1.5rem; color: #7289da; width: 40px;"></i>
-                    <span>Join our Discord Server</span>
-                </a>
-                <a href="#" class="social-link" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 10px; color: #fff; text-decoration: none; transition: all 0.3s; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <i class="fab fa-telegram" style="font-size: 1.5rem; color: #0088cc; width: 40px;"></i>
-                    <span>Telegram Community</span>
-                </a>
-                <a href="#" class="social-link" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 10px; color: #fff; text-decoration: none; transition: all 0.3s; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <i class="fa-brands fa-x-twitter" style="font-size: 1.5rem; color: white; width: 40px;"></i>
-                    <span>Follow on X</span>
-                </a>
-                <a href="#" class="social-link" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 10px; color: #fff; text-decoration: none; transition: all 0.3s; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <i class="fab fa-youtube" style="font-size: 1.5rem; color: #ff0000; width: 40px;"></i>
-                    <span>YouTube Channel</span>
-                </a>
-            </div>
-        `
-    },
-    support: {
-        title: 'Support Center',
-        useGrid: true,
-        items: [
-            { icon: 'fas fa-book', title: 'Game Guide', desc: 'Browse comprehensive guides and tutorials' },
-            { icon: 'fas fa-question-circle', title: 'FAQ', desc: 'Find answers to frequently asked questions' },
-            { icon: 'fab fa-discord', title: 'Community', desc: 'Get help from our amazing player community' },
-            { icon: 'fas fa-bug', title: 'Report Bug', desc: 'Help us improve by reporting issues' }
-        ]
-    },
-    leaders: {
-        title: '<i class="fas fa-trophy"></i> Leaderboard',
-        content: `
-            <div style="display: flex; gap: 0.5rem; margin: 1.5rem 0;">
-                <button class="tab-btn active" style="padding: 0.5rem 1rem; background: var(--primary-green, #84cc16); color: white; border: none; border-radius: 20px; cursor: pointer;">Today</button>
-                <button class="tab-btn" style="padding: 0.5rem 1rem; background: transparent; color: var(--text-secondary, #94a3b8); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; cursor: pointer;">This Week</button>
-                <button class="tab-btn" style="padding: 0.5rem 1rem; background: transparent; color: var(--text-secondary, #94a3b8); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; cursor: pointer;">All Time</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                <div style="display: flex; align-items: center; padding: 1rem; background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1)); border: 1px solid rgba(255, 215, 0, 0.5); border-radius: 10px;">
-                    <span style="font-weight: bold; font-size: 1.4rem; color: gold; width: 40px; text-align: center;">1</span>
-                    <span style="flex: 1; margin-left: 1rem;">ChampionPlayer</span>
-                    <span style="font-weight: bold; color: var(--primary-green, #84cc16);">52,450</span>
-                </div>
-                <div style="display: flex; align-items: center; padding: 1rem; background: linear-gradient(135deg, rgba(192, 192, 192, 0.2), rgba(192, 192, 192, 0.1)); border: 1px solid rgba(192, 192, 192, 0.5); border-radius: 10px;">
-                    <span style="font-weight: bold; font-size: 1.3rem; color: silver; width: 40px; text-align: center;">2</span>
-                    <span style="flex: 1; margin-left: 1rem;">ProGamer2024</span>
-                    <span style="font-weight: bold; color: var(--primary-green, #84cc16);">48,320</span>
-                </div>
-            </div>
-        `
-    },
-    profile: {
-        title: '<i class="fas fa-user-circle"></i> Player Profile',
-        content: `
-            <div style="padding: 1.5rem; background: rgba(74, 144, 226, 0.1); border-radius: 10px; margin: 1.5rem 0; display: flex; align-items: center; gap: 1.5rem;">
-                <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4a90e2, #50e3c2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white;">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div>
-                    <h3 style="margin-bottom: 0.25rem;">Guest Player</h3>
-                    <p style="color: var(--text-secondary, #94a3b8); font-size: 0.9rem;">Not logged in</p>
-                </div>
-            </div>
-            <div style="text-align: center; padding: 2rem; margin: 2rem 0;">
-                <i class="fas fa-lock" style="font-size: 3rem; color: var(--text-secondary, #94a3b8); margin-bottom: 1rem; display: block;"></i>
-                <p style="color: var(--text-secondary, #94a3b8); margin-bottom: 1.5rem; font-size: 1rem;">Sign in to track your progress and compete on the leaderboard!</p>
-                <button class="modal-button auth-trigger-btn" style="padding: 0.75rem 2rem; font-size: 1rem;">Sign In / Register</button>
-            </div>
-        `
-    }
-};
-
-function initLandingPage() {
-    // Play button - instant game start
-    var playBtn = document.getElementById("playBtn");
-    if (playBtn) {
-        playBtn.onclick = function() {
-            playerNameInput.value = generateGuestName();
-            startGame("player");
-        };
-    }
-
-    // How to play button
-    var howToPlayBtn = document.getElementById("howToPlayBtn");
-    if (howToPlayBtn) {
-        howToPlayBtn.onclick = function() {
-            showModal("tutorialModal");
-        };
-    }
-
-    // Start from tutorial
-    var startFromTutorial = document.getElementById("startFromTutorial");
-    if (startFromTutorial) {
-        startFromTutorial.onclick = function() {
-            closeModal(document.getElementById("tutorialModal"));
-            playerNameInput.value = generateGuestName();
-            startGame("player");
-        };
-    }
-
-    // Navigation items
-    var navItems = document.querySelectorAll(".nav-item");
-    navItems.forEach(function(item) {
-        item.addEventListener("click", function() {
-            var section = this.dataset.section;
-
-            // Update active state
-            navItems.forEach(nav => nav.classList.remove("active"));
-            this.classList.add("active");
-
-            // Show modal content
-            var template = modalTemplates[section];
-            if (!template) return;
-
-            var modal = document.getElementById("sectionModal");
-            if (!modal) return;
-
-            var modalContent = document.getElementById("modalContent");
-            if (template.useGrid) {
-                modalContent.innerHTML = `
-                    <h2>${template.title}</h2>
-                    <div class="tutorial-content">
-                        ${template.items.map(item => `
-                            <div class="tutorial-step">
-                                <i class="${item.icon}"></i>
-                                <h3>${item.title}</h3>
-                                <p>${item.desc}</p>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <button class="modal-button" onclick="closeModal(document.getElementById('sectionModal'))">Close</button>
-                `;
-            } else {
-                modalContent.innerHTML = `
-                    <h2>${template.title}</h2>
-                    ${template.content}
-                `;
-            }
-
-            showModal("sectionModal");
-        });
-    });
-
-    // Initialize modal close buttons
-    document.querySelectorAll(".modal").forEach(function(modal) {
-        var closeBtn = modal.querySelector(".close-modal");
-        if (closeBtn) {
-            closeBtn.addEventListener("click", function() {
-                closeModal(modal);
-            });
-        }
-        modal.addEventListener("click", function(e) {
-            if (e.target === modal) closeModal(modal);
-        });
-    });
-
-    // Initialize parallax effect
-    initParallax();
-}
-
-function showModal(modalId) {
-    var modal = document.getElementById(modalId);
-    if (modal) modal.classList.add("show");
-}
-
-function closeModal(modal) {
-    modal.classList.remove("show");
-    document.querySelectorAll(".nav-item").forEach(nav => nav.classList.remove("active"));
-}
-
-function initParallax() {
-    var mouseX = 0, mouseY = 0;
-    var targetX = 0, targetY = 0;
-
-    document.addEventListener("mousemove", function(e) {
-        mouseX = (e.clientX / window.innerWidth - 0.5) * 20;
-        mouseY = (e.clientY / window.innerHeight - 0.5) * 20;
-    });
-
-    function animate() {
-        targetX += (mouseX - targetX) * 0.1;
-        targetY += (mouseY - targetY) * 0.1;
-
-        var previewCells = document.querySelector(".preview-cells");
-        if (previewCells) {
-            previewCells.style.transform = `translate(${targetX}px, ${targetY}px)`;
-        }
-        requestAnimationFrame(animate);
-    }
-    animate();
-}
-
-*/
 
 window.onload = function () {
     // Landing page is handled by landing.js
@@ -996,22 +781,6 @@ function setupSocket(socket) {
             }
             lastPositionUpdateTime = updateTime;
 
-            // Performance monitoring: log if processing takes too long
-            /*
-            if (window.DEBUG_MODE) {
-                var entityCount = userData.length + foodsList.length + massList.length + virusList.length;
-                if (entityCount > 200) {
-                    console.warn('[PERF] Large update:', {
-                        players: userData.length,
-                        food: foodsList.length,
-                        mass: massList.length,
-                        viruses: virusList.length,
-                        total: entityCount
-                    });
-                }
-            }
-            */
-
             if (global.playerType == "player") {
                 var now = getTime();
 
@@ -1383,6 +1152,10 @@ var smoothCamera = {
 // Cell merge animation system
 class CellAnimations {
     constructor(duration = 500) {
+        // FIXME Smooth merging animation is currently a bit buggy
+        // Need to fix it then enable it again
+        this.enabled = false;
+
         // Map of "playerId_cellIndex" -> { startRadius, targetRadius, startTime, duration }
         this.animations = {};
 
@@ -1435,6 +1208,10 @@ class CellAnimations {
 
     // Get the current animated radius for a cell
     getAnimatedRadius(playerId, cellIndex, actualRadius) {
+        if (!this.enabled) {
+            return actualRadius; // Animations disabled
+        }
+
         const key = `${playerId}_${cellIndex}`;
         const animation = this.animations[key];
 
@@ -1461,6 +1238,10 @@ class CellAnimations {
 
     // Detect merges by comparing cell states
     detectMerges(playerId, newCells) {
+        if (!this.enabled) {
+            return; // Animations disabled, skip merge detection
+        }
+
         const previousCells = this.previousCellStates[playerId];
 
         if (!previousCells || previousCells.length === 0) {

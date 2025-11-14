@@ -127,6 +127,8 @@ exports.Player = class {
         this.screenHeight = null;
         this.config = config; // Store config for all settings
         this.timeToMerge = null; // Global timer for when cells can merge
+        this.lastSplitTime = 0; // Track last split to prevent spam
+        this.isSplitting = false; // Flag to prevent concurrent splits
         this.setLastHeartbeat();
     }
 
@@ -207,9 +209,11 @@ exports.Player = class {
         let cellToSplit = this.cells[cellIndex];
         let maxAllowedPieces = Math.floor(cellToSplit.mass / minSplitMass); // If we split the cell ino more pieces, they will be too small.
         let piecesToCreate = Math.min(maxAllowedPieces, maxRequestedPieces);
-        if (piecesToCreate === 0) {
-            return;
+
+        if (piecesToCreate <= 1) {
+            return; // Need at least 2 pieces to split
         }
+
         let newCellsMass = cellToSplit.mass / piecesToCreate;
 
         // Calculate split velocity if direction provided
@@ -269,14 +273,37 @@ exports.Player = class {
     // Performs a split initiated by the player.
     // Tries to split every cell in half.
     userSplit(maxCells, minSplitMass) {
+        // Prevent concurrent split execution (critical section)
+        if (this.isSplitting) {
+            return; // Already processing a split
+        }
+
         // Safety check: ensure cells array exists
         if (!this.cells || this.cells.length === 0) {
             return;
         }
 
+        // Prevent split spam with cooldown (150ms minimum between splits)
+        const now = Date.now();
+        const splitCooldown = 150; // milliseconds
+        if (now - this.lastSplitTime < splitCooldown) {
+            return; // Too soon since last split
+        }
+
+        // If already at max cells, can't split anymore
+        if (this.cells.length >= maxCells) {
+            return;
+        }
+
+        // Set flag to block concurrent splits
+        this.isSplitting = true;
+
+        // Update last split time
+        this.lastSplitTime = now;
+
         let cellsToCreate;
         if (this.cells.length > maxCells / 2) { // Not every cell can be split
-            cellsToCreate = maxCells - this.cells.length + 1;
+            cellsToCreate = maxCells - this.cells.length;
 
             this.cells.sort(function (a, b) { // Sort the cells so the biggest ones will be split
                 return b.mass - a.mass;
@@ -295,6 +322,9 @@ exports.Player = class {
 
             this.splitCell(i, 2, minSplitMass, splitDirection);
         }
+
+        // Clear flag after split operations complete
+        this.isSplitting = false;
     }
 
     // Loops trough cells, and calls callback with colliding ones

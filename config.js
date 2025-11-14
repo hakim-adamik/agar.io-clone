@@ -26,7 +26,7 @@ module.exports = {
     gameMass: 20000,
     maxFood: 1000,
     maxVirus: 50,
-    slowBase: 10,
+    slowBase: 20,
     networkUpdateFactor: 60,
     maxHeartbeatInterval: 5000,
     foodUniformDisposition: true,
@@ -50,7 +50,7 @@ module.exports = {
 
     massLossRate: 1,
     minMassLoss: 50,
-    mergeTimer: 700, // Time in milliseconds before cells can merge after they are fully separated (0 = immediate merge once separated)
+    mergeTimer: 1000, // Time in milliseconds before cells can merge after they are fully separated (0 = immediate merge once separated)
 
     sqlinfo: {
         fileName: "db.sqlite3",
