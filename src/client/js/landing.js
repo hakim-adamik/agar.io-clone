@@ -17,6 +17,7 @@ function playClickSound() {
     try {
         const clickSound = document.getElementById('click_sound');
         if (clickSound) {
+            clickSound.volume = 0.5; // 50% volume for UI sounds
             clickSound.currentTime = 0; // Reset to start
             clickSound.play().catch(function(e) {
                 console.log('Click sound playback failed:', e);
@@ -39,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const menuSound = document.getElementById('menu_selection_sound');
             if (menuSound) {
+                menuSound.volume = 0.5; // 50% volume for UI sounds
                 menuSound.currentTime = 0; // Reset to start
                 menuSound.play().catch(function(e) {
                     console.log('Menu selection sound playback failed:', e);
