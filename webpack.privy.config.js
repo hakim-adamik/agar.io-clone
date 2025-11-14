@@ -7,7 +7,8 @@ module.exports = {
     entry: './src/client/components/auth/privy-auth.jsx',
     output: {
         path: path.resolve(__dirname, 'bin/client/auth'),
-        filename: 'privy-auth-bundle.js'
+        filename: '[name].privy-auth-bundle.js',
+        chunkFilename: '[name].privy-chunk.js'
     },
     module: {
         rules: [
@@ -76,7 +77,22 @@ module.exports = {
                 extractComments: false
             })
         ],
-        splitChunks: false,
+        splitChunks: {
+            chunks: 'all',
+            cacheGroups: {
+                vendor: {
+                    test: /[\\/]node_modules[\\/]/,
+                    name: 'vendors',
+                    chunks: 'all',
+                    maxSize: 2000000, // 2MB chunks
+                },
+                default: {
+                    minChunks: 2,
+                    priority: -20,
+                    reuseExistingChunk: true
+                }
+            }
+        },
         runtimeChunk: false,
         moduleIds: 'deterministic',
         sideEffects: false,
