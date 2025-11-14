@@ -196,12 +196,13 @@ echo ""
 # Step 6: Build and start the application
 echo -e "${YELLOW}🚀 Building and starting application...${NC}"
 
-ssh $DROPLET_USER@$DROPLET_IP << ENDSSH
+# Pass variables through SSH using EOF instead of 'ENDSSH' to allow variable expansion
+ssh $DROPLET_USER@$DROPLET_IP << EOF
 set -e
 cd $APP_DIR
 
 # Set environment variables for Docker Compose
-export PRIVY_APP_ID="cmhkpg56r02vbjr0cdeex8n7i"
+export PRIVY_APP_ID="$PRIVY_APP_ID"
 export DATABASE_URL="postgresql://neondb_owner:npg_X0hNZFwe8Lrk@ep-wild-bar-agks6pgk-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require"
 
 # Stop existing containers
@@ -230,7 +231,7 @@ else
 fi
 
 echo "✅ Deployment complete"
-ENDSSH
+EOF
 
 echo -e "${GREEN}✅ Application deployed successfully${NC}"
 echo ""
