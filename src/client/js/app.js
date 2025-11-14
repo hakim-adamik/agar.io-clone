@@ -1454,6 +1454,18 @@ function setupSocket(socket) {
         }
 
         global.gameStart = false;
+
+        // Stop background music when player dies
+        try {
+            const backgroundMusic = document.getElementById('background_music');
+            if (backgroundMusic) {
+                backgroundMusic.pause();
+                backgroundMusic.currentTime = 0;
+            }
+        } catch (e) {
+            console.log('Error stopping background music on death:', e);
+        }
+
         render.drawErrorMessage("You died!", graph, global.screen);
         window.setTimeout(() => {
             // Return to landing page instead of old menu
