@@ -55,13 +55,6 @@ app.get('/', (req, res) => {
             return;
         }
 
-        // Log environment variables for debugging
-        console.log('[Server] Environment variables:', {
-            PRIVY_APP_ID: process.env.PRIVY_APP_ID,
-            NODE_ENV: process.env.NODE_ENV,
-            PORT: process.env.PORT
-        });
-
         // Inject environment variables and config into the HTML
         const envScript = `
         <script>
@@ -69,7 +62,6 @@ app.get('/', (req, res) => {
                 PRIVY_APP_ID: '${process.env.PRIVY_APP_ID || ''}',
                 DEBUG_SHOW_CELL_MASS: ${process.env.DEBUG_SHOW_CELL_MASS || false}
             };
-            console.log('[Client] Injected ENV:', window.ENV);
         </script>`;
 
         // Insert the script before the closing </head> tag
