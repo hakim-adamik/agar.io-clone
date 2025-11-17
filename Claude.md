@@ -114,6 +114,8 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 - [ ] Refactor GameControls into separate modules (`src/client/js/chat-client.js:24`)
 
 **Performance:**
+- [x] ~~Modularized prediction system for better maintainability~~ ✅ Completed November 2024
+- [x] ~~Fixed frame synchronization issues causing background shakiness~~ ✅ Completed November 2024
 - [ ] Consider WebGL rendering for better performance
 - [ ] Implement replay system
 
@@ -125,6 +127,10 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 ### 📊 Recent Changes
 
 -   **Latest Updates (November 2024):**
+    -   **Prediction System Refactoring:** Extracted prediction and animation logic into separate modules (prediction.js, cell-animations.js)
+    -   **Frame Rendering Synchronization Fix:** Resolved background shakiness by caching camera position per frame
+        - Root cause: Micro-timing differences when calculating entity positions within same frame
+        - Solution: All render operations now use same frameCameraX/frameCameraY reference
     -   **Database Infrastructure:** Phase A complete with SQLite tables, repository layer, and REST API
     -   **User Authentication:** Database integration with Privy auth IDs for persistent user profiles
     -   **Session Tracking:** Socket.IO integrated with game sessions for stats collection
