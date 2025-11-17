@@ -2,6 +2,8 @@ var io = require("socket.io-client");
 var render = require("./render");
 var Canvas = require("./canvas");
 var global = require("./global");
+var PredictionSystem = require("./prediction");
+var CellAnimations = require("./cell-animations");
 
 var playerNameInput = document.getElementById("playerNameInput");
 var socket;
@@ -924,10 +926,8 @@ function setupSocket(socket) {
         // Reset cell animations for new game session
         cellAnimations.reset();
 
-        // Reset smooth camera for new game session
-        smoothCamera.enabled = false;
-        smoothCamera.x = 0;
-        smoothCamera.y = 0;
+        // Reset prediction system for new game session
+        predictionSystem.reset();
 
         c.focus();
         global.game.width = gameSizes.width;
@@ -1038,16 +1038,6 @@ function setupSocket(socket) {
     socket.on(
         "serverTellPlayerMove",
         function (playerData, userData, foodsList, massList, virusList) {
-            // Track position update timing
-            var updateTime = getTime();
-            if (lastPositionUpdateTime > 0) {
-                var timeSinceLastUpdate = updateTime - lastPositionUpdateTime;
-                positionUpdateTimes.push(timeSinceLastUpdate);
-                if (positionUpdateTimes.length > 30) {
-                    positionUpdateTimes.shift(); // Keep only last 30 updates
-                }
-            }
-            lastPositionUpdateTime = updateTime;
 
 
             if (global.playerType == "player") {
@@ -1058,142 +1048,44 @@ function setupSocket(socket) {
                 player.massTotal = playerData.massTotal;
                 player.score = playerData.cells.reduce((sum, cell) => sum + (cell.score || 0), 0);
 
-                // Client-side prediction: store server states and calculate velocity
-                if (!prediction.enabled) {
-                    // First update - initialize (using optimized cloning)
-                    prediction.previous = {
-                        x: playerData.x,
-                        y: playerData.y,
-                        cells: cloneCells(playerData.cells),
-                        timestamp: now
-                    };
-                    prediction.current = {
-                        x: playerData.x,
-                        y: playerData.y,
-                        cells: cloneCells(playerData.cells),
-                        timestamp: now
-                    };
-                    prediction.predicted = {
-                        x: playerData.x,
-                        y: playerData.y,
-                        cells: cloneCells(playerData.cells)
-                    };
-                    player.x = playerData.x;
-                    player.y = playerData.y;
-                    player.cells = playerData.cells;
-                    prediction.enabled = true;
+                // Update prediction system with server data
+                const predictedState = predictionSystem.updatePlayerState(playerData, now);
+                player.x = predictedState.x;
+                player.y = predictedState.y;
+                player.cells = predictedState.cells;
 
-                    // Initialize smooth camera
-                    smoothCamera.x = playerData.x;
-                    smoothCamera.y = playerData.y;
-                    smoothCamera.enabled = true;
-                } else {
-                    // Subsequent updates - shift states and calculate velocity (using optimized cloning)
-                    prediction.previous = prediction.current;
-                    prediction.current = {
-                        x: playerData.x,
-                        y: playerData.y,
-                        cells: cloneCells(playerData.cells),
-                        timestamp: now
-                    };
-
-                    // Calculate player camera velocity
-                    var timeDelta = prediction.current.timestamp - prediction.previous.timestamp;
-
-                    // Only calculate velocity if updates are far enough apart (prevent extreme velocities)
-                    var minTimeDelta = 5; // ms - ignore updates closer than 5ms apart
-                    if (timeDelta > minTimeDelta) {
-                        var vx = (prediction.current.x - prediction.previous.x) / timeDelta;
-                        var vy = (prediction.current.y - prediction.previous.y) / timeDelta;
-
-                        // Sanity check: cap maximum velocity (prevent glitches from bad data)
-                        var maxVelocity = 5; // pixels per ms (very generous, typical is ~0.5)
-                        var velocityMagnitude = Math.sqrt(vx * vx + vy * vy);
-                        if (velocityMagnitude > maxVelocity) {
-                            var scale = maxVelocity / velocityMagnitude;
-                            vx *= scale;
-                            vy *= scale;
-                        }
-
-                        prediction.velocity.x = vx;
-                        prediction.velocity.y = vy;
-
-                        // Calculate velocity for each cell (if cell count matches)
-                        if (prediction.current.cells.length === prediction.previous.cells.length) {
-                            prediction.cellVelocities = [];
-                            for (var i = 0; i < prediction.current.cells.length; i++) {
-                                var currCell = prediction.current.cells[i];
-                                var prevCell = prediction.previous.cells[i];
-                                var cellVx = (currCell.x - prevCell.x) / timeDelta;
-                                var cellVy = (currCell.y - prevCell.y) / timeDelta;
-
-                                // Cap cell velocity too
-                                var cellVelMagnitude = Math.sqrt(cellVx * cellVx + cellVy * cellVy);
-                                if (cellVelMagnitude > maxVelocity) {
-                                    var cellScale = maxVelocity / cellVelMagnitude;
-                                    cellVx *= cellScale;
-                                    cellVy *= cellScale;
+                // Check for merge/split events to play sounds
+                const event = predictionSystem.calculatePlayerVelocity();
+                if (event) {
+                    if (event.type === 'merge') {
+                        // Play remerge sound
+                        if (global.soundEnabled) {
+                            try {
+                                const remergeSoundEl = document.getElementById('remerge_cell');
+                                if (remergeSoundEl) {
+                                    remergeSoundEl.volume = 0.5;
+                                    remergeSoundEl.currentTime = 0;
+                                    remergeSoundEl.play().catch(e => console.log('Remerge sound failed:', e));
                                 }
-
-                                prediction.cellVelocities.push({
-                                    vx: cellVx,
-                                    vy: cellVy
-                                });
+                            } catch (e) {
+                                console.log('Remerge sound not available:', e);
                             }
-                        } else {
-                            // Cell count changed (split/merge) - reset velocities
-                            prediction.cellVelocities = [];
-
-                            // Detect merge vs split
-                            var previousCellCount = prediction.previous.cells.length;
-                            var currentCellCount = prediction.current.cells.length;
-
-                            if (currentCellCount < previousCellCount) {
-                                // MERGE DETECTED! Cells merged back together
-                                console.log(`🔄 Cells merged! ${previousCellCount} → ${currentCellCount}`);
-
-                                // Play remerge sound if sound is enabled
-                                if (global.soundEnabled) {
-                                    try {
-                                        const remergeSoundEl = document.getElementById('remerge_cell');
-                                        if (remergeSoundEl) {
-                                            remergeSoundEl.volume = 0.5;
-                                            remergeSoundEl.currentTime = 0;
-                                            remergeSoundEl.play().catch(function(e) {
-                                                console.log('Remerge sound playback failed:', e);
-                                            });
-                                        }
-                                    } catch (e) {
-                                        console.log('Remerge sound not available:', e);
-                                    }
+                        }
+                    } else if (event.type === 'split') {
+                        // Play virus split sound
+                        if (global.soundEnabled) {
+                            try {
+                                const virusSplitSound = document.getElementById('virus_split_sound');
+                                if (virusSplitSound) {
+                                    virusSplitSound.volume = 0.5;
+                                    virusSplitSound.currentTime = 0;
+                                    virusSplitSound.play().catch(e => console.log('Virus split sound failed:', e));
                                 }
-                            } else if (currentCellCount > previousCellCount) {
-                                // SPLIT DETECTED! Virus collision caused cell split
-                                console.log(`💥 Virus split! ${previousCellCount} → ${currentCellCount}`);
-
-                                // Play virus split sound if sound is enabled
-                                if (global.soundEnabled) {
-                                    try {
-                                        const virusSplitSound = document.getElementById('virus_split_sound');
-                                        if (virusSplitSound) {
-                                            virusSplitSound.volume = 0.5;
-                                            virusSplitSound.currentTime = 0;
-                                            virusSplitSound.play().catch(function(e) {
-                                                console.log('Virus split sound playback failed:', e);
-                                            });
-                                        }
-                                    } catch (e) {
-                                        console.log('Virus split sound not available:', e);
-                                    }
-                                }
+                            } catch (e) {
+                                console.log('Virus split sound not available:', e);
                             }
                         }
                     }
-
-                    // Start predicting from current server state (using optimized cloning)
-                    prediction.predicted.x = prediction.current.x;
-                    prediction.predicted.y = prediction.current.y;
-                    prediction.predicted.cells = cloneCells(prediction.current.cells);
                 }
 
                 // Update player score display with enhanced features
@@ -1201,7 +1093,6 @@ function setupSocket(socket) {
             }
             // Store other players' data and calculate their velocities
             var now = getTime();
-            prediction.otherPlayers.timestamp = now;
 
             // Create a set of current player IDs for cleanup
             var currentPlayerIds = {};
@@ -1212,12 +1103,8 @@ function setupSocket(socket) {
             // Add current player to active IDs for animation cleanup
             currentPlayerIds[player.id] = true;
 
-            // Remove disconnected players from prediction states
-            for (var playerId in prediction.otherPlayers.states) {
-                if (!currentPlayerIds[playerId] && playerId != player.id) {
-                    delete prediction.otherPlayers.states[playerId];
-                }
-            }
+            // Clean up disconnected players from prediction
+            predictionSystem.cleanupDisconnectedPlayers(currentPlayerIds);
 
             // Clean up animation states for disconnected players
             cellAnimations.cleanupDisconnectedPlayers(currentPlayerIds);
@@ -1232,54 +1119,8 @@ function setupSocket(socket) {
 
                 if (user.id === player.id) continue; // Skip current player for prediction
 
-                var playerId = user.id;
-                if (!prediction.otherPlayers.states[playerId]) {
-                    // First time seeing this player - initialize (using optimized cloning)
-                    prediction.otherPlayers.states[playerId] = {
-                        previous: { cells: [], timestamp: now },
-                        current: { cells: cloneCells(user.cells), timestamp: now },
-                        velocities: []
-                    };
-                } else {
-                    // Update states and calculate velocity (using optimized cloning)
-                    var playerState = prediction.otherPlayers.states[playerId];
-                    playerState.previous = playerState.current;
-                    playerState.current = {
-                        cells: cloneCells(user.cells),
-                        timestamp: now
-                    };
-
-                    // Calculate velocity for each cell
-                    var timeDelta = playerState.current.timestamp - playerState.previous.timestamp;
-                    var minTimeDelta = 5; // ms - ignore updates closer than 5ms apart
-
-                    if (timeDelta > minTimeDelta && playerState.current.cells.length === playerState.previous.cells.length) {
-                        playerState.velocities = [];
-                        var maxVelocity = 5; // pixels per ms
-
-                        for (var j = 0; j < playerState.current.cells.length; j++) {
-                            var currCell = playerState.current.cells[j];
-                            var prevCell = playerState.previous.cells[j];
-                            var cellVx = (currCell.x - prevCell.x) / timeDelta;
-                            var cellVy = (currCell.y - prevCell.y) / timeDelta;
-
-                            // Cap velocity to prevent glitches
-                            var cellVelMagnitude = Math.sqrt(cellVx * cellVx + cellVy * cellVy);
-                            if (cellVelMagnitude > maxVelocity) {
-                                var cellScale = maxVelocity / cellVelMagnitude;
-                                cellVx *= cellScale;
-                                cellVy *= cellScale;
-                            }
-
-                            playerState.velocities.push({
-                                vx: cellVx,
-                                vy: cellVy
-                            });
-                        }
-                    } else {
-                        playerState.velocities = [];
-                    }
-                }
+                // Update other player's prediction state
+                predictionSystem.updateOtherPlayer(user.id, user, now);
             }
 
             users = userData;
@@ -1440,27 +1281,7 @@ var frameTimes = [];
 var lastFrameTime = 0;
 var fpsTrackingStarted = false;
 
-// Position update tracking (UPS - Updates Per Second)
-var positionUpdateTimes = [];
-var lastPositionUpdateTime = 0;
 
-// Optimized cell cloning (much faster than JSON.parse(JSON.stringify()))
-function cloneCells(cells) {
-    if (!cells || cells.length === 0) return [];
-
-    const cloned = new Array(cells.length);
-    for (let i = 0; i < cells.length; i++) {
-        const cell = cells[i];
-        cloned[i] = {
-            x: cell.x,
-            y: cell.y,
-            mass: cell.mass,
-            radius: cell.radius,
-            score: cell.score
-        };
-    }
-    return cloned;
-}
 
 // HSL color cache (avoid string concatenation every frame)
 var colorCache = {};
@@ -1479,272 +1300,15 @@ function clearColorCacheIfNeeded() {
     }
 }
 
-// Client-side prediction with velocity extrapolation
-var prediction = {
-    enabled: true,
-    // Last two server states to calculate velocity (for current player)
-    previous: { x: 0, y: 0, cells: [], timestamp: 0 },
-    current: { x: 0, y: 0, cells: [], timestamp: 0 },
-    // Predicted state (what we render)
-    predicted: { x: 0, y: 0, cells: [] },
-    // Calculated velocities
-    velocity: { x: 0, y: 0 },
-    cellVelocities: [],
+// Initialize prediction system with configuration
+var predictionSystem = new PredictionSystem({
+    maxExtrapolation: 50,      // ms - max time to predict ahead
+    maxVelocity: 5,            // pixels/ms - velocity cap
+    minTimeDelta: 5,           // ms - ignore very small updates
+    cameraLerpSpeed: 0.15      // Camera smoothing speed (currently disabled)
+});
 
-    // Other players prediction
-    otherPlayers: {
-        // Map of playerId -> { previous, current, velocities }
-        states: {},
-        timestamp: 0
-    }
-};
 
-// Smooth camera interpolation to prevent jumps when cells merge
-var smoothCamera = {
-    enabled: false,
-    // Rendered camera position (smoothly interpolated)
-    x: 0,
-    y: 0,
-    // Interpolation speed (0-1, higher = faster)
-    lerpSpeed: 0.15
-};
-
-// Cell merge animation system
-class CellAnimations {
-    constructor(duration = 500) {
-        // FIXME Smooth merging animation is currently a bit buggy
-        // Need to fix it then enable it again
-        this.enabled = false;
-
-        // Map of "playerId_cellIndex" -> { startRadius, targetRadius, startTime, duration }
-        this.animations = {};
-
-        // Animation duration in milliseconds
-        this.duration = duration;
-
-        // Track cell states to detect merges
-        // Map of playerId -> [{ x, y, mass, radius }]
-        this.previousCellStates = {};
-    }
-
-    // Start a new merge animation for a cell
-    startAnimation(playerId, cellIndex, startRadius, targetRadius) {
-        const key = `${playerId}_${cellIndex}`;
-
-        // Check if there's already an animation in progress
-        const existingAnimation = this.animations[key];
-        if (existingAnimation) {
-            const targetDiff = Math.abs(existingAnimation.targetRadius - targetRadius);
-            if (targetDiff < 5) {
-                // Target is very similar, don't restart the animation
-                return;
-            }
-
-            // Target changed significantly (another merge happened during animation)
-            // Use the current animated radius as the new starting point for smooth continuation
-            const now = getTime();
-            const elapsed = now - existingAnimation.startTime;
-
-            if (elapsed < existingAnimation.duration) {
-                // Animation still in progress - calculate current radius
-                const progress = elapsed / existingAnimation.duration;
-                const easeProgress = 1 - Math.pow(1 - progress, 3);
-                const currentRadius = existingAnimation.startRadius +
-                    (existingAnimation.targetRadius - existingAnimation.startRadius) * easeProgress;
-
-                // Start new animation from current position
-                startRadius = currentRadius;
-            }
-        }
-
-        const now = getTime();
-        this.animations[key] = {
-            startRadius: startRadius,
-            targetRadius: targetRadius,
-            startTime: now,
-            duration: this.duration
-        };
-    }
-
-    // Get the current animated radius for a cell
-    getAnimatedRadius(playerId, cellIndex, actualRadius) {
-        if (!this.enabled) {
-            return actualRadius; // Animations disabled
-        }
-
-        const key = `${playerId}_${cellIndex}`;
-        const animation = this.animations[key];
-
-        if (!animation) {
-            return actualRadius; // No animation, use actual radius
-        }
-
-        const now = getTime();
-        const elapsed = now - animation.startTime;
-
-        if (elapsed >= animation.duration) {
-            // Animation complete
-            delete this.animations[key];
-            return actualRadius;
-        }
-
-        // Ease-out interpolation for smooth animation
-        const progress = elapsed / animation.duration;
-        const easeProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
-
-        const currentRadius = animation.startRadius + (animation.targetRadius - animation.startRadius) * easeProgress;
-        return currentRadius;
-    }
-
-    // Detect merges by comparing cell states
-    detectMerges(playerId, newCells) {
-        if (!this.enabled) {
-            return; // Animations disabled, skip merge detection
-        }
-
-        const previousCells = this.previousCellStates[playerId];
-
-        if (!previousCells || previousCells.length === 0) {
-            // First time seeing this player, just store the state
-            this.previousCellStates[playerId] = this.cloneCellStates(newCells);
-            return;
-        }
-
-        // If cell count decreased, cells merged
-        if (newCells.length < previousCells.length) {
-            // Find which cells grew (received mass from merged cells)
-            for (let i = 0; i < newCells.length; i++) {
-                const newCell = newCells[i];
-
-                if (!newCell || typeof newCell.x !== 'number' || typeof newCell.y !== 'number') {
-                    continue; // Skip invalid cells
-                }
-
-                // Find all nearby previous cells (potential merge candidates)
-                const nearbyCells = this.findNearbyCells(newCell, previousCells, 200);
-
-                if (nearbyCells && nearbyCells.length > 0) {
-                    // Use the largest nearby cell's radius as the starting point
-                    const largestPrevCell = nearbyCells.reduce((max, cell) =>
-                        (cell && cell.radius > max.radius) ? cell : max
-                    );
-
-                    if (largestPrevCell && newCell.mass > largestPrevCell.mass * 1.2) {
-                        // Mass increased significantly, this cell absorbed another
-                        // Start animation from the largest cell's radius to new radius
-                        this.startAnimation(playerId, i, largestPrevCell.radius, newCell.radius);
-                    }
-                }
-            }
-        } else if (newCells.length === previousCells.length) {
-            // Same number of cells, check if any grew significantly
-            for (let i = 0; i < newCells.length; i++) {
-                const newCell = newCells[i];
-                const matchedPrevCell = this.findMatchingCell(newCell, previousCells);
-
-                if (matchedPrevCell && newCell.mass > matchedPrevCell.mass * 1.2) {
-                    // Mass increased significantly (ate something big or merged)
-                    this.startAnimation(playerId, i, matchedPrevCell.radius, newCell.radius);
-                }
-            }
-        }
-
-        // Update stored state
-        this.previousCellStates[playerId] = this.cloneCellStates(newCells);
-    }
-
-    // Find matching cell in previous state by proximity
-    findMatchingCell(cell, previousCells) {
-        let closestCell = null;
-        let closestDistance = Infinity;
-
-        for (let i = 0; i < previousCells.length; i++) {
-            const prevCell = previousCells[i];
-            const dx = cell.x - prevCell.x;
-            const dy = cell.y - prevCell.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            // Cell should be relatively close (within 200 units)
-            if (distance < 200 && distance < closestDistance) {
-                closestDistance = distance;
-                closestCell = prevCell;
-            }
-        }
-
-        return closestCell;
-    }
-
-    // Find all nearby cells within a given distance
-    findNearbyCells(cell, previousCells, maxDistance) {
-        const nearbyCells = [];
-
-        if (!cell || !previousCells || !Array.isArray(previousCells)) {
-            return nearbyCells;
-        }
-
-        for (let i = 0; i < previousCells.length; i++) {
-            const prevCell = previousCells[i];
-            if (!prevCell || typeof prevCell.x !== 'number' || typeof prevCell.y !== 'number') {
-                continue;
-            }
-
-            const dx = cell.x - prevCell.x;
-            const dy = cell.y - prevCell.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (distance < maxDistance) {
-                nearbyCells.push(prevCell);
-            }
-        }
-
-        return nearbyCells;
-    }
-
-    // Clone cell states for comparison
-    cloneCellStates(cells) {
-        const cloned = [];
-        if (!cells || !Array.isArray(cells)) {
-            return cloned;
-        }
-
-        for (let i = 0; i < cells.length; i++) {
-            const cell = cells[i];
-            if (cell && typeof cell.x === 'number' && typeof cell.y === 'number' &&
-                typeof cell.mass === 'number' && typeof cell.radius === 'number') {
-                cloned.push({
-                    x: cell.x,
-                    y: cell.y,
-                    mass: cell.mass,
-                    radius: cell.radius
-                });
-            }
-        }
-        return cloned;
-    }
-
-    // Clean up old player states
-    cleanupDisconnectedPlayers(activePlayerIds) {
-        for (const playerId in this.previousCellStates) {
-            if (!activePlayerIds[playerId]) {
-                delete this.previousCellStates[playerId];
-            }
-        }
-
-        // Also clean up animations for disconnected players
-        for (const key in this.animations) {
-            const playerId = key.split('_')[0];
-            if (!activePlayerIds[playerId]) {
-                delete this.animations[key];
-            }
-        }
-    }
-
-    // Reset all animations and states
-    reset() {
-        this.animations = {};
-        this.previousCellStates = {};
-    }
-}
 
 // Initialize FPS counter visibility from localStorage
 (function () {
@@ -1777,8 +1341,12 @@ var getTime = (function () {
     }
 })();
 
-// Create cell animations instance after getTime is available
-var cellAnimations = new CellAnimations();
+// Initialize cell animations system
+var cellAnimations = new CellAnimations({
+    enabled: false,         // Currently disabled due to bugs
+    duration: 500,         // Animation duration in ms
+    easingFunction: 'cubicEaseOut'
+});
 
 function animloop() {
     var currentTime = getTime();
@@ -1822,10 +1390,6 @@ function animloop() {
                 frameTimes = [];
                 frameCount = 0;
             }
-            if (positionUpdateTimes.length > 0) {
-                positionUpdateTimes = [];
-                lastPositionUpdateTime = 0;
-            }
         }
     }
 }
@@ -1853,13 +1417,9 @@ function updateFpsDisplay() {
         }
     }
 
-    // Calculate position update rate (UPS - Updates Per Second)
-    if (positionUpdateTimes.length > 0) {
-        var avgUpdateTime =
-            positionUpdateTimes.reduce((sum, time) => sum + time, 0) /
-            positionUpdateTimes.length;
-        var ups = Math.round(1000 / avgUpdateTime);
-
+    // Get position update rate from prediction system
+    var ups = predictionSystem.getUpdateRate();
+    if (ups > 0) {
         if (displayText.length > 0) {
             displayText += " | ";
         }
@@ -1900,96 +1460,29 @@ var socketEmitInterval = 16; // ~60fps for socket updates (every ~16ms)
 
 function gameLoop() {
     if (global.gameStart) {
-        // Client-side prediction: extrapolate positions forward based on velocity
-        if (prediction.enabled) {
-            var now = getTime();
-            var timeSinceUpdate = now - prediction.current.timestamp;
+        // Use prediction system to extrapolate positions
+        var now = getTime();
+        var predictedState = predictionSystem.extrapolate(now);
 
-            // Limit extrapolation to reasonable time (prevent overshooting if network lags)
-            var maxExtrapolation = 50; // ms - about 3 frames at 60fps
-            timeSinceUpdate = Math.min(timeSinceUpdate, maxExtrapolation);
+        // Apply predicted state to player (only if we have valid prediction data)
+        if (predictedState && predictedState.x !== undefined) {
+            player.x = predictedState.x;
+            player.y = predictedState.y;
+            player.cells = predictedState.cells || [];
+        }
 
-            // Only extrapolate if timeSinceUpdate is positive and reasonable
-            if (timeSinceUpdate >= 0 && timeSinceUpdate <= maxExtrapolation) {
-                // Extrapolate player camera position
-                prediction.predicted.x = prediction.current.x + prediction.velocity.x * timeSinceUpdate;
-                prediction.predicted.y = prediction.current.y + prediction.velocity.y * timeSinceUpdate;
-
-                // Extrapolate cell positions
-                if (prediction.cellVelocities.length === prediction.current.cells.length) {
-                    prediction.predicted.cells = [];
-                    for (var i = 0; i < prediction.current.cells.length; i++) {
-                        var cell = prediction.current.cells[i];
-                        var vel = prediction.cellVelocities[i];
-                        prediction.predicted.cells.push({
-                            x: cell.x + vel.vx * timeSinceUpdate,
-                            y: cell.y + vel.vy * timeSinceUpdate,
-                            mass: cell.mass,
-                            radius: cell.radius,
-                            score: cell.score
-                        });
-                    }
-                } else {
-                    // No velocity data (split/merge just happened) - use current state (using optimized cloning)
-                    prediction.predicted.cells = cloneCells(prediction.current.cells);
+        // Update predicted cells in users array for rendering
+        for (var i = 0; i < users.length; i++) {
+            if (users[i].id === player.id) {
+                // Current player - use predicted cells if available
+                if (predictedState && predictedState.cells && predictedState.cells.length > 0) {
+                    users[i].cells = predictedState.cells;
                 }
             } else {
-                // Invalid time delta - use current state without extrapolation (using optimized cloning)
-                prediction.predicted.x = prediction.current.x;
-                prediction.predicted.y = prediction.current.y;
-                prediction.predicted.cells = cloneCells(prediction.current.cells);
-            }
-
-            // Use predicted state for rendering
-            player.x = prediction.predicted.x;
-            player.y = prediction.predicted.y;
-            player.cells = prediction.predicted.cells;
-
-            // Apply smooth camera interpolation to prevent jarring jumps
-            if (false) {
-                // Lerp camera position towards actual player position
-                smoothCamera.x += (player.x - smoothCamera.x) * smoothCamera.lerpSpeed;
-                smoothCamera.y += (player.y - smoothCamera.y) * smoothCamera.lerpSpeed;
-
-                // Override player position with smooth camera for rendering
-                player.x = smoothCamera.x;
-                player.y = smoothCamera.y;
-            }
-
-            // Also update predicted cells in users array (for cell rendering)
-            for (var i = 0; i < users.length; i++) {
-                if (users[i].id === player.id) {
-                    // Found current player in users array - replace with predicted cells
-                    users[i].cells = prediction.predicted.cells;
-                } else {
-                    // Other player - extrapolate their cells too
-                    var playerId = users[i].id;
-                    var playerState = prediction.otherPlayers.states[playerId];
-
-                    if (playerState && playerState.velocities.length > 0) {
-                        var timeSinceUpdate = now - playerState.current.timestamp;
-
-                        // Only extrapolate if time is valid
-                        if (timeSinceUpdate >= 0 && timeSinceUpdate <= maxExtrapolation) {
-                            timeSinceUpdate = Math.min(timeSinceUpdate, maxExtrapolation);
-
-                            if (playerState.velocities.length === playerState.current.cells.length) {
-                                var predictedCells = [];
-                                for (var j = 0; j < playerState.current.cells.length; j++) {
-                                    var cell = playerState.current.cells[j];
-                                    var vel = playerState.velocities[j];
-                                    predictedCells.push({
-                                        x: cell.x + vel.vx * timeSinceUpdate,
-                                        y: cell.y + vel.vy * timeSinceUpdate,
-                                        mass: cell.mass,
-                                        radius: cell.radius,
-                                        score: cell.score
-                                    });
-                                }
-                                users[i].cells = predictedCells;
-                            }
-                        }
-                    }
+                // Other players - extrapolate their positions
+                var predictedCells = predictionSystem.extrapolateOtherPlayer(users[i].id, now);
+                if (predictedCells && predictedCells.length > 0) {
+                    users[i].cells = predictedCells;
                 }
             }
         }
@@ -2241,29 +1734,8 @@ function cleanupGame() {
     fireFood = [];
     users = [];
 
-    // Reset client-side prediction
-    prediction = {
-        enabled: false,
-        previous: { x: 0, y: 0, cells: [], timestamp: 0 },
-        current: { x: 0, y: 0, cells: [], timestamp: 0 },
-        predicted: { x: 0, y: 0, cells: [] },
-        velocity: { x: 0, y: 0 },
-        cellVelocities: [],
-        otherPlayers: {
-            states: {},
-            timestamp: 0
-        }
-    };
-
-    // Reset smooth camera
-    smoothCamera = {
-        enabled: false,
-        x: 0,
-        y: 0,
-        lerpSpeed: 0.15
-    };
-
-    // Reset cell animations
+    // Reset prediction and animation systems
+    predictionSystem.reset();
     cellAnimations.reset();
 
     // Reset player
