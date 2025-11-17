@@ -1471,6 +1471,11 @@ function gameLoop() {
             player.cells = predictedState.cells || [];
         }
 
+        // Cache the camera position for this frame to ensure consistency
+        // This prevents micro-stutters from different parts of the render using slightly different positions
+        var frameCameraX = player.x;
+        var frameCameraY = player.y;
+
         // Update predicted cells in users array for rendering
         for (var i = 0; i < users.length; i++) {
             if (users[i].id === player.id) {
@@ -1492,14 +1497,16 @@ function gameLoop() {
 
         // Only draw grid if user preference allows it
         if (global.showGrid) {
-            render.drawGrid(global, player, global.screen, graph);
+            // Use cached camera position for consistent grid rendering
+            var gridPlayer = { x: frameCameraX, y: frameCameraY };
+            render.drawGrid(global, gridPlayer, global.screen, graph);
         }
 
         // Client-side viewport culling for food
         foods.forEach((food) => {
             // Inline position calculation to avoid object allocation (GC pressure reduction)
-            let posX = food.x - player.x + global.screen.width / 2;
-            let posY = food.y - player.y + global.screen.height / 2;
+            let posX = food.x - frameCameraX + global.screen.width / 2;
+            let posY = food.y - frameCameraY + global.screen.height / 2;
             if (
                 isEntityVisible(
                     { x: posX, y: posY, radius: food.radius },
@@ -1513,8 +1520,8 @@ function gameLoop() {
         // Client-side viewport culling for fireFood
         fireFood.forEach((fireFood) => {
             // Inline position calculation to avoid object allocation (GC pressure reduction)
-            let posX = fireFood.x - player.x + global.screen.width / 2;
-            let posY = fireFood.y - player.y + global.screen.height / 2;
+            let posX = fireFood.x - frameCameraX + global.screen.width / 2;
+            let posY = fireFood.y - frameCameraY + global.screen.height / 2;
             if (
                 isEntityVisible(
                     { x: posX, y: posY, radius: fireFood.radius },
@@ -1528,8 +1535,8 @@ function gameLoop() {
         // Client-side viewport culling for viruses
         viruses.forEach((virus) => {
             // Inline position calculation to avoid object allocation (GC pressure reduction)
-            let posX = virus.x - player.x + global.screen.width / 2;
-            let posY = virus.y - player.y + global.screen.height / 2;
+            let posX = virus.x - frameCameraX + global.screen.width / 2;
+            let posY = virus.y - frameCameraY + global.screen.height / 2;
             if (
                 isEntityVisible(
                     { x: posX, y: posY, radius: virus.radius },
@@ -1542,10 +1549,10 @@ function gameLoop() {
 
         let borders = {
             // Position of the borders on the screen
-            left: global.screen.width / 2 - player.x,
-            right: global.screen.width / 2 + global.game.width - player.x,
-            top: global.screen.height / 2 - player.y,
-            bottom: global.screen.height / 2 + global.game.height - player.y,
+            left: global.screen.width / 2 - frameCameraX,
+            right: global.screen.width / 2 + global.game.width - frameCameraX,
+            top: global.screen.height / 2 - frameCameraY,
+            bottom: global.screen.height / 2 + global.game.height - frameCameraY,
         };
         if (global.borderDraw) {
             render.drawBorder(borders, graph);
@@ -1560,9 +1567,9 @@ function gameLoop() {
             let isCurrentPlayer = users[i].id === player.id;
             for (var j = 0; j < users[i].cells.length; j++) {
                 let screenX =
-                    users[i].cells[j].x - player.x + global.screen.width / 2;
+                    users[i].cells[j].x - frameCameraX + global.screen.width / 2;
                 let screenY =
-                    users[i].cells[j].y - player.y + global.screen.height / 2;
+                    users[i].cells[j].y - frameCameraY + global.screen.height / 2;
 
                 // Get animated radius for smooth merge animation
                 let actualRadius = users[i].cells[j].radius;
