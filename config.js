@@ -5,7 +5,7 @@ module.exports = {
     foodMass: 1,
     fireFood: 20,
     limitSplit: 16,
-    defaultPlayerMass: 20,
+    defaultPlayerMass: 650,
     minSplitMass: 20,
     virus: {
         fill: "#33ff33",
@@ -55,8 +55,6 @@ module.exports = {
     predictionMaxExtrapolation: 50, // ms - max time to predict ahead
     predictionMaxVelocity: 5, // pixels/ms - cap for sanity
     predictionMinTimeDelta: 5, // ms - ignore very small updates
-    predictionSmoothCameraEnabled: false, // Smooth camera interpolation
-    predictionSmoothCameraLerpSpeed: 0.15, // Camera lerp speed
 
     sqlinfo: {
         fileName: "db.sqlite3",
