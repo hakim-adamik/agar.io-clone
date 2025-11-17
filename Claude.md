@@ -564,6 +564,59 @@ node --inspect bin/server/server.js
 
 ---
 
+## Future Improvements & Ideas
+
+### Camera Smoothing Enhancements
+These improvements could make camera transitions even smoother:
+
+1. **Dynamic transition duration based on distance**
+   - Scale animation time proportionally to jump distance
+   - Formula: `duration = Math.min(1000, 300 + distance * 2)`
+   - Prevents jarring quick transitions for large jumps
+
+2. **Alternative easing functions**
+   - Quintic ease-in-out for ultra-smooth acceleration/deceleration
+   - Sine easing for most natural feeling
+   - Spring physics for realistic bouncy settling
+
+3. **Predictive smoothing**
+   - Detect when cells are about to merge (based on overlap)
+   - Start pre-emptive smoothing before merge actually happens
+
+4. **Adaptive lerp speed**
+   - Adjust post-merge lerp based on distance
+   - Slower lerp for larger distances, faster for small adjustments
+
+5. **Micro-smoothing layer**
+   - Apply subtle smoothing (5-10%) to all camera updates
+   - Eliminates tiny jitters without adding noticeable lag
+
+### Alternative Merge Physics (Barycenter Approach)
+Instead of keeping the larger cell's position when merging, cells could merge at their center of mass:
+
+```javascript
+// Calculate weighted center of mass
+let totalMass = cellA.mass + cellB.mass;
+let barycenterX = (cellA.x * cellA.mass + cellB.x * cellB.mass) / totalMass;
+let barycenterY = (cellA.y * cellA.mass + cellB.y * cellB.mass) / totalMass;
+
+// Move surviving cell to barycenter
+survivingCell.x = barycenterX;
+survivingCell.y = barycenterY;
+```
+
+**Pros:**
+- More physically realistic
+- Smoother visual merging
+- Cells appear to "flow" together
+
+**Cons:**
+- Changes strategic gameplay (positioning less advantageous for larger cell)
+- May feel less responsive to players
+- Requires additional server-side computation
+
+---
+
 ## Version Information
 
 -   **Current Version:** 1.0.1
