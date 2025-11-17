@@ -22,13 +22,6 @@ class PredictionSystem {
             timestamp: 0
         };
 
-        // Smooth camera state
-        this.smoothCamera = {
-            enabled: config.predictionSmoothCameraEnabled,
-            x: 0,
-            y: 0
-        };
-
         // Merge transition state for smooth camera during cell merges
         this.mergeTransition = {
             active: false,
@@ -116,11 +109,6 @@ class PredictionSystem {
                 y: playerData.y,
                 cells: this.cloneCells(playerData.cells)
             };
-
-            // Initialize smooth camera
-            this.smoothCamera.x = playerData.x;
-            this.smoothCamera.y = playerData.y;
-            this.smoothCamera.enabled = config.predictionSmoothCameraEnabled;
 
             return this.playerState.predicted;
         }
@@ -384,17 +372,6 @@ class PredictionSystem {
                 console.log('✅ Merge transition complete');
             }
         }
-        // Apply smooth camera if enabled (but not during merge transition)
-        else if (this.smoothCamera.enabled && config.predictionSmoothCameraEnabled) {
-            this.smoothCamera.x += (this.playerState.predicted.x - this.smoothCamera.x) *
-                config.predictionSmoothCameraLerpSpeed;
-            this.smoothCamera.y += (this.playerState.predicted.y - this.smoothCamera.y) *
-                config.predictionSmoothCameraLerpSpeed;
-
-            // Override predicted position with smooth camera
-            this.playerState.predicted.x = this.smoothCamera.x;
-            this.playerState.predicted.y = this.smoothCamera.y;
-        }
 
         return this.playerState.predicted;
     }
@@ -499,12 +476,6 @@ class PredictionSystem {
         this.otherPlayers = {
             states: {},
             timestamp: 0
-        };
-
-        this.smoothCamera = {
-            enabled: config.predictionSmoothCameraEnabled,
-            x: 0,
-            y: 0
         };
 
         this.mergeTransition = {
