@@ -3,17 +3,10 @@
  * Handles velocity calculation and position extrapolation
  */
 
+const config = require('../../../config.js');
+
 class PredictionSystem {
-    constructor(options = {}) {
-        // Configuration
-        this.config = {
-            enabled: true,
-            maxExtrapolation: options.maxExtrapolation || 50,  // ms - max time to predict ahead
-            maxVelocity: options.maxVelocity || 5,             // pixels/ms - cap for sanity
-            minTimeDelta: options.minTimeDelta || 5,           // ms - ignore very small updates
-            smoothCameraEnabled: false,                        // Disabled to prevent double interpolation
-            smoothCameraLerpSpeed: options.cameraLerpSpeed || 0.15
-        };
+    constructor() {
 
         // State for current player
         this.playerState = {
@@ -32,7 +25,7 @@ class PredictionSystem {
 
         // Smooth camera state
         this.smoothCamera = {
-            enabled: false,
+            enabled: true,
             x: 0,
             y: 0
         };
@@ -43,33 +36,23 @@ class PredictionSystem {
     }
 
     /**
-     * Enable or disable prediction system
-     */
-    setEnabled(enabled) {
-        this.config.enabled = enabled;
-        if (!enabled) {
-            this.reset();
-        }
-    }
-
-    /**
-     * Update configuration values
-     */
-    updateConfig(config) {
-        Object.assign(this.config, config);
-    }
-
-    /**
      * Process new server state for current player
      */
     updatePlayerState(playerData, timestamp) {
-        if (!this.config.enabled) {
-            // Prediction disabled - just use server data directly
-            return {
+        if (!config.predictionEnabled) {
+            // Prediction disabled - update state but don't extrapolate
+            this.playerState.current = {
                 x: playerData.x,
                 y: playerData.y,
-                cells: playerData.cells
+                cells: this.cloneCells(playerData.cells),
+                timestamp: timestamp
             };
+            this.playerState.predicted = {
+                x: playerData.x,
+                y: playerData.y,
+                cells: this.cloneCells(playerData.cells)
+            };
+            return this.playerState.predicted;
         }
 
         // Track update timing
@@ -105,7 +88,7 @@ class PredictionSystem {
             // Initialize smooth camera
             this.smoothCamera.x = playerData.x;
             this.smoothCamera.y = playerData.y;
-            this.smoothCamera.enabled = this.config.smoothCameraEnabled;
+            this.smoothCamera.enabled = config.predictionSmoothCameraEnabled;
 
             return this.playerState.predicted;
         }
@@ -139,7 +122,7 @@ class PredictionSystem {
         const timeDelta = this.playerState.current.timestamp - this.playerState.previous.timestamp;
 
         // Only calculate velocity if updates are far enough apart
-        if (timeDelta <= this.config.minTimeDelta) {
+        if (timeDelta <= config.predictionMinTimeDelta) {
             return;
         }
 
@@ -149,8 +132,8 @@ class PredictionSystem {
 
         // Cap velocity to prevent glitches
         const velocityMagnitude = Math.sqrt(vx * vx + vy * vy);
-        if (velocityMagnitude > this.config.maxVelocity) {
-            const scale = this.config.maxVelocity / velocityMagnitude;
+        if (velocityMagnitude > config.predictionMaxVelocity) {
+            const scale = config.predictionMaxVelocity / velocityMagnitude;
             vx *= scale;
             vy *= scale;
         }
@@ -169,8 +152,8 @@ class PredictionSystem {
 
                 // Cap cell velocity
                 const cellVelMagnitude = Math.sqrt(cellVx * cellVx + cellVy * cellVy);
-                if (cellVelMagnitude > this.config.maxVelocity) {
-                    const cellScale = this.config.maxVelocity / cellVelMagnitude;
+                if (cellVelMagnitude > config.predictionMaxVelocity) {
+                    const cellScale = config.predictionMaxVelocity / cellVelMagnitude;
                     cellVx *= cellScale;
                     cellVy *= cellScale;
                 }
@@ -199,7 +182,7 @@ class PredictionSystem {
      * Update state for other players
      */
     updateOtherPlayer(playerId, userData, timestamp) {
-        if (!this.config.enabled) return userData.cells;
+        if (!config.predictionEnabled) return userData.cells;
 
         if (!this.otherPlayers.states[playerId]) {
             // First time seeing this player
@@ -222,7 +205,7 @@ class PredictionSystem {
         // Calculate velocities
         const timeDelta = playerState.current.timestamp - playerState.previous.timestamp;
 
-        if (timeDelta > this.config.minTimeDelta &&
+        if (timeDelta > config.predictionMinTimeDelta &&
             playerState.current.cells.length === playerState.previous.cells.length) {
 
             playerState.velocities = [];
@@ -234,8 +217,8 @@ class PredictionSystem {
 
                 // Cap velocity
                 const cellVelMagnitude = Math.sqrt(cellVx * cellVx + cellVy * cellVy);
-                if (cellVelMagnitude > this.config.maxVelocity) {
-                    const cellScale = this.config.maxVelocity / cellVelMagnitude;
+                if (cellVelMagnitude > config.predictionMaxVelocity) {
+                    const cellScale = config.predictionMaxVelocity / cellVelMagnitude;
                     cellVx *= cellScale;
                     cellVy *= cellScale;
                 }
@@ -252,13 +235,13 @@ class PredictionSystem {
      * Extrapolate positions forward in time
      */
     extrapolate(currentTime) {
-        if (!this.config.enabled) {
-            // Return current player state if prediction is disabled
-            return {
-                x: this.playerState.current.x || this.playerState.predicted.x,
-                y: this.playerState.current.y || this.playerState.predicted.y,
-                cells: this.playerState.current.cells || this.playerState.predicted.cells || []
-            };
+        if (!config.predictionEnabled) {
+            // Return predicted state (which is just the server state when prediction is disabled)
+            // If no data yet, return null
+            if (!this.playerState.current.timestamp) {
+                return null;
+            }
+            return this.playerState.predicted;
         }
 
         // If we don't have any data yet, return empty state
@@ -271,7 +254,7 @@ class PredictionSystem {
         // Limit extrapolation to prevent overshooting
         const clampedTime = Math.min(
             Math.max(0, timeSinceUpdate),
-            this.config.maxExtrapolation
+            config.predictionMaxExtrapolation
         );
 
         // Extrapolate player camera position
@@ -302,9 +285,9 @@ class PredictionSystem {
         // Apply smooth camera if enabled
         if (this.smoothCamera.enabled) {
             this.smoothCamera.x += (this.playerState.predicted.x - this.smoothCamera.x) *
-                this.config.smoothCameraLerpSpeed;
+                config.predictionSmoothCameraLerpSpeed;
             this.smoothCamera.y += (this.playerState.predicted.y - this.smoothCamera.y) *
-                this.config.smoothCameraLerpSpeed;
+                config.predictionSmoothCameraLerpSpeed;
 
             // Override predicted position with smooth camera
             this.playerState.predicted.x = this.smoothCamera.x;
@@ -318,7 +301,7 @@ class PredictionSystem {
      * Extrapolate other player's cells
      */
     extrapolateOtherPlayer(playerId, currentTime) {
-        if (!this.config.enabled) return null;
+        if (!config.predictionEnabled) return null;
 
         const playerState = this.otherPlayers.states[playerId];
         if (!playerState || playerState.velocities.length === 0) {
@@ -328,7 +311,7 @@ class PredictionSystem {
         const timeSinceUpdate = currentTime - playerState.current.timestamp;
         const clampedTime = Math.min(
             Math.max(0, timeSinceUpdate),
-            this.config.maxExtrapolation
+            config.predictionMaxExtrapolation
         );
 
         if (playerState.velocities.length !== playerState.current.cells.length) {
