@@ -401,6 +401,20 @@ exports.Player = class {
                     }
 
                     // Always keep the larger cell's position
+                    // NOTE: Alternative approach for future consideration (Option 1 - Barycenter merge):
+                    // Instead of keeping the larger cell's position, we could move the surviving cell
+                    // to the weighted center of mass (barycenter) of both cells. This would be more
+                    // physically realistic but changes gameplay dynamics:
+                    //
+                    // let totalMass = cellA.mass + cellB.mass;
+                    // let barycenterX = (cellA.x * cellA.mass + cellB.x * cellB.mass) / totalMass;
+                    // let barycenterY = (cellA.y * cellA.mass + cellB.y * cellB.mass) / totalMass;
+                    // survivingCell.x = barycenterX;
+                    // survivingCell.y = barycenterY;
+                    //
+                    // For now, we use Option 2: keep the larger cell's position (strategic advantage)
+                    // and handle the camera jump with client-side smoothing in prediction.js
+
                     if (cellA.mass >= cellB.mass) {
                         // Cell A is larger - add B's mass to A, delete B
                         cellA.addMass(cellB.mass);
