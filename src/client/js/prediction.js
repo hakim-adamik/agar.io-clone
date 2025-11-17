@@ -197,8 +197,7 @@ class PredictionSystem {
             const currentCount = this.playerState.current.cells.length;
 
             if (currentCount < previousCount) {
-                console.log(`🔄 Cells merged! ${previousCount} → ${currentCount}`);
-
+                // Cell merge detected
                 // If a transition is already active, start from current animated position
                 // This prevents jumps when multiple merges happen in quick succession
                 let startX, startY;
@@ -213,27 +212,19 @@ class PredictionSystem {
                     startY = this.mergeTransition.startY +
                         (this.mergeTransition.targetY - this.mergeTransition.startY) * easedProgress;
 
-                    console.log('🔀 Blending from existing transition at', (progress * 100).toFixed(1) + '%');
+                    // Blending from existing transition
                 } else if (this.postMergeSmoothing.active) {
                     // Continue from post-merge smoothing position
                     startX = this.postMergeSmoothing.currentX;
                     startY = this.postMergeSmoothing.currentY;
                     this.postMergeSmoothing.active = false; // Stop post-merge smoothing
-                    console.log('🔄 Starting new merge from post-merge position');
                 } else {
                     // Start fresh from previous position
                     startX = this.playerState.previous.x;
                     startY = this.playerState.previous.y;
                 }
 
-                console.log('📍 Merge transition started:', {
-                    from: { x: startX, y: startY },
-                    to: { x: this.playerState.current.x, y: this.playerState.current.y },
-                    distance: Math.hypot(
-                        this.playerState.current.x - startX,
-                        this.playerState.current.y - startY
-                    )
-                });
+                // Start merge transition
 
                 // Start smooth camera transition for merge
                 // Camera was at the average of previous cells, now needs to move to average of current cells
@@ -247,7 +238,7 @@ class PredictionSystem {
 
                 return { type: 'merge', from: previousCount, to: currentCount };
             } else if (currentCount > previousCount) {
-                console.log(`💥 Cell split! ${previousCount} → ${currentCount}`);
+                // Cell split detected
                 return { type: 'split', from: previousCount, to: currentCount };
             }
         }
@@ -375,15 +366,11 @@ class PredictionSystem {
             this.playerState.predicted.x = transitionX;
             this.playerState.predicted.y = transitionY;
 
-            // Log transition progress (only log every 10th frame to avoid spam)
-            if (Math.random() < 0.1) {
-                console.log(`🎬 Merge transition: ${(progress * 100).toFixed(1)}% complete`);
-            }
+            // Transition in progress
 
             // End transition when complete
             if (progress >= 1) {
                 this.mergeTransition.active = false;
-                console.log('✅ Merge transition complete');
                 // Start post-merge smoothing from where the transition ended
                 this.postMergeSmoothing.active = true;
                 this.postMergeSmoothing.currentX = transitionX;
@@ -412,7 +399,6 @@ class PredictionSystem {
 
             if (distance < 0.5) {
                 this.postMergeSmoothing.active = false;
-                console.log('🏁 Post-merge smoothing complete');
             }
         }
 
