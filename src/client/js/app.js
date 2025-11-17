@@ -1481,7 +1481,7 @@ function clearColorCacheIfNeeded() {
 
 // Client-side prediction with velocity extrapolation
 var prediction = {
-    enabled: false,
+    enabled: true,
     // Last two server states to calculate velocity (for current player)
     previous: { x: 0, y: 0, cells: [], timestamp: 0 },
     current: { x: 0, y: 0, cells: [], timestamp: 0 },
@@ -1946,7 +1946,7 @@ function gameLoop() {
             player.cells = prediction.predicted.cells;
 
             // Apply smooth camera interpolation to prevent jarring jumps
-            if (smoothCamera.enabled) {
+            if (false) {
                 // Lerp camera position towards actual player position
                 smoothCamera.x += (player.x - smoothCamera.x) * smoothCamera.lerpSpeed;
                 smoothCamera.y += (player.y - smoothCamera.y) * smoothCamera.lerpSpeed;
