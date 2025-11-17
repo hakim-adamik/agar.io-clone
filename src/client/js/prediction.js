@@ -33,6 +33,14 @@ class PredictionSystem {
             duration: 500 // milliseconds for transition (increased for smoother feel)
         };
 
+        // Post-merge smoothing to prevent jump after merge completes
+        this.postMergeSmoothing = {
+            active: false,
+            currentX: 0,
+            currentY: 0,
+            lerpSpeed: 0.15 // How quickly to converge to actual position
+        };
+
         // Performance tracking
         this.lastUpdateTime = 0;
         this.updateTimes = [];
@@ -206,6 +214,12 @@ class PredictionSystem {
                         (this.mergeTransition.targetY - this.mergeTransition.startY) * easedProgress;
 
                     console.log('🔀 Blending from existing transition at', (progress * 100).toFixed(1) + '%');
+                } else if (this.postMergeSmoothing.active) {
+                    // Continue from post-merge smoothing position
+                    startX = this.postMergeSmoothing.currentX;
+                    startY = this.postMergeSmoothing.currentY;
+                    this.postMergeSmoothing.active = false; // Stop post-merge smoothing
+                    console.log('🔄 Starting new merge from post-merge position');
                 } else {
                     // Start fresh from previous position
                     startX = this.playerState.previous.x;
@@ -370,6 +384,35 @@ class PredictionSystem {
             if (progress >= 1) {
                 this.mergeTransition.active = false;
                 console.log('✅ Merge transition complete');
+                // Start post-merge smoothing from where the transition ended
+                this.postMergeSmoothing.active = true;
+                this.postMergeSmoothing.currentX = transitionX;
+                this.postMergeSmoothing.currentY = transitionY;
+            }
+        }
+        // Apply post-merge smoothing after transition completes
+        else if (this.postMergeSmoothing.active) {
+            // Smoothly converge to the actual predicted position
+            const targetX = this.playerState.predicted.x;
+            const targetY = this.playerState.predicted.y;
+
+            // Lerp towards target
+            this.postMergeSmoothing.currentX += (targetX - this.postMergeSmoothing.currentX) * this.postMergeSmoothing.lerpSpeed;
+            this.postMergeSmoothing.currentY += (targetY - this.postMergeSmoothing.currentY) * this.postMergeSmoothing.lerpSpeed;
+
+            // Override predicted position with smoothed position
+            this.playerState.predicted.x = this.postMergeSmoothing.currentX;
+            this.playerState.predicted.y = this.postMergeSmoothing.currentY;
+
+            // Check if we're close enough to stop smoothing
+            const distance = Math.hypot(
+                targetX - this.postMergeSmoothing.currentX,
+                targetY - this.postMergeSmoothing.currentY
+            );
+
+            if (distance < 0.5) {
+                this.postMergeSmoothing.active = false;
+                console.log('🏁 Post-merge smoothing complete');
             }
         }
 
@@ -486,6 +529,13 @@ class PredictionSystem {
             targetY: 0,
             progress: 0,
             duration: 500
+        };
+
+        this.postMergeSmoothing = {
+            active: false,
+            currentX: 0,
+            currentY: 0,
+            lerpSpeed: 0.15
         };
 
         this.lastUpdateTime = 0;
