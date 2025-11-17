@@ -1,6 +1,6 @@
 module.exports = {
     host: "0.0.0.0",
-    port: process.env.PORT || 3000,
+    port: (typeof process !== 'undefined' && process.env && process.env.PORT) ? process.env.PORT : 3000,
     logpath: "logger.php",
     foodMass: 1,
     fireFood: 20,
@@ -49,6 +49,14 @@ module.exports = {
     massLossRate: 1,
     minMassLoss: 50,
     mergeTimer: 1000, // Time in milliseconds before cells can merge after they are fully separated (0 = immediate merge once separated)
+
+    // Client-side prediction configuration
+    predictionEnabled: true,
+    predictionMaxExtrapolation: 50, // ms - max time to predict ahead
+    predictionMaxVelocity: 5, // pixels/ms - cap for sanity
+    predictionMinTimeDelta: 5, // ms - ignore very small updates
+    predictionSmoothCameraEnabled: false, // Smooth camera interpolation
+    predictionSmoothCameraLerpSpeed: 0.15, // Camera lerp speed
 
     sqlinfo: {
         fileName: "db.sqlite3",

@@ -1300,13 +1300,8 @@ function clearColorCacheIfNeeded() {
     }
 }
 
-// Initialize prediction system with configuration
-var predictionSystem = new PredictionSystem({
-    maxExtrapolation: 50,      // ms - max time to predict ahead
-    maxVelocity: 5,            // pixels/ms - velocity cap
-    minTimeDelta: 5,           // ms - ignore very small updates
-    cameraLerpSpeed: 0.15      // Camera smoothing speed (currently disabled)
-});
+// Initialize prediction system (configuration is now in config.js)
+var predictionSystem = new PredictionSystem();
 
 
 
@@ -1475,7 +1470,6 @@ function gameLoop() {
         // This prevents micro-stutters from different parts of the render using slightly different positions
         var frameCameraX = player.x;
         var frameCameraY = player.y;
-
         // Update predicted cells in users array for rendering
         for (var i = 0; i < users.length; i++) {
             if (users[i].id === player.id) {
