@@ -42,7 +42,7 @@ module.exports = {
     splitCellSpeed: 15, // Initial speed when a cell splits
     speedDecrement: 0.5, // How quickly split speed decreases
     minDistance: 50, // Minimum distance from cursor where cells slow down
-    pushingAwaySpeed: 0.5, // Speed at which overlapping cells push away from each other
+    pushingAwaySpeed: 1.5, // Speed at which overlapping cells push away from each other
     mergeOverlapThreshold: 0.85, // Cells must overlap by this fraction of their radius to merge (0.3 = 30% overlap required)
     cellInertia: 0.10, // How much inertia cells have (0-1, lower = more inertia/smoother turning, higher = sharper turns)
     splitControlDelay: 600, // Time in ms before split cells respond to cursor (maintains split momentum)
