@@ -20,6 +20,7 @@ class Cell {
         // Split state tracking
         this.splitTime = null; // When this cell was created from a split
         this.isSplitCell = false;
+        this.timeToMerge = null; // Per-cell timer for when this cell can merge
     }
 
     setMass(mass) {
@@ -126,7 +127,6 @@ exports.Player = class {
         this.screenWidth = null;
         this.screenHeight = null;
         this.config = config; // Store config for all settings
-        this.timeToMerge = null; // Global timer for when cells can merge
         this.lastSplitTime = 0; // Track last split to prevent spam
         this.isSplitting = false; // Flag to prevent concurrent splits
         this.setLastHeartbeat();
@@ -171,8 +171,12 @@ exports.Player = class {
     }
 
     setMergeTimer() {
-        // Set timer for when cells can merge
-        this.timeToMerge = Date.now() + this.config.mergeTimer;
+        // Set timer for when each cell can merge, based on its mass
+        const now = Date.now();
+        for (let cell of this.cells) {
+            const mergeDelay = this.config.mergeTimeBase + (cell.mass * this.config.mergeTimeRate);
+            cell.timeToMerge = now + mergeDelay;
+        }
     }
 
     loseMassIfNeeded(massLossRate, defaultPlayerMass, minMassLoss) {
@@ -388,18 +392,25 @@ exports.Player = class {
         }
 
         if (this.cells.length > 1) {
-            // Check if merge timer has elapsed
-            if (this.timeToMerge !== null && Date.now() >= this.timeToMerge) {
-                // Timer elapsed - merge cells that overlap enough
-                this.enumerateMergingCells((cells, cellAIndex, cellBIndex) => {
-                    // Check if cells still exist (may have been merged in previous iteration)
-                    let cellA = cells[cellAIndex];
-                    let cellB = cells[cellBIndex];
+            const now = Date.now();
+            const pushThreshold = this.config.mergeOverlapThreshold || 0;
 
-                    if (!cellA || !cellB) {
-                        return; // One or both cells already merged, skip
-                    }
+            // Merge cells that overlap enough and both have elapsed timers
+            this.enumerateMergingCells((cells, cellAIndex, cellBIndex) => {
+                // Check if cells still exist (may have been merged in previous iteration)
+                let cellA = cells[cellAIndex];
+                let cellB = cells[cellBIndex];
 
+                if (!cellA || !cellB) {
+                    return; // One or both cells already merged, skip
+                }
+
+                // Check if both cells' merge timers have elapsed
+                const canMerge = (cellA.timeToMerge === null || now >= cellA.timeToMerge) &&
+                                 (cellB.timeToMerge === null || now >= cellB.timeToMerge);
+
+                if (canMerge) {
+                    // Timer elapsed - merge cells
                     // Keep the larger cell's position when merging
                     if (cellA.mass >= cellB.mass) {
                         // Cell A is larger - add B's mass to A, delete B
@@ -410,25 +421,33 @@ exports.Player = class {
                         cellB.addMass(cellA.mass);
                         cells[cellAIndex] = null;
                     }
-                });
-                this.cells = util.removeNulls(this.cells);
-            } else {
-                // Timer not elapsed - push cells apart
-                this.enumerateCollidingCells((cells, cellAIndex, cellBIndex) => {
-                    let cellA = cells[cellAIndex];
-                    let cellB = cells[cellBIndex];
-                    let vector = new sat.Vector(cellB.x - cellA.x, cellB.y - cellA.y);
-                    vector = vector.normalize().scale(this.config.pushingAwaySpeed, this.config.pushingAwaySpeed);
-                    if (vector.len() == 0) {
-                        vector = new sat.Vector(0, 1);
-                    }
+                } else {
+                    // Timer not elapsed - check if we need to push cells apart
+                    // Calculate actual overlap to see if it exceeds the push threshold
+                    let dx = cellB.x - cellA.x;
+                    let dy = cellB.y - cellA.y;
+                    let distance = Math.hypot(dx, dy);
 
-                    cellA.x -= vector.x;
-                    cellA.y -= vector.y;
-                    cellB.x += vector.x;
-                    cellB.y += vector.y;
-                });
-            }
+                    // Calculate how much they're overlapping
+                    let avgRadius = (cellA.radius + cellB.radius) / 2;
+                    let pushDistance = cellA.radius + cellB.radius - (avgRadius * pushThreshold);
+
+                    // Only push if overlapping more than the push threshold
+                    if (distance < pushDistance && this.config.pushingAwaySpeed > 0) {
+                        let vector = new sat.Vector(dx, dy);
+                        vector = vector.normalize().scale(this.config.pushingAwaySpeed, this.config.pushingAwaySpeed);
+                        if (vector.len() == 0) {
+                            vector = new sat.Vector(0, 1);
+                        }
+
+                        cellA.x -= vector.x;
+                        cellA.y -= vector.y;
+                        cellB.x += vector.x;
+                        cellB.y += vector.y;
+                    }
+                }
+            });
+            this.cells = util.removeNulls(this.cells);
         }
 
         let xSum = 0, ySum = 0;
