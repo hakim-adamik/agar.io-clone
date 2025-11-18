@@ -32,6 +32,7 @@ class Arena {
         this.spectators = []; // Spectators in THIS arena
         this.leaderboard = []; // Leaderboard for THIS arena
         this.leaderboardChanged = false;
+        this.escapeTimers = {}; // Track active escape countdowns {playerId: {timer, countdown}}
 
         // Game loop intervals (each arena has its own)
         this.tickInterval = null;
@@ -191,6 +192,9 @@ class Arena {
 
         // Disconnect handler
         socket.on("disconnect", async () => {
+            // Clear any active escape timer
+            this.clearEscapeTimer(currentPlayer.id);
+
             // TODO: Re-enable session tracking once disconnect issue is fixed
             /*
             // End game session if authenticated user
@@ -266,6 +270,11 @@ class Arena {
                 this.config.minSplitMass
             );
             this.lastActivityAt = Date.now();
+        });
+
+        // Escape request handler
+        socket.on("escapeRequest", () => {
+            this.handleEscapeRequest(socket, currentPlayer);
         });
 
         // Admin commands
@@ -371,6 +380,90 @@ class Arena {
         );
 
         console.log(`[ARENA ${this.id}] Spectator joined`);
+    }
+
+    /**
+     * Handle escape request from a player
+     * Starts a server-side countdown before allowing the player to exit
+     */
+    handleEscapeRequest(socket, player) {
+        // Check if player already has an active escape timer
+        if (this.escapeTimers[player.id]) {
+            // Already escaping, ignore duplicate requests
+            return;
+        }
+
+        // Check if player is already dead/removed
+        const playerIndex = this.map.players.findIndexByID(player.id);
+        if (playerIndex < 0) {
+            return;
+        }
+
+        console.log(`[ARENA ${this.id}] Player ${player.name} requested escape`);
+
+        // Start countdown from 4 seconds
+        let countdown = 4;
+
+        // Notify client that escape has started
+        socket.emit("escapeStarted", { countdown });
+
+        // Create countdown timer
+        const timer = setInterval(() => {
+            countdown--;
+
+            if (countdown > 0) {
+                // Send countdown update to client
+                socket.emit("escapeUpdate", { countdown });
+            } else {
+                // Countdown complete, disconnect player
+                this.clearEscapeTimer(player.id);
+
+                // Notify client that escape is complete
+                socket.emit("escapeComplete");
+
+                console.log(`[ARENA ${this.id}] Player ${player.name} escaped successfully`);
+
+                // Give client a moment to receive the message before disconnecting
+                setTimeout(() => {
+                    if (socket.connected) {
+                        socket.disconnect();
+                    }
+                }, 100);
+            }
+        }, 1000);
+
+        // Store timer reference
+        this.escapeTimers[player.id] = {
+            timer,
+            countdown,
+            socket
+        };
+    }
+
+    /**
+     * Clear an escape timer for a player
+     * Used when player disconnects or dies during escape
+     */
+    clearEscapeTimer(playerId) {
+        if (this.escapeTimers[playerId]) {
+            clearInterval(this.escapeTimers[playerId].timer);
+            delete this.escapeTimers[playerId];
+        }
+    }
+
+    /**
+     * Cancel an escape attempt (e.g., if player dies during countdown)
+     */
+    cancelEscape(playerId) {
+        if (this.escapeTimers[playerId]) {
+            const escapeData = this.escapeTimers[playerId];
+            this.clearEscapeTimer(playerId);
+
+            // Notify client that escape was cancelled
+            if (escapeData.socket && escapeData.socket.connected) {
+                escapeData.socket.emit("escapeCancelled");
+            }
+        }
     }
 
     /**
@@ -530,6 +623,10 @@ class Arena {
             if (playerDied) {
                 let playerGotEaten =
                     this.map.players.data[gotEaten.playerIndex];
+
+                // Cancel any active escape attempt
+                this.cancelEscape(playerGotEaten.id);
+
                 this.broadcastToArena("playerDied", {
                     name: playerGotEaten.name,
                 });

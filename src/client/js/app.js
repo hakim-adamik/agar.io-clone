@@ -8,20 +8,6 @@ var CellAnimations = require("./cell-animations");
 var playerNameInput = document.getElementById("playerNameInput");
 var socket;
 
-// Debug mode flag (accessible from browser console via window.DEBUG_MODE)
-/*
-window.DEBUG_MODE = false;
-window.enableDebug = function() {
-    window.DEBUG_MODE = true;
-    console.log("%c[DEBUG MODE ENABLED]", "color: green; font-weight: bold");
-    console.log("Performance warnings will be logged when large updates occur.");
-};
-window.disableDebug = function() {
-    window.DEBUG_MODE = false;
-    console.log("%c[DEBUG MODE DISABLED]", "color: orange; font-weight: bold");
-};
-*/
-
 var debug = function (args) {
     if (console && console.log) {
         console.log(args);
@@ -1165,6 +1151,17 @@ function setupSocket(socket) {
             console.log('Error stopping background music on death:', e);
         }
 
+        // Stop escape sound if it's playing (in case player died during escape countdown)
+        try {
+            const escapeSound = document.getElementById('escape_sound');
+            if (escapeSound) {
+                escapeSound.pause();
+                escapeSound.currentTime = 0;
+            }
+        } catch (e) {
+            console.log('Error stopping escape sound on death:', e);
+        }
+
         // Removed: render.drawErrorMessage("You died!", graph, global.screen);
         // Now we go directly to landing page with notification
 
@@ -1244,6 +1241,61 @@ function setupSocket(socket) {
             render.drawErrorMessage("You were kicked!", graph, global.screen);
         }
         socket.close();
+    });
+
+    // Escape event handlers (server-authoritative)
+    socket.on("escapeStarted", function (data) {
+        console.log("Escape started, countdown:", data.countdown);
+        exitCountdownActive = true;
+        exitCountdownValue = data.countdown;
+    });
+
+    socket.on("escapeUpdate", function (data) {
+        console.log("Escape countdown update:", data.countdown);
+        exitCountdownValue = data.countdown;
+    });
+
+    socket.on("escapeComplete", function () {
+        console.log("Escape complete");
+        exitCountdownActive = false;
+        exitCountdownValue = 0;
+
+        // Play end of game sound for successful exit
+        if (global.soundEnabled) {
+            try {
+                const endGameSound = document.getElementById('end_of_game_sound');
+                if (endGameSound) {
+                    endGameSound.volume = 0.6;
+                    endGameSound.currentTime = 0;
+                    endGameSound.play().catch(function(e) {
+                        console.log('End of game sound playback failed:', e);
+                    });
+                }
+            } catch (e) {
+                console.log('End of game sound not available:', e);
+            }
+        }
+
+        // Cleanup and return to landing page
+        cleanupGame();
+        returnToLanding();
+    });
+
+    socket.on("escapeCancelled", function () {
+        console.log("Escape cancelled (player died during countdown)");
+        exitCountdownActive = false;
+        exitCountdownValue = 4;
+
+        // Stop escape sound
+        try {
+            const escapeSound = document.getElementById('escape_sound');
+            if (escapeSound) {
+                escapeSound.pause();
+                escapeSound.currentTime = 0;
+            }
+        } catch (e) {
+            console.log('Error stopping escape sound:', e);
+        }
     });
 }
 
@@ -1655,45 +1707,19 @@ function resize() {
 }
 
 // Exit Game Functionality
-var exitCountdownTimer = null;
 var exitCountdownValue = 4;
 var exitCountdownActive = false;
 
 function exitGame() {
-    // Start countdown
-    exitCountdownActive = true;
-    exitCountdownValue = 4;
+    // Request escape from server (server-authoritative)
+    if (!socket || !global.gameStart) {
+        return;
+    }
 
-    // Start countdown timer
-    exitCountdownTimer = setInterval(function () {
-        exitCountdownValue--;
+    // Send escape request to server
+    socket.emit("escapeRequest");
 
-        if (exitCountdownValue <= 0) {
-            clearInterval(exitCountdownTimer);
-            exitCountdownTimer = null;
-            exitCountdownActive = false;
-
-            // Play end of game sound for successful exit
-            if (global.soundEnabled) {
-                try {
-                    const endGameSound = document.getElementById('end_of_game_sound');
-                    if (endGameSound) {
-                        endGameSound.volume = 0.6; // Moderate volume for ending
-                        endGameSound.currentTime = 0;
-                        endGameSound.play().catch(function(e) {
-                            console.log('End of game sound playback failed:', e);
-                        });
-                    }
-                } catch (e) {
-                    console.log('End of game sound not available:', e);
-                }
-            }
-
-            // Cleanup and return to landing page
-            cleanupGame();
-            returnToLanding();
-        }
-    }, 1000);
+    console.log("Escape request sent to server");
 }
 
 function cleanupGame() {
@@ -1717,6 +1743,17 @@ function cleanupGame() {
         }
     } catch (e) {
         console.log('Error stopping background music:', e);
+    }
+
+    // Stop escape sound if it's playing
+    try {
+        const escapeSound = document.getElementById('escape_sound');
+        if (escapeSound) {
+            escapeSound.pause();
+            escapeSound.currentTime = 0;
+        }
+    } catch (e) {
+        console.log('Error stopping escape sound:', e);
     }
 
     // Set game state to stopped

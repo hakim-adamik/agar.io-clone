@@ -229,39 +229,19 @@ function setupMobileButtons() {
 
 /**
  * Exit the current game
+ * Sends an escape request to the server (server-authoritative)
  */
 function exitGame() {
     if (!global.gameStart) return;
 
-    // Play end of game sound
-    uiManager.playSound('end_of_game_sound', 0.7);
+    var socket = socketManager.getSocket();
+    if (!socket) return;
 
-    // Save score
-    var player = gameState.getPlayer();
-    if (player && player.score !== undefined) {
-        uiManager.saveLastScore(player.score);
-    }
+    // Send escape request to server
+    // The server will handle the countdown and disconnect
+    socket.emit("escapeRequest");
 
-    // Clear game state
-    gameState.clearState();
-
-    // Stop background music
-    uiManager.stopBackgroundMusic();
-
-    // Disconnect socket
-    socketManager.disconnect();
-
-    // Cancel animation loop
-    if (global.animLoopHandle) {
-        window.cancelAnimationFrame(global.animLoopHandle);
-        global.animLoopHandle = undefined;
-    }
-
-    // Show landing page
-    uiManager.showLandingView();
-
-    // Display last score
-    uiManager.displayLastScore();
+    console.log("Escape request sent to server");
 }
 
 // Export exitGame for external use
