@@ -7,7 +7,6 @@ const config = require('../../../config.js');
 
 class PredictionSystem {
     constructor() {
-
         // State for current player
         this.playerState = {
             previous: { x: 0, y: 0, cells: [], timestamp: 0 },
@@ -23,16 +22,50 @@ class PredictionSystem {
             timestamp: 0
         };
 
-        // Smooth camera state
-        this.smoothCamera = {
-            enabled: true,
-            x: 0,
-            y: 0
+        // Merge transition state for smooth camera during cell merges
+        this.mergeTransition = {
+            active: false,
+            startX: 0,
+            startY: 0,
+            targetX: 0,
+            targetY: 0,
+            progress: 0,
+            duration: 500 // milliseconds for transition (increased for smoother feel)
+        };
+
+        // Post-merge smoothing to prevent jump after merge completes
+        this.postMergeSmoothing = {
+            active: false,
+            currentX: 0,
+            currentY: 0,
+            lerpSpeed: 0.15 // How quickly to converge to actual position
         };
 
         // Performance tracking
         this.lastUpdateTime = 0;
         this.updateTimes = [];
+    }
+
+    /**
+     * Enable or disable prediction system
+     */
+    setEnabled(enabled) {
+        config.predictionEnabled = enabled;
+        if (!enabled) {
+            this.reset();
+        }
+    }
+
+    /**
+     * Update configuration values
+     */
+    updateConfig(configUpdates) {
+        Object.keys(configUpdates).forEach(key => {
+            const configKey = 'prediction' + key.charAt(0).toUpperCase() + key.slice(1);
+            if (config.hasOwnProperty(configKey)) {
+                config[configKey] = configUpdates[key];
+            }
+        });
     }
 
     /**
@@ -84,11 +117,6 @@ class PredictionSystem {
                 y: playerData.y,
                 cells: this.cloneCells(playerData.cells)
             };
-
-            // Initialize smooth camera
-            this.smoothCamera.x = playerData.x;
-            this.smoothCamera.y = playerData.y;
-            this.smoothCamera.enabled = config.predictionSmoothCameraEnabled;
 
             return this.playerState.predicted;
         }
@@ -169,10 +197,48 @@ class PredictionSystem {
             const currentCount = this.playerState.current.cells.length;
 
             if (currentCount < previousCount) {
-                console.log(`🔄 Cells merged! ${previousCount} → ${currentCount}`);
+                // Cell merge detected
+                // If a transition is already active, start from current animated position
+                // This prevents jumps when multiple merges happen in quick succession
+                let startX, startY;
+                if (this.mergeTransition.active) {
+                    // Continue from current animated position
+                    const elapsed = Date.now() - this.mergeTransition.startTime;
+                    const progress = Math.min(1, elapsed / this.mergeTransition.duration);
+                    const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+                    startX = this.mergeTransition.startX +
+                        (this.mergeTransition.targetX - this.mergeTransition.startX) * easedProgress;
+                    startY = this.mergeTransition.startY +
+                        (this.mergeTransition.targetY - this.mergeTransition.startY) * easedProgress;
+
+                    // Blending from existing transition
+                } else if (this.postMergeSmoothing.active) {
+                    // Continue from post-merge smoothing position
+                    startX = this.postMergeSmoothing.currentX;
+                    startY = this.postMergeSmoothing.currentY;
+                    this.postMergeSmoothing.active = false; // Stop post-merge smoothing
+                } else {
+                    // Start fresh from previous position
+                    startX = this.playerState.previous.x;
+                    startY = this.playerState.previous.y;
+                }
+
+                // Start merge transition
+
+                // Start smooth camera transition for merge
+                // Camera was at the average of previous cells, now needs to move to average of current cells
+                this.mergeTransition.active = true;
+                this.mergeTransition.startX = startX;
+                this.mergeTransition.startY = startY;
+                this.mergeTransition.targetX = this.playerState.current.x;
+                this.mergeTransition.targetY = this.playerState.current.y;
+                this.mergeTransition.progress = 0;
+                this.mergeTransition.startTime = Date.now();
+
                 return { type: 'merge', from: previousCount, to: currentCount };
             } else if (currentCount > previousCount) {
-                console.log(`💥 Cell split! ${previousCount} → ${currentCount}`);
+                // Cell split detected
                 return { type: 'split', from: previousCount, to: currentCount };
             }
         }
@@ -282,16 +348,58 @@ class PredictionSystem {
             this.playerState.predicted.cells = this.cloneCells(this.playerState.current.cells);
         }
 
-        // Apply smooth camera if enabled
-        if (this.smoothCamera.enabled) {
-            this.smoothCamera.x += (this.playerState.predicted.x - this.smoothCamera.x) *
-                config.predictionSmoothCameraLerpSpeed;
-            this.smoothCamera.y += (this.playerState.predicted.y - this.smoothCamera.y) *
-                config.predictionSmoothCameraLerpSpeed;
+        // Apply smooth merge transition if active
+        if (this.mergeTransition.active) {
+            const elapsed = Date.now() - this.mergeTransition.startTime;
+            const progress = Math.min(1, elapsed / this.mergeTransition.duration);
 
-            // Override predicted position with smooth camera
-            this.playerState.predicted.x = this.smoothCamera.x;
-            this.playerState.predicted.y = this.smoothCamera.y;
+            // Use easing function for smoother animation (cubic ease-out)
+            const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+            // Interpolate camera position during merge
+            const transitionX = this.mergeTransition.startX +
+                (this.mergeTransition.targetX - this.mergeTransition.startX) * easedProgress;
+            const transitionY = this.mergeTransition.startY +
+                (this.mergeTransition.targetY - this.mergeTransition.startY) * easedProgress;
+
+            // Override predicted camera position with transition position
+            this.playerState.predicted.x = transitionX;
+            this.playerState.predicted.y = transitionY;
+
+            // Transition in progress
+
+            // End transition when complete
+            if (progress >= 1) {
+                this.mergeTransition.active = false;
+                // Start post-merge smoothing from where the transition ended
+                this.postMergeSmoothing.active = true;
+                this.postMergeSmoothing.currentX = transitionX;
+                this.postMergeSmoothing.currentY = transitionY;
+            }
+        }
+        // Apply post-merge smoothing after transition completes
+        else if (this.postMergeSmoothing.active) {
+            // Smoothly converge to the actual predicted position
+            const targetX = this.playerState.predicted.x;
+            const targetY = this.playerState.predicted.y;
+
+            // Lerp towards target
+            this.postMergeSmoothing.currentX += (targetX - this.postMergeSmoothing.currentX) * this.postMergeSmoothing.lerpSpeed;
+            this.postMergeSmoothing.currentY += (targetY - this.postMergeSmoothing.currentY) * this.postMergeSmoothing.lerpSpeed;
+
+            // Override predicted position with smoothed position
+            this.playerState.predicted.x = this.postMergeSmoothing.currentX;
+            this.playerState.predicted.y = this.postMergeSmoothing.currentY;
+
+            // Check if we're close enough to stop smoothing
+            const distance = Math.hypot(
+                targetX - this.postMergeSmoothing.currentX,
+                targetY - this.postMergeSmoothing.currentY
+            );
+
+            if (distance < 0.5) {
+                this.postMergeSmoothing.active = false;
+            }
         }
 
         return this.playerState.predicted;
@@ -399,10 +507,21 @@ class PredictionSystem {
             timestamp: 0
         };
 
-        this.smoothCamera = {
-            enabled: false,
-            x: 0,
-            y: 0
+        this.mergeTransition = {
+            active: false,
+            startX: 0,
+            startY: 0,
+            targetX: 0,
+            targetY: 0,
+            progress: 0,
+            duration: 500
+        };
+
+        this.postMergeSmoothing = {
+            active: false,
+            currentX: 0,
+            currentY: 0,
+            lerpSpeed: 0.15
         };
 
         this.lastUpdateTime = 0;

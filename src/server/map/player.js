@@ -400,7 +400,7 @@ exports.Player = class {
                         return; // One or both cells already merged, skip
                     }
 
-                    // Always keep the larger cell's position
+                    // Keep the larger cell's position when merging
                     if (cellA.mass >= cellB.mass) {
                         // Cell A is larger - add B's mass to A, delete B
                         cellA.addMass(cellB.mass);
