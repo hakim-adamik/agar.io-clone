@@ -487,8 +487,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Format score with commas
             const formattedScore = score.toLocaleString();
 
-            // Pass window width to determine if we're on mobile
-            const isMobile = window.innerWidth <= 768;
+            // Detect mobile by device capabilities, not screen width
+            // This ensures proper detection even in landscape mode
+            const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
             return createLeaderboardEntry(rank, username, formattedScore, medal, isCurrentUser, isMobile);
         }).join('');
 

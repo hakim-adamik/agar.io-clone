@@ -52,14 +52,14 @@ function initKeyboardControls() {
             case KEY_CODES.SPACE:
                 // Split
                 event.preventDefault();
-                socket.emit('1');
+                socket.emit('2');
                 uiManager.playSound('split_cell', 0.5);
                 break;
 
             case KEY_CODES.W:
                 // Eject mass
                 event.preventDefault();
-                socket.emit('2');
+                socket.emit('1');
                 uiManager.playSound('eject_mass_sound', 0.3);
                 break;
 
@@ -124,7 +124,7 @@ function initMouseControls() {
                 // Shift+click to eject mass
                 var socket = socketManager.getSocket();
                 if (socket) {
-                    socket.emit('2');
+                    socket.emit('1');
                     uiManager.playSound('eject_mass_sound', 0.3);
                 }
             }
@@ -176,8 +176,8 @@ function initTouchControls() {
         touchState.active = false;
     });
 
-    // Mobile button handlers
-    setupMobileButtons();
+    // Mobile button handlers moved to app.js to prevent conflicts
+    // setupMobileButtons();
 }
 
 /**
@@ -192,7 +192,7 @@ function setupMobileButtons() {
             if (global.gameStart) {
                 var socket = socketManager.getSocket();
                 if (socket) {
-                    socket.emit('1');
+                    socket.emit('2');
                     uiManager.playSound('split_cell', 0.5);
                 }
             }
@@ -202,16 +202,38 @@ function setupMobileButtons() {
     // Feed button
     var feedBtn = document.getElementById('feed');
     if (feedBtn) {
+        console.log('Feed button found, attaching handler');
         feedBtn.addEventListener('touchstart', function(e) {
             e.preventDefault();
+            e.stopPropagation();
+            console.log('Feed button touched!');
             if (global.gameStart) {
                 var socket = socketManager.getSocket();
                 if (socket) {
-                    socket.emit('2');
+                    console.log('Emitting eject mass (event 1)');
+                    socket.emit('1');
+                    uiManager.playSound('eject_mass_sound', 0.3);
+                }
+            } else {
+                console.log('Game not started yet');
+            }
+        });
+
+        // Also handle click for testing
+        feedBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Feed button clicked!');
+            if (global.gameStart) {
+                var socket = socketManager.getSocket();
+                if (socket) {
+                    socket.emit('1');
                     uiManager.playSound('eject_mass_sound', 0.3);
                 }
             }
         });
+    } else {
+        console.log('Feed button NOT found!');
     }
 
     // Exit button

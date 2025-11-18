@@ -6,8 +6,18 @@
         <title>Clash of Cells</title>
         <meta
             name="viewport"
-            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"
         />
+
+        <!-- Mobile Web App Capable (iOS) -->
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen" />
+
+        <!-- Mobile Web App Capable (Android) -->
+        <meta name="mobile-web-app-capable" content="yes" />
+
+        <!-- Theme color for browser UI -->
+        <meta name="theme-color" content="#000000" />
 
         <!-- CSS -->
         <link
@@ -154,6 +164,14 @@
                         src="img/split.png"
                         alt="splitBtn"
                     />
+                    <button
+                        id="fullscreenBtn"
+                        class="fullscreen-btn"
+                        title="Toggle Fullscreen"
+                        aria-label="Toggle Fullscreen"
+                    >
+                        <i class="fas fa-expand"></i>
+                    </button>
                 </div>
                 <canvas tabindex="1" id="cvs"></canvas>
             </div>

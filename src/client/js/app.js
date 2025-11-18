@@ -14,8 +14,16 @@ var debug = function (args) {
     }
 };
 
-if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
+// Detect mobile devices and add class to body for CSS targeting
+// This ensures mobile styles work in both portrait and landscape
+if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ||
+    ('ontouchstart' in window) ||
+    navigator.maxTouchPoints > 0) {
     global.mobile = true;
+    document.body.classList.add('mobile-device');
+    console.log('Mobile device detected - UI optimized for touch');
+} else {
+    console.log('Desktop device detected - UI optimized for mouse');
 }
 
 function generateGuestName() {
@@ -680,34 +688,75 @@ if (showFpsGame) {
 var c = window.canvas.cv;
 var graph = c.getContext("2d");
 
-// Feed button - handle both click and touch
-$("#feed").on("click touchstart", function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    playSoundEffect('eject_mass_sound');
-    socket.emit("1");
-    window.canvas.reenviar = false;
-});
-
-// Split button - handle both click and touch
-$("#split").on("click touchstart", function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (global.soundEnabled) {
-        document.getElementById('split_cell').play();
+// Mobile button handlers - using vanilla JS for reliability
+(function setupMobileControls() {
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMobileButtons);
+    } else {
+        initMobileButtons();
     }
-    socket.emit("2");
-    window.canvas.reenviar = false;
-});
 
-// Exit button - handle both click and touch
-$("#exit").on("click touchstart", function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (global.gameStart) {
-        exitGame();
+    function initMobileButtons() {
+        // Feed/Eject button
+        var feedBtn = document.getElementById('feed');
+        if (feedBtn) {
+            ['touchstart', 'click'].forEach(function(eventType) {
+                feedBtn.addEventListener(eventType, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Feed button pressed - emitting event 1 (eject mass)');
+                    if (global.soundEnabled) {
+                        playSoundEffect('eject_mass_sound');
+                    }
+                    if (socket) {
+                        socket.emit("1");
+                        window.canvas.reenviar = false;
+                    }
+                }, {passive: false});
+            });
+            console.log('Feed button handler attached');
+        } else {
+            console.warn('Feed button not found!');
+        }
+
+        // Split button
+        var splitBtn = document.getElementById('split');
+        if (splitBtn) {
+            ['touchstart', 'click'].forEach(function(eventType) {
+                splitBtn.addEventListener(eventType, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Split button pressed - emitting event 2 (split)');
+                    if (global.soundEnabled) {
+                        document.getElementById('split_cell').play();
+                    }
+                    if (socket) {
+                        socket.emit("2");
+                        window.canvas.reenviar = false;
+                    }
+                }, {passive: false});
+            });
+            console.log('Split button handler attached');
+        }
+
+        // Exit button
+        var exitBtn = document.getElementById('exit');
+        if (exitBtn) {
+            ['touchstart', 'click'].forEach(function(eventType) {
+                exitBtn.addEventListener(eventType, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Exit button pressed');
+                    if (global.gameStart) {
+                        exitGame();
+                    }
+                }, {passive: false});
+            });
+            console.log('Exit button handler attached');
+        }
     }
-});
+})();
 
 // Directional pad control - touch anywhere on screen
 (function () {
@@ -919,6 +968,9 @@ function setupSocket(socket) {
         global.game.width = gameSizes.width;
         global.game.height = gameSizes.height;
         resize();
+
+        // Request fullscreen for mobile immersive experience
+        requestMobileFullscreen();
     });
 
     socket.on("playerDied", (data) => {
@@ -1807,6 +1859,43 @@ function returnToLanding() {
     }
 }
 
+/**
+ * Request fullscreen for mobile browsers
+ * Provides an immersive gaming experience by hiding browser UI
+ */
+function requestMobileFullscreen() {
+    // Only proceed on mobile devices
+    if (!('ontouchstart' in window) && !navigator.maxTouchPoints) {
+        return; // Not a touch device, skip
+    }
+
+    try {
+        var elem = document.documentElement;
+
+        // Try Fullscreen API first (works on many mobile browsers)
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(err => {
+                console.log('Fullscreen request failed:', err.message);
+            });
+        } else if (elem.webkitRequestFullscreen) { // iOS Safari
+            elem.webkitRequestFullscreen();
+        } else if (elem.mozRequestFullScreen) { // Firefox
+            elem.mozRequestFullScreen();
+        } else if (elem.msRequestFullscreen) { // IE/Edge
+            elem.msRequestFullscreen();
+        }
+
+        // For iOS Safari: Scroll to hide address bar
+        setTimeout(() => {
+            window.scrollTo(0, 1);
+        }, 100);
+
+        console.log('Fullscreen requested for mobile');
+    } catch (e) {
+        console.log('Could not request fullscreen:', e);
+    }
+}
+
 // Save last score to localStorage
 function saveLastScore(score) {
     try {
@@ -1932,6 +2021,88 @@ if (document.readyState === "loading") {
             sessionStorage.removeItem('pageRefreshing');
         } else {
             displayLastScore();
+        }
+    }
+})();
+
+// Fullscreen toggle button handler
+(function() {
+    var fullscreenBtn = document.getElementById('fullscreenBtn');
+    if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            toggleFullscreen();
+        });
+
+        // Also support touch events
+        fullscreenBtn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            toggleFullscreen();
+        });
+
+        // Update icon based on fullscreen state
+        document.addEventListener('fullscreenchange', updateFullscreenIcon);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+        document.addEventListener('mozfullscreenchange', updateFullscreenIcon);
+        document.addEventListener('MSFullscreenChange', updateFullscreenIcon);
+    }
+
+    function updateFullscreenIcon() {
+        if (!fullscreenBtn) return;
+
+        var icon = fullscreenBtn.querySelector('i');
+        if (!icon) return;
+
+        var isFullscreen = document.fullscreenElement ||
+                          document.webkitFullscreenElement ||
+                          document.mozFullScreenElement ||
+                          document.msFullscreenElement;
+
+        if (isFullscreen) {
+            icon.className = 'fas fa-compress';
+        } else {
+            icon.className = 'fas fa-expand';
+        }
+    }
+
+    function toggleFullscreen() {
+        var doc = document;
+        var docEl = doc.documentElement;
+
+        var isFullscreen = doc.fullscreenElement ||
+                          doc.webkitFullscreenElement ||
+                          doc.mozFullScreenElement ||
+                          doc.msFullscreenElement;
+
+        if (!isFullscreen) {
+            // Enter fullscreen
+            if (docEl.requestFullscreen) {
+                docEl.requestFullscreen().catch(err => {
+                    console.log('Fullscreen request failed:', err);
+                });
+            } else if (docEl.webkitRequestFullscreen) {
+                docEl.webkitRequestFullscreen();
+            } else if (docEl.mozRequestFullScreen) {
+                docEl.mozRequestFullScreen();
+            } else if (docEl.msRequestFullscreen) {
+                docEl.msRequestFullscreen();
+            }
+
+            // Scroll to hide address bar on iOS
+            setTimeout(() => {
+                window.scrollTo(0, 1);
+            }, 100);
+        } else {
+            // Exit fullscreen
+            if (doc.exitFullscreen) {
+                doc.exitFullscreen();
+            } else if (doc.webkitExitFullscreen) {
+                doc.webkitExitFullscreen();
+            } else if (doc.mozCancelFullScreen) {
+                doc.mozCancelFullScreen();
+            } else if (doc.msExitFullscreen) {
+                doc.msExitFullscreen();
+            }
         }
     }
 })();
