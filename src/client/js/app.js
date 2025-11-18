@@ -4,9 +4,11 @@ var Canvas = require("./canvas");
 var global = require("./global");
 var PredictionSystem = require("./prediction");
 var CellAnimations = require("./cell-animations");
+var { ClientSocketHandler, OPCODES } = require("./socket-handler");
 
 var playerNameInput = document.getElementById("playerNameInput");
 var socket;
+var socketHandler; // Binary protocol handler
 
 // Debug mode flag (accessible from browser console via window.DEBUG_MODE)
 /*
@@ -363,13 +365,18 @@ function startGame(type) {
             rememberUpgrade: true,
             // Ping/pong already configured server-side
         });
-        setupSocket(socket);
+
+        // Wrap socket with binary protocol handler
+        socketHandler = new ClientSocketHandler(socket);
+        setupSocket(socketHandler);
 
                 // Now that socket is created, we can emit and set it up
     if (!global.animLoopHandle) animloop();
-    socket.emit("respawn");
+    socketHandler.sendRespawn();
     window.canvas.socket = socket;
+    window.canvas.socketHandler = socketHandler;
     global.socket = socket;
+    global.socketHandler = socketHandler;
             } // Close createNewSocket function
         } // Close socket creation block
     } // Close continueGameStart function
@@ -698,8 +705,19 @@ var graph = c.getContext("2d");
 $("#feed").on("click touchstart", function (e) {
     e.preventDefault();
     e.stopPropagation();
-    playSoundEffect('eject_mass_sound');
-    socket.emit("1");
+    if (global.soundEnabled) {
+        var ejectSound = document.getElementById('eject_mass_sound');
+        if (ejectSound) {
+            ejectSound.play().catch(function(err) {
+                console.log('Eject sound play failed:', err);
+            });
+        }
+    }
+    // Try both socketHandler references
+    var handler = global.socketHandler || window.canvas.socketHandler;
+    if (handler) {
+        handler.sendEject();
+    }
     window.canvas.reenviar = false;
 });
 
@@ -708,9 +726,18 @@ $("#split").on("click touchstart", function (e) {
     e.preventDefault();
     e.stopPropagation();
     if (global.soundEnabled) {
-        document.getElementById('split_cell').play();
+        var splitSound = document.getElementById('split_cell');
+        if (splitSound) {
+            splitSound.play().catch(function(err) {
+                console.log('Split sound play failed:', err);
+            });
+        }
     }
-    socket.emit("2");
+    // Try both socketHandler references
+    var handler = global.socketHandler || window.canvas.socketHandler;
+    if (handler) {
+        handler.sendSplit();
+    }
     window.canvas.reenviar = false;
 });
 
@@ -846,9 +873,9 @@ function handleDisconnect() {
 }
 
 // socket stuff.
-function setupSocket(socket) {
-    // Connection event handlers for better user feedback
-    socket.on("connect", function() {
+function setupSocket(socketHandler) {
+    // Connection event handlers for better user feedback (use native socket.io events)
+    socketHandler.onConnect(function() {
         console.log("[Socket] Connected successfully");
         // Hide any connection error messages
         if (global.connectionErrorShown) {
@@ -856,18 +883,18 @@ function setupSocket(socket) {
         }
     });
 
-    socket.on("reconnect", function(attemptNumber) {
+    socketHandler.onReconnect(function(attemptNumber) {
         console.log("[Socket] Reconnected after " + attemptNumber + " attempts");
         // Optionally show success message briefly
         if (global.gameStart) {
             // Reset animations on reconnect to ensure clean state
             cellAnimations.reset();
             // Request fresh game state after reconnection
-            socket.emit("respawn");
+            socketHandler.sendRespawn();
         }
     });
 
-    socket.on("reconnect_attempt", function(attemptNumber) {
+    socketHandler.onReconnectAttempt(function(attemptNumber) {
         console.log("[Socket] Reconnection attempt #" + attemptNumber);
         if (!global.connectionErrorShown && global.gameStart) {
             render.drawErrorMessage("Reconnecting...", graph, global.screen);
@@ -875,27 +902,28 @@ function setupSocket(socket) {
         }
     });
 
-    socket.on("reconnect_failed", function() {
+    socketHandler.onReconnectFailed(function() {
         console.log("[Socket] Reconnection failed after all attempts");
         render.drawErrorMessage("Connection Lost - Please Refresh", graph, global.screen);
     });
 
-    // Handle ping.
-    socket.on("pongcheck", function () {
+    // Handle pong (binary protocol)
+    socketHandler.on(OPCODES.S2C_PONG, function () {
         var latency = Date.now() - global.startPingTime;
         debug("Latency: " + latency + "ms");
     });
 
     // Handle error.
-    socket.on("connect_error", function(error) {
+    socketHandler.onConnectError(function(error) {
         console.error("[Socket] Connection error:", error.message);
         // Don't immediately show disconnect message - let reconnection try first
+        const socket = socketHandler.getSocket();
         if (socket.io.reconnecting === false) {
             handleDisconnect();
         }
     });
 
-    socket.on("disconnect", function(reason) {
+    socketHandler.onDisconnect(function(reason) {
         console.log("[Socket] Disconnected:", reason);
         // Only show disconnect for unexpected disconnects (not user-initiated)
         if (reason === "io server disconnect" || reason === "ping timeout") {
@@ -906,18 +934,19 @@ function setupSocket(socket) {
         }
     });
 
-    // Handle connection.
-    socket.on("welcome", function (playerSettings, gameSizes) {
-        player = playerSettings;
+    // Handle welcome (binary protocol)
+    socketHandler.on(OPCODES.S2C_WELCOME, function (data) {
+        player = data.playerSettings;
         player.name = global.playerName;
         player.screenWidth = global.screen.width;
         player.screenHeight = global.screen.height;
         player.target = window.canvas.target;
         global.player = player;
-        socket.emit("gotit", player);
+        socketHandler.sendGotit(player);
         global.gameStart = true;
 
         // Store arena ID for multi-arena support
+        const gameSizes = data.gameSizes;
         if (gameSizes.arenaId) {
             global.arenaId = gameSizes.arenaId;
             console.log(`[CLIENT] Joined arena: ${gameSizes.arenaId}`);
@@ -935,19 +964,19 @@ function setupSocket(socket) {
         resize();
     });
 
-    socket.on("playerDied", (data) => {
+    socketHandler.on(OPCODES.S2C_PLAYER_DIED, (data) => {
         // Player death notification removed (chat feature removed)
     });
 
-    socket.on("playerDisconnect", (data) => {
+    socketHandler.on(OPCODES.S2C_PLAYER_DISCONNECT, (data) => {
         // Player disconnect notification removed (chat feature removed)
     });
 
-    socket.on("playerJoin", (data) => {
+    socketHandler.on(OPCODES.S2C_PLAYER_JOIN, (data) => {
         // Player join notification removed (chat feature removed)
     });
 
-    socket.on("playerEaten", (data) => {
+    socketHandler.on(OPCODES.S2C_PLAYER_EATEN, (data) => {
         // Play player eaten sound when current player eats another player
         console.log(`🍽️ Player eaten: ${data.eatenPlayerName} (+${data.massGained} mass)`);
 
@@ -1027,17 +1056,23 @@ function setupSocket(socket) {
         statusEl.innerHTML = statusParts.join('');
     }
 
-    socket.on("leaderboard", (data) => {
+    socketHandler.on(OPCODES.S2C_LEADERBOARD, (data) => {
         window.lastLeaderboardData = data;
         renderLeaderboard(data);
     });
 
     // Chat feature removed
 
-    // Handle movement.
-    socket.on(
-        "serverTellPlayerMove",
-        function (playerData, userData, foodsList, massList, virusList) {
+    // Handle movement (binary protocol - game state update).
+    socketHandler.on(
+        OPCODES.S2C_GAME_UPDATE,
+        function (data) {
+            // Unpack binary protocol data
+            const playerData = data.playerData;
+            const userData = data.visiblePlayers;
+            const foodsList = data.visibleFood;
+            const massList = data.visibleMass;
+            const virusList = data.visibleViruses;
 
 
             if (global.playerType == "player") {
@@ -1130,8 +1165,8 @@ function setupSocket(socket) {
         }
     );
 
-    // Death.
-    socket.on("RIP", function () {
+    // Death (binary protocol).
+    socketHandler.on(OPCODES.S2C_RIP, function () {
         // Save last score before death
         if (player && player.score !== undefined) {
             saveLastScore(player.score);
@@ -1231,7 +1266,7 @@ function setupSocket(socket) {
             }
     });
 
-    socket.on("kick", function (reason) {
+    socketHandler.on(OPCODES.S2C_KICK, function (reason) {
         global.gameStart = false;
         global.kicked = true;
         if (reason !== "") {
@@ -1243,7 +1278,13 @@ function setupSocket(socket) {
         } else {
             render.drawErrorMessage("You were kicked!", graph, global.screen);
         }
-        socket.close();
+        socketHandler.disconnect();
+    });
+
+    // Server messages (binary protocol)
+    socketHandler.on(OPCODES.S2C_SERVER_MSG, function (message) {
+        console.log("[Server]", message);
+        // Could display this in a chat/notification UI if desired
     });
 }
 
@@ -1618,7 +1659,9 @@ function gameLoop() {
         // Throttle socket emissions instead of every frame
         var now = Date.now();
         if (now - lastSocketEmit >= socketEmitInterval) {
-            socket.emit("0", window.canvas.target); // playerSendTarget "Heartbeat".
+            if (global.socketHandler) {
+                global.socketHandler.sendMovement(window.canvas.target); // playerSendTarget "Heartbeat".
+            }
             lastSocketEmit = now;
         }
     }
@@ -1627,8 +1670,8 @@ function gameLoop() {
 window.addEventListener("resize", resize);
 
 function resize() {
-    // Check both socket and player exist before trying to resize
-    if (!socket || !player) return;
+    // Check both socketHandler and player exist before trying to resize
+    if (!global.socketHandler || !player) return;
 
     player.screenWidth =
         c.width =
@@ -1648,7 +1691,7 @@ function resize() {
         player.y = global.game.height / 2;
     }
 
-    socket.emit("windowResized", {
+    global.socketHandler.sendWindowResize({
         screenWidth: global.screen.width,
         screenHeight: global.screen.height,
     });

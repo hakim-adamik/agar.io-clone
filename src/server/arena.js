@@ -15,6 +15,7 @@ const { getPosition } = require("./lib/entityUtils");
 const loggingRepository = require("./repositories/logging-repository");
 const AuthService = require("./services/auth-service");
 const SessionRepository = require("./repositories/session-repository");
+const { SocketHandler, BroadcastHandler, OPCODES } = require("./socket-handler");
 
 const Vector = SAT.Vector;
 
@@ -105,10 +106,13 @@ class Arena {
     addPlayer(socket) {
         const currentPlayer = new mapUtils.playerUtils.Player(socket.id, this.config);
 
+        // Wrap socket with binary protocol handler
+        const socketHandler = new SocketHandler(socket);
+
         // Initialize heartbeat immediately to prevent premature disconnect
         currentPlayer.setLastHeartbeat();
 
-        socket.on("gotit", (clientPlayerData) => {
+        socketHandler.on(OPCODES.C2S_GOTIT, (clientPlayerData) => {
             console.log(
                 `[ARENA ${this.id}] Player ${clientPlayerData.name} connecting!`
             );
@@ -124,17 +128,17 @@ class Arena {
                 console.log(
                     `[ARENA ${this.id}] Player ID already connected, kicking.`
                 );
-                socket.disconnect();
+                socketHandler.disconnect();
                 return;
             }
 
             if (!util.validNick(clientPlayerData.name)) {
-                socket.emit("kick", "Invalid username.");
-                socket.disconnect();
+                socketHandler.sendKick("Invalid username.");
+                socketHandler.disconnect();
                 return;
             }
 
-            this.sockets[socket.id] = socket;
+            this.sockets[socket.id] = socketHandler;
             const sanitizedName = clientPlayerData.name.replace(
                 /(<([^>]+)>)/gi,
                 ""
@@ -153,15 +157,18 @@ class Arena {
             this.lastActivityAt = Date.now();
         });
 
-        this.setupPlayerEvents(socket, currentPlayer);
+        this.setupPlayerEvents(socketHandler, currentPlayer);
     }
 
     /**
      * Setup socket event handlers for a player
      */
-    setupPlayerEvents(socket, currentPlayer) {
+    setupPlayerEvents(socketHandler, currentPlayer) {
+        // Get underlying socket for disconnect handling
+        const socket = socketHandler.getSocket();
+
         // Respawn handler - client sends this first to request spawn
-        socket.on("respawn", () => {
+        socketHandler.on(OPCODES.C2S_RESPAWN, () => {
             // Remove any existing player data
             this.map.players.removePlayerByID(currentPlayer.id);
 
@@ -177,7 +184,7 @@ class Arena {
             currentPlayer.massTotal = 0;
 
             // Send welcome with the reinitialized player
-            socket.emit("welcome", currentPlayer, {
+            socketHandler.sendWelcome(currentPlayer, {
                 width: this.config.gameWidth,
                 height: this.config.gameHeight,
                 arenaId: this.id,
@@ -189,7 +196,7 @@ class Arena {
             this.lastActivityAt = Date.now();
         });
 
-        // Disconnect handler
+        // Disconnect handler - use native socket.io event
         socket.on("disconnect", async () => {
             // TODO: Re-enable session tracking once disconnect issue is fixed
             /*
@@ -223,18 +230,18 @@ class Arena {
         });
 
         // Ping check
-        socket.on("pingcheck", () => {
-            socket.emit("pongcheck");
+        socketHandler.on(OPCODES.C2S_PING, () => {
+            socketHandler.sendPong();
         });
 
         // Window resized
-        socket.on("windowResized", (data) => {
+        socketHandler.on(OPCODES.C2S_WINDOW_RESIZE, (data) => {
             currentPlayer.screenWidth = data.screenWidth;
             currentPlayer.screenHeight = data.screenHeight;
         });
 
-        // Movement handler (0)
-        socket.on("0", (target) => {
+        // Movement handler
+        socketHandler.on(OPCODES.C2S_MOVEMENT, (target) => {
             currentPlayer.lastHeartbeat = new Date().getTime();
             if (target.x !== currentPlayer.x || target.y !== currentPlayer.y) {
                 currentPlayer.target = target;
@@ -242,8 +249,8 @@ class Arena {
             this.lastActivityAt = Date.now();
         });
 
-        // Eject mass handler (1)
-        socket.on("1", () => {
+        // Eject mass handler
+        socketHandler.on(OPCODES.C2S_EJECT, () => {
             const minCellMass =
                 this.config.defaultPlayerMass + this.config.fireFood;
             for (let i = 0; i < currentPlayer.cells.length; i++) {
@@ -259,8 +266,8 @@ class Arena {
             this.lastActivityAt = Date.now();
         });
 
-        // Split handler (2)
-        socket.on("2", () => {
+        // Split handler
+        socketHandler.on(OPCODES.C2S_SPLIT, () => {
             currentPlayer.userSplit(
                 this.config.limitSplit,
                 this.config.minSplitMass
@@ -269,21 +276,21 @@ class Arena {
         });
 
         // Admin commands
-        this.setupAdminEvents(socket, currentPlayer);
+        this.setupAdminEvents(socketHandler, currentPlayer);
     }
 
 
     /**
      * Setup admin command handlers
      */
-    setupAdminEvents(socket, currentPlayer) {
-        socket.on("pass", async (data) => {
+    setupAdminEvents(socketHandler, currentPlayer) {
+        socketHandler.on(OPCODES.C2S_ADMIN_LOGIN, async (data) => {
             const password = data[0];
             if (password === this.config.adminPass) {
                 console.log(
                     `[ARENA ${this.id}] ${currentPlayer.name} logged in as admin`
                 );
-                socket.emit("serverMSG", "Welcome back " + currentPlayer.name);
+                socketHandler.sendServerMsg("Welcome back " + currentPlayer.name);
                 this.broadcastToArena(
                     "serverMSG",
                     currentPlayer.name + " just logged in as an admin."
@@ -293,7 +300,7 @@ class Arena {
                 console.log(
                     `[ARENA ${this.id}] ${currentPlayer.name} failed admin login`
                 );
-                socket.emit("serverMSG", "Password incorrect, attempt logged.");
+                socketHandler.sendServerMsg("Password incorrect, attempt logged.");
 
                 loggingRepository
                     .logFailedLoginAttempt(
@@ -306,10 +313,9 @@ class Arena {
             }
         });
 
-        socket.on("kick", (data) => {
+        socketHandler.on(OPCODES.C2S_ADMIN_KICK, (data) => {
             if (!currentPlayer.admin) {
-                socket.emit(
-                    "serverMSG",
+                socketHandler.sendServerMsg(
                     "You are not permitted to use this command."
                 );
                 return;
@@ -331,19 +337,17 @@ class Arena {
                             currentPlayer.name
                         }${reason ? " for " + reason : ""}`
                     );
-                    socket.emit(
-                        "serverMSG",
+                    socketHandler.sendServerMsg(
                         `User ${player.name} was kicked by ${currentPlayer.name}`
                     );
-                    this.sockets[player.id].emit("kick", reason);
+                    this.sockets[player.id].sendKick(reason);
                     this.sockets[player.id].disconnect();
                     this.map.players.removePlayerByIndex(playerIndex);
                     worked = true;
                 }
             }
             if (!worked) {
-                socket.emit(
-                    "serverMSG",
+                socketHandler.sendServerMsg(
                     "Could not locate user or user is an admin."
                 );
             }
@@ -354,14 +358,15 @@ class Arena {
      * Add spectator to this arena
      */
     addSpectator(socket) {
-        socket.on("gotit", () => {
-            this.sockets[socket.id] = socket;
+        const socketHandler = new SocketHandler(socket);
+
+        socketHandler.on(OPCODES.C2S_GOTIT, () => {
+            this.sockets[socket.id] = socketHandler;
             this.spectators.push(socket.id);
             this.broadcastToArena("playerJoin", { name: "" });
         });
 
-        socket.emit(
-            "welcome",
+        socketHandler.sendWelcome(
             {},
             {
                 width: this.config.gameWidth,
@@ -389,14 +394,24 @@ class Arena {
      * Broadcast event to all players in THIS arena only
      */
     broadcastToArena(event, data) {
-        // Use Socket.io room broadcasting (more reliable)
-        if (this.io) {
-            this.io.to(this.id).emit(event, data);
-        } else {
-            // Fallback to individual socket emission
-            for (const socketId in this.sockets) {
-                this.sockets[socketId].emit(event, data);
-            }
+        // Use BroadcastHandler for binary messages
+        const broadcaster = new BroadcastHandler(this.io, this.id);
+
+        switch (event) {
+            case "playerDied":
+                broadcaster.broadcastPlayerDied(data);
+                break;
+            case "playerDisconnect":
+                broadcaster.broadcastPlayerDisconnect(data);
+                break;
+            case "playerJoin":
+                broadcaster.broadcastPlayerJoin(data);
+                break;
+            case "serverMSG":
+                broadcaster.broadcastServerMsg(data);
+                break;
+            default:
+                console.warn(`[ARENA ${this.id}] Unknown broadcast event: ${event}`);
         }
     }
 
@@ -409,13 +424,15 @@ class Arena {
             currentPlayer.lastHeartbeat <
             new Date().getTime() - this.config.maxHeartbeatInterval
         ) {
-            this.sockets[currentPlayer.id].emit(
-                "kick",
-                "Last heartbeat received over " +
-                    this.config.maxHeartbeatInterval +
-                    " ago."
-            );
-            this.sockets[currentPlayer.id].disconnect();
+            const socketHandler = this.sockets[currentPlayer.id];
+            if (socketHandler) {
+                socketHandler.sendKick(
+                    "Last heartbeat received over " +
+                        this.config.maxHeartbeatInterval +
+                        " ago."
+                );
+                socketHandler.disconnect();
+            }
             return;
         }
 
@@ -517,7 +534,7 @@ class Arena {
             const eatenPlayer = this.map.players.data[gotEaten.playerIndex];
 
             if (eatingPlayer && eatenPlayer && this.sockets[eatingPlayer.id]) {
-                this.sockets[eatingPlayer.id].emit("playerEaten", {
+                this.sockets[eatingPlayer.id].sendPlayerEaten({
                     eatenPlayerName: eatenPlayer.name,
                     massGained: cellGotEaten.mass
                 });
@@ -535,7 +552,10 @@ class Arena {
                 });
 
                 // Send RIP event to the dead player
-                this.sockets[playerGotEaten.id].emit("RIP");
+                const deadPlayerHandler = this.sockets[playerGotEaten.id];
+                if (deadPlayerHandler) {
+                    deadPlayerHandler.sendRip();
+                }
 
                 // Remove player from map
                 this.map.players.removePlayerByIndex(gotEaten.playerIndex);
@@ -608,17 +628,19 @@ class Arena {
                 visibleMass,
                 visibleViruses
             ) => {
-                this.sockets[playerData.id].emit(
-                    "serverTellPlayerMove",
-                    playerData,
-                    visiblePlayers,
-                    visibleFood,
-                    visibleMass,
-                    visibleViruses
-                );
+                const socketHandler = this.sockets[playerData.id];
+                if (socketHandler) {
+                    socketHandler.sendGameUpdate(
+                        playerData,
+                        visiblePlayers,
+                        visibleFood,
+                        visibleMass,
+                        visibleViruses
+                    );
 
-                if (this.leaderboardChanged) {
-                    this.sendLeaderboard(this.sockets[playerData.id]);
+                    if (this.leaderboardChanged) {
+                        this.sendLeaderboard(socketHandler);
+                    }
                 }
             }
         );
@@ -627,10 +649,10 @@ class Arena {
     }
 
     /**
-     * Send leaderboard to a specific socket
+     * Send leaderboard to a specific socket handler
      */
-    sendLeaderboard(socket) {
-        socket.emit("leaderboard", {
+    sendLeaderboard(socketHandler) {
+        socketHandler.sendLeaderboard({
             players: this.map.players.data.length,
             leaderboard: this.leaderboard,
         });
@@ -640,6 +662,9 @@ class Arena {
      * Update spectator view
      */
     updateSpectator(socketID) {
+        const socketHandler = this.sockets[socketID];
+        if (!socketHandler) return;
+
         let playerData = {
             x: this.config.gameWidth / 2,
             y: this.config.gameHeight / 2,
@@ -649,8 +674,7 @@ class Arena {
             id: socketID,
             name: "",
         };
-        this.sockets[socketID].emit(
-            "serverTellPlayerMove",
+        socketHandler.sendGameUpdate(
             playerData,
             this.map.players.data,
             this.map.food.data,
@@ -658,7 +682,7 @@ class Arena {
             this.map.viruses.data
         );
         if (this.leaderboardChanged) {
-            this.sendLeaderboard(this.sockets[socketID]);
+            this.sendLeaderboard(socketHandler);
         }
     }
 }
