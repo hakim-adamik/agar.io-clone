@@ -50,7 +50,7 @@ module.exports = {
     massLossRate: 1,
     minMassLoss: 50,
     mergeTimeBase: 1000, // Base time in milliseconds before cells can merge after split
-    mergeTimeRate: 10, // Time increase per unit of cell mass (mergeTime = base + mass * rate)
+    mergeTimeRate: 10, // Time increase before merge, per unit of cell mass (mergeTime = base + mass * rate)
 
     // Client-side prediction configuration
     predictionEnabled: true,
