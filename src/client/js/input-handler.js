@@ -45,28 +45,28 @@ function initKeyboardControls() {
     window.addEventListener('keydown', function(event) {
         if (!global.gameStart) return;
 
-        var socket = socketManager.getSocket();
-        if (!socket) return;
+        var socketHandler = global.socketHandler;
+        if (!socketHandler) return;
 
         switch (event.keyCode) {
             case KEY_CODES.SPACE:
                 // Split
                 event.preventDefault();
-                socket.emit('1');
+                socketHandler.sendSplit();
                 uiManager.playSound('split_cell', 0.5);
                 break;
 
             case KEY_CODES.W:
                 // Eject mass
                 event.preventDefault();
-                socket.emit('2');
+                socketHandler.sendEject();
                 uiManager.playSound('eject_mass_sound', 0.3);
                 break;
 
             case KEY_CODES.Q:
-                // Q key for spectate mode switching
+                // Q key for spectate mode switching (not implemented in binary protocol yet)
                 if (global.gameStart && global.playerType === 'spectator') {
-                    socket.emit('3');
+                    // socket.emit('3'); // TODO: implement spectator mode switching in binary protocol
                 }
                 break;
 
@@ -122,9 +122,9 @@ function initMouseControls() {
         if (global.gameStart && event.button === 0) { // Left click
             if (event.shiftKey) {
                 // Shift+click to eject mass
-                var socket = socketManager.getSocket();
-                if (socket) {
-                    socket.emit('2');
+                var socketHandler = global.socketHandler;
+                if (socketHandler) {
+                    socketHandler.sendEject();
                     uiManager.playSound('eject_mass_sound', 0.3);
                 }
             }
@@ -190,9 +190,9 @@ function setupMobileButtons() {
         splitBtn.addEventListener('touchstart', function(e) {
             e.preventDefault();
             if (global.gameStart) {
-                var socket = socketManager.getSocket();
-                if (socket) {
-                    socket.emit('1');
+                var socketHandler = global.socketHandler;
+                if (socketHandler) {
+                    socketHandler.sendSplit();
                     uiManager.playSound('split_cell', 0.5);
                 }
             }
@@ -205,9 +205,9 @@ function setupMobileButtons() {
         feedBtn.addEventListener('touchstart', function(e) {
             e.preventDefault();
             if (global.gameStart) {
-                var socket = socketManager.getSocket();
-                if (socket) {
-                    socket.emit('2');
+                var socketHandler = global.socketHandler;
+                if (socketHandler) {
+                    socketHandler.sendEject();
                     uiManager.playSound('eject_mass_sound', 0.3);
                 }
             }
@@ -273,11 +273,11 @@ exports.exitGame = exitGame;
 exports.sendMovement = function() {
     if (!global.gameStart) return;
 
-    var socket = socketManager.getSocket();
-    if (!socket) return;
+    var socketHandler = global.socketHandler;
+    if (!socketHandler) return;
 
     var target = gameState.getTarget();
-    socket.emit('0', target);
+    socketHandler.sendMovement(target);
 };
 
 /**

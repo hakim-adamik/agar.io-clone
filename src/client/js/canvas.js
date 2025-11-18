@@ -6,6 +6,7 @@ class Canvas {
         this.target = global.target;
         this.reenviar = true;
         this.socket = global.socket;
+        this.socketHandler = global.socketHandler;
         this.directions = [];
         var self = this;
 
@@ -34,7 +35,9 @@ class Canvas {
     		self.directionLock = true;
     		if (self.newDirection(key, self.directions, true)) {
     			self.updateTarget(self.directions);
-    			self.socket.emit('0', self.target);
+    			if (self.socketHandler) {
+    			    self.socketHandler.sendMovement(self.target);
+    			}
     		}
     	}
     }
@@ -46,7 +49,9 @@ class Canvas {
     		if (this.newDirection(key, this.directions, false)) {
     			this.updateTarget(this.directions);
     			if (this.directions.length === 0) this.directionLock = false;
-    			this.socket.emit('0', this.target);
+    			if (this.socketHandler) {
+    			    this.socketHandler.sendMovement(this.target);
+    			}
     		}
     	}
     }
@@ -146,7 +151,9 @@ class Canvas {
                     console.log('Eject mass sound not available:', e);
                 }
             }
-            this.parent.socket.emit('1');
+            if (this.parent.socketHandler) {
+                this.parent.socketHandler.sendEject();
+            }
             this.parent.reenviar = false;
         }
         else if (key === global.KEY_SPLIT && this.parent.reenviar) {
@@ -164,7 +171,9 @@ class Canvas {
                     console.log('Split sound not available:', e);
                 }
             }
-            this.parent.socket.emit('2');
+            if (this.parent.socketHandler) {
+                this.parent.socketHandler.sendSplit();
+            }
             this.parent.reenviar = false;
         }
     }
