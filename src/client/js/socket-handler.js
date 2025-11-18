@@ -88,7 +88,6 @@ class ClientSocketHandler {
      * Send binary message to server
      */
     send(buffer) {
-        console.log('[ClientSocket] Sending binary message, length:', buffer.byteLength);
         this.socket.emit('binary', buffer);
     }
 

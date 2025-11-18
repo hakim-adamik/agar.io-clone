@@ -28,14 +28,11 @@ class SocketHandler {
      */
     handleBinaryMessage(buffer) {
         try {
-            console.log('[SocketHandler] Received binary message, length:', buffer.byteLength || buffer.length);
             const { opcode, data } = Decoder.decode(buffer);
-            console.log('[SocketHandler] Decoded opcode:', opcode);
 
             // Call registered handler for this opcode
             const handler = this.handlers.get(opcode);
             if (handler) {
-                console.log('[SocketHandler] Calling handler for opcode:', opcode);
                 handler(data);
             } else {
                 console.warn(`[SocketHandler] No handler for opcode: ${opcode}`);
@@ -56,7 +53,6 @@ class SocketHandler {
      * Send binary message to client
      */
     send(buffer) {
-        console.log('[SocketHandler] Sending binary message, length:', buffer.byteLength);
         this.socket.emit('binary', buffer);
     }
 
