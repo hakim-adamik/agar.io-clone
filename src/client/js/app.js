@@ -749,6 +749,21 @@ var graph = c.getContext("2d");
                     e.stopPropagation();
                     console.log('Exit button pressed');
                     if (global.gameStart) {
+                        // Play escape sound
+                        if (global.soundEnabled) {
+                            try {
+                                const escapeSound = document.getElementById('escape_sound');
+                                if (escapeSound) {
+                                    escapeSound.volume = 0.5;
+                                    escapeSound.currentTime = 0;
+                                    escapeSound.play().catch(function(err) {
+                                        console.log('Escape sound playback failed:', err);
+                                    });
+                                }
+                            } catch (err) {
+                                console.log('Escape sound not available:', err);
+                            }
+                        }
                         exitGame();
                     }
                 }, {passive: false});
