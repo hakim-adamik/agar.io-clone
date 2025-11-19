@@ -576,9 +576,14 @@ class Arena {
                 0
             );
 
+            // Add mass from eaten food based on tier multipliers
+            massGained += eatenFoodIndexes.reduce(
+                (acc, index) => acc + this.map.food.data[index].tier.multiplier * this.config.foodMass,
+                0
+            );
+
             this.map.food.delete(eatenFoodIndexes);
             this.map.massFood.remove(eatenMassIndexes);
-            massGained += eatenFoodIndexes.length * this.config.foodMass;
             currentPlayer.changeCellMass(cellIndex, massGained);
         }
         currentPlayer.virusSplit(

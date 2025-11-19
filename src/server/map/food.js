@@ -6,11 +6,11 @@ const {getPosition} = require("../lib/entityUtils");
 
 // Food tier system: defines 5 tiers with different nutritional values, display sizes, and colors
 const FOOD_TIERS = [
-    { multiplier: 1,  displayRadius: 10, hue: 200,   name: 'x1'  },  // Tier 1: base (red)
-    { multiplier: 3,  displayRadius: 13, hue: 120,  name: 'x3'  },  // Tier 2: 3x nutrition (orange)
-    { multiplier: 9,  displayRadius: 16, hue: 45, name: 'x9'  },  // Tier 3: 9x nutrition (green)
-    { multiplier: 27, displayRadius: 19, hue: 0, name: 'x27' },  // Tier 4: 27x nutrition (cyan)
-    { multiplier: 81, displayRadius: 23, hue: 270, name: 'x81' }   // Tier 5: 81x nutrition (purple/largest)
+    { multiplier: 1,  displayRadius: 10, hue: 200,   name: 'x1'  },
+    { multiplier: 3,  displayRadius: 13, hue: 120,  name: 'x3'  },
+    { multiplier: 9,  displayRadius: 16, hue: 45, name: 'x9'  },
+    { multiplier: 27, displayRadius: 19, hue: 0, name: 'x27' },
+    { multiplier: 81, displayRadius: 23, hue: 270, name: 'x81' }
 ];
 
 // Randomly select a food tier
