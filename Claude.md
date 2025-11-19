@@ -127,6 +127,20 @@ This is a functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canv
 ### 📊 Recent Changes
 
 -   **Latest Updates (November 2024):**
+    -   **Mobile UX Improvements:**
+        - Fixed mobile eject mass button (was failing due to undefined `playSoundEffect()`)
+        - Unified game exit handler with landing page messages instead of canvas errors
+        - Consistent exit message positioning and sizing for all scenarios
+        - Replaced bottom navigation with hamburger menu on mobile (< 768px)
+        - White/glassmorphic hamburger design for visibility on dark backgrounds
+        - Slide-out menu panel with smooth animations and overlay dismissal
+        - All mobile menu items properly trigger their corresponding modals
+    -   **Game Exit UX Overhaul:**
+        - Created unified `handleGameExit()` function for all exit scenarios
+        - Players return to landing page with contextual messages
+        - Styled notifications: Orange for timeouts, Red for death, Green for escape success
+        - Auto-dismiss messages after 5 seconds
+        - Cleaned up technical messages (e.g., "Last heartbeat received over 5000 ago")
     -   **Prediction System Refactoring:** Extracted prediction and animation logic into separate modules (prediction.js, cell-animations.js)
     -   **Frame Rendering Synchronization Fix:** Resolved background shakiness by caching camera position per frame
         - Root cause: Micro-timing differences when calculating entity positions within same frame
