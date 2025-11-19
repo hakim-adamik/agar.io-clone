@@ -1903,22 +1903,11 @@ function returnToLanding(exitReason, exitMessage) {
  * Display exit reason message on the landing page
  */
 function displayExitMessage(reason, message) {
-    // Find or create exit message element
-    let exitMessageEl = document.getElementById('exitMessage');
+    // Always use the fixed exit message element
+    const exitMessageEl = document.getElementById('exitMessage');
     if (!exitMessageEl) {
-        // Create the element if it doesn't exist
-        const landingView = document.getElementById('landingView');
-        exitMessageEl = document.createElement('div');
-        exitMessageEl.id = 'exitMessage';
-        exitMessageEl.className = 'exit-message';
-
-        // Insert after the last score display
-        const lastScoreEl = document.getElementById('lastScore');
-        if (lastScoreEl && lastScoreEl.parentNode) {
-            lastScoreEl.parentNode.insertBefore(exitMessageEl, lastScoreEl.nextSibling);
-        } else {
-            landingView.insertBefore(exitMessageEl, landingView.firstChild);
-        }
+        console.warn('Exit message element not found');
+        return;
     }
 
     // Style and show the message based on reason
@@ -1949,7 +1938,7 @@ function displayExitMessage(reason, message) {
 
     exitMessageEl.className = messageClass;
     exitMessageEl.innerHTML = messageHTML;
-    exitMessageEl.style.display = 'block';
+    exitMessageEl.style.display = 'flex';  // Use flex for proper centering
 
     // Auto-hide the message after 5 seconds
     setTimeout(function() {
