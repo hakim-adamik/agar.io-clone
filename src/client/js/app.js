@@ -705,17 +705,28 @@ var graph = c.getContext("2d");
                 feedBtn.addEventListener(eventType, function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Feed button pressed - emitting event 1 (eject mass)');
+
+                    // Play eject mass sound directly (like escape button does)
                     if (global.soundEnabled) {
-                        playSoundEffect('eject_mass_sound');
+                        try {
+                            const ejectSound = document.getElementById('eject_mass_sound');
+                            if (ejectSound) {
+                                ejectSound.volume = 0.5;
+                                ejectSound.currentTime = 0;
+                                ejectSound.play().catch(function(err) {
+                                    console.log('Eject sound playback failed:', err);
+                                });
+                            }
+                        } catch (soundError) {
+                            console.log('Sound error:', soundError);
+                        }
                     }
+
                     if (socket) {
                         socket.emit("1");
-                        window.canvas.reenviar = false;
                     }
                 }, {passive: false});
             });
-            console.log('Feed button handler attached');
         } else {
             console.warn('Feed button not found!');
         }
