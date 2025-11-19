@@ -90,9 +90,11 @@ function initHamburgerMenu() {
             // Close menu first
             toggleMenu(false);
 
-            // Trigger the same action as desktop nav
-            if (section === 'social' || section === 'support' || section === 'leaders') {
-                // These could open modals or navigate to sections
+            // Find and click the corresponding desktop nav item to trigger its modal
+            const desktopNavItem = document.querySelector(`.nav-item[data-section="${section}"]`);
+            if (desktopNavItem) {
+                desktopNavItem.click();
+            } else {
                 console.log('Navigate to', section);
             }
 

@@ -517,8 +517,9 @@ html, body {
     top: 20px;
     right: 20px;
     z-index: 1001;
-    background: rgba(0, 0, 0, 0.8);
-    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     padding: 12px;
     cursor: pointer;
@@ -531,13 +532,19 @@ html, body {
     transition: all 0.3s ease;
 }
 
+.hamburger-menu:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--primary-color);
+}
+
 .hamburger-menu span {
     display: block;
     width: 24px;
-    height: 2px;
-    background: var(--primary-color);
+    height: 3px;
+    background: #ffffff;
     transition: all 0.3s ease;
     transform-origin: center;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
 }
 
 .hamburger-menu.active span:nth-child(1) {
