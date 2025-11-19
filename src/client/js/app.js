@@ -1196,29 +1196,10 @@ function setupSocket(socket) {
 
     // Death.
     socket.on("RIP", function () {
-        // Save last score before death
-        if (player && player.score !== undefined) {
-            saveLastScore(player.score);
-        }
+        // Use unified exit handler for death
+        handleGameExit('death');
 
-        global.gameStart = false;
-
-        // Clear game state to prevent issues on quick replay
-        player = null;
-        users = [];
-        leaderboard = [];
-        target = {
-            x: global.playerX,
-            y: global.playerY
-        };
-        foods = [];
-        viruses = [];
-        fireFood = [];
-
-        // Clear arena ID to avoid conflicts - server will assign the appropriate arena
-        global.arenaId = null;
-
-        // Stop background music when player dies
+        // Stop background music when player dies (already handled in cleanupGame but keep for safety)
         try {
             const backgroundMusic = document.getElementById('background_music');
             if (backgroundMusic) {
@@ -1307,17 +1288,14 @@ function setupSocket(socket) {
     });
 
     socket.on("kick", function (reason) {
-        global.gameStart = false;
-        global.kicked = true;
-        if (reason !== "") {
-            render.drawErrorMessage(
-                "You were kicked for: " + reason,
-                graph,
-                global.screen
-            );
-        } else {
-            render.drawErrorMessage("You were kicked!", graph, global.screen);
+        // Clean up the kick reason message to be more user-friendly
+        let userMessage = reason;
+        if (reason && reason.includes("Last heartbeat received over")) {
+            userMessage = "You were disconnected due to inactivity";
         }
+
+        // Use unified exit handler instead of showing ugly canvas message
+        handleGameExit('kick', userMessage);
         socket.close();
     });
 
@@ -1354,9 +1332,8 @@ function setupSocket(socket) {
             }
         }
 
-        // Cleanup and return to landing page
-        cleanupGame();
-        returnToLanding();
+        // Use unified exit handler for successful escape
+        handleGameExit('escape');
     });
 
     socket.on("escapeCancelled", function () {
@@ -1865,7 +1842,39 @@ function cleanupGame() {
     };
 }
 
-function returnToLanding() {
+/**
+ * Unified game exit handler for all exit scenarios
+ * @param {string} reason - The reason for exiting ('death', 'escape', 'kick', 'disconnect')
+ * @param {string} message - Optional message to display to the user
+ */
+function handleGameExit(reason, message) {
+    // Save last score if applicable
+    if (player && player.score !== undefined) {
+        saveLastScore(player.score);
+    }
+
+    // Cleanup game
+    cleanupGame();
+
+    // Clear game state
+    global.gameStart = false;
+    player = null;
+    users = [];
+    leaderboard = [];
+    target = {
+        x: global.playerX,
+        y: global.playerY
+    };
+    foods = [];
+    viruses = [];
+    fireFood = [];
+    global.arenaId = null;
+
+    // Return to landing page
+    returnToLanding(reason, message);
+}
+
+function returnToLanding(exitReason, exitMessage) {
     var landingView = document.getElementById("landingView");
     var gameView = document.getElementById("gameView");
 
@@ -1880,9 +1889,74 @@ function returnToLanding() {
         // Display last score on landing page
         displayLastScore();
 
+        // Display exit message if provided
+        if (exitMessage) {
+            displayExitMessage(exitReason, exitMessage);
+        }
+
         // Reset player name input if needed
         playerNameInput.value = "";
     }
+}
+
+/**
+ * Display exit reason message on the landing page
+ */
+function displayExitMessage(reason, message) {
+    // Find or create exit message element
+    let exitMessageEl = document.getElementById('exitMessage');
+    if (!exitMessageEl) {
+        // Create the element if it doesn't exist
+        const landingView = document.getElementById('landingView');
+        exitMessageEl = document.createElement('div');
+        exitMessageEl.id = 'exitMessage';
+        exitMessageEl.className = 'exit-message';
+
+        // Insert after the last score display
+        const lastScoreEl = document.getElementById('lastScore');
+        if (lastScoreEl && lastScoreEl.parentNode) {
+            lastScoreEl.parentNode.insertBefore(exitMessageEl, lastScoreEl.nextSibling);
+        } else {
+            landingView.insertBefore(exitMessageEl, landingView.firstChild);
+        }
+    }
+
+    // Style and show the message based on reason
+    let messageHTML = '';
+    let messageClass = 'exit-message ';
+
+    switch(reason) {
+        case 'kick':
+            messageClass += 'exit-kick';
+            messageHTML = '⚠️ ' + (message || 'You were disconnected due to inactivity');
+            break;
+        case 'death':
+            messageClass += 'exit-death';
+            messageHTML = '💀 You were eaten! Better luck next time!';
+            break;
+        case 'escape':
+            messageClass += 'exit-success';
+            messageHTML = '🏆 Successfully escaped the arena!';
+            break;
+        case 'disconnect':
+            messageClass += 'exit-disconnect';
+            messageHTML = '🔌 ' + (message || 'Connection lost');
+            break;
+        default:
+            messageClass += 'exit-generic';
+            messageHTML = message || 'Game ended';
+    }
+
+    exitMessageEl.className = messageClass;
+    exitMessageEl.innerHTML = messageHTML;
+    exitMessageEl.style.display = 'block';
+
+    // Auto-hide the message after 5 seconds
+    setTimeout(function() {
+        if (exitMessageEl) {
+            exitMessageEl.style.display = 'none';
+        }
+    }, 5000);
 }
 
 /**

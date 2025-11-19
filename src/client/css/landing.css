@@ -605,6 +605,66 @@ html, body {
     transform-origin: center;
 }
 
+/* Exit message styles for different scenarios */
+.exit-message {
+    display: none;
+    padding: 15px 25px;
+    margin: 20px auto;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 500;
+    max-width: 500px;
+    animation: slideInDown 0.5s ease-out;
+    position: relative;
+}
+
+@keyframes slideInDown {
+    from {
+        transform: translateY(-30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.exit-kick {
+    background: linear-gradient(135deg, #3d2f1f, #4a3826);
+    border: 2px solid #ff9800;
+    color: #ffc947;
+    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+}
+
+.exit-death {
+    background: linear-gradient(135deg, #3d1f1f, #4a2626);
+    border: 2px solid #f44336;
+    color: #ff6b6b;
+    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+}
+
+.exit-success {
+    background: linear-gradient(135deg, #1f3d2f, #264a35);
+    border: 2px solid #4caf50;
+    color: #81c784;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.exit-disconnect {
+    background: linear-gradient(135deg, #2f2f3d, #35354a);
+    border: 2px solid #9e9e9e;
+    color: #bdbdbd;
+    box-shadow: 0 4px 15px rgba(158, 158, 158, 0.3);
+}
+
+.exit-generic {
+    background: linear-gradient(135deg, #1f2f3d, #26354a);
+    border: 2px solid #2196f3;
+    color: #64b5f6;
+    box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+}
+
 /* Modal styles remain same but with dark theme */
 .modal {
     display: none;
