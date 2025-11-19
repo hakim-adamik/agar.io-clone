@@ -52,14 +52,14 @@ function initKeyboardControls() {
             case KEY_CODES.SPACE:
                 // Split
                 event.preventDefault();
-                socket.emit('1');
+                socket.emit('2');
                 uiManager.playSound('split_cell', 0.5);
                 break;
 
             case KEY_CODES.W:
                 // Eject mass
                 event.preventDefault();
-                socket.emit('2');
+                socket.emit('1');
                 uiManager.playSound('eject_mass_sound', 0.3);
                 break;
 
@@ -124,7 +124,7 @@ function initMouseControls() {
                 // Shift+click to eject mass
                 var socket = socketManager.getSocket();
                 if (socket) {
-                    socket.emit('2');
+                    socket.emit('1');
                     uiManager.playSound('eject_mass_sound', 0.3);
                 }
             }
@@ -176,8 +176,8 @@ function initTouchControls() {
         touchState.active = false;
     });
 
-    // Mobile button handlers
-    setupMobileButtons();
+    // Mobile button handlers moved to app.js to prevent conflicts
+    // setupMobileButtons();
 }
 
 /**
@@ -192,7 +192,7 @@ function setupMobileButtons() {
             if (global.gameStart) {
                 var socket = socketManager.getSocket();
                 if (socket) {
-                    socket.emit('1');
+                    socket.emit('2');
                     uiManager.playSound('split_cell', 0.5);
                 }
             }
@@ -202,16 +202,38 @@ function setupMobileButtons() {
     // Feed button
     var feedBtn = document.getElementById('feed');
     if (feedBtn) {
+        console.log('Feed button found, attaching handler');
         feedBtn.addEventListener('touchstart', function(e) {
             e.preventDefault();
+            e.stopPropagation();
+            console.log('Feed button touched!');
             if (global.gameStart) {
                 var socket = socketManager.getSocket();
                 if (socket) {
-                    socket.emit('2');
+                    console.log('Emitting eject mass (event 1)');
+                    socket.emit('1');
+                    uiManager.playSound('eject_mass_sound', 0.3);
+                }
+            } else {
+                console.log('Game not started yet');
+            }
+        });
+
+        // Also handle click for testing
+        feedBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Feed button clicked!');
+            if (global.gameStart) {
+                var socket = socketManager.getSocket();
+                if (socket) {
+                    socket.emit('1');
                     uiManager.playSound('eject_mass_sound', 0.3);
                 }
             }
         });
+    } else {
+        console.log('Feed button NOT found!');
     }
 
     // Exit button
@@ -229,39 +251,19 @@ function setupMobileButtons() {
 
 /**
  * Exit the current game
+ * Sends an escape request to the server (server-authoritative)
  */
 function exitGame() {
     if (!global.gameStart) return;
 
-    // Play end of game sound
-    uiManager.playSound('end_of_game_sound', 0.7);
+    var socket = socketManager.getSocket();
+    if (!socket) return;
 
-    // Save score
-    var player = gameState.getPlayer();
-    if (player && player.score !== undefined) {
-        uiManager.saveLastScore(player.score);
-    }
+    // Send escape request to server
+    // The server will handle the countdown and disconnect
+    socket.emit("escapeRequest");
 
-    // Clear game state
-    gameState.clearState();
-
-    // Stop background music
-    uiManager.stopBackgroundMusic();
-
-    // Disconnect socket
-    socketManager.disconnect();
-
-    // Cancel animation loop
-    if (global.animLoopHandle) {
-        window.cancelAnimationFrame(global.animLoopHandle);
-        global.animLoopHandle = undefined;
-    }
-
-    // Show landing page
-    uiManager.showLandingView();
-
-    // Display last score
-    uiManager.displayLastScore();
+    console.log("Escape request sent to server");
 }
 
 // Export exitGame for external use

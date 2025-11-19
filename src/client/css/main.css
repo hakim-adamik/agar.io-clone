@@ -23,6 +23,39 @@ body {
     margin: 0;
 }
 
+/* Mobile fullscreen optimizations */
+@supports (-webkit-touch-callout: none) {
+    /* iOS Safari specific fixes */
+    html,
+    body {
+        height: -webkit-fill-available;
+        min-height: -webkit-fill-available;
+    }
+}
+
+/* Prevent pull-to-refresh and overscroll bounce on mobile */
+html {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+body {
+    overscroll-behavior: none;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+}
+
+/* Handle safe areas for notched devices (iPhone X, etc.) */
+@supports (padding: max(0px)) {
+    body {
+        padding-left: max(0px, env(safe-area-inset-left));
+        padding-right: max(0px, env(safe-area-inset-right));
+        padding-top: max(0px, env(safe-area-inset-top));
+        padding-bottom: max(0px, env(safe-area-inset-bottom));
+    }
+}
+
 canvas {
     width: 100%;
     height: 100%;
@@ -113,6 +146,11 @@ div {
 #exit:focus,
 #exit:active {
     outline: none;
+}
+
+/* Fullscreen button - Hidden as devices provide native fullscreen controls */
+.fullscreen-btn {
+    display: none !important;
 }
 
 #fpsCounter {
@@ -507,51 +545,51 @@ div {
     pointer-events: auto;
 }
 
-@media only screen and (min-width: 1224px) {
+/* Hide mobile controls on desktop - use class-based detection */
+body:not(.mobile-device) #mobile {
+    display: none;
+}
+
+/* Fallback for older browsers using screen width */
+@media only screen and (min-width: 1024px) {
     #mobile {
         display: none;
     }
 }
 
 /* Mobile responsive styles for leaderboard and player score */
-@media only screen and (max-width: 768px) {
-    /* Hide leaderboard completely on mobile during gameplay */
-    #status {
-        display: none !important;
-    }
+/* Use JavaScript-based mobile detection for reliability in all orientations */
+.mobile-device #status {
+    display: none !important;
+}
 
+.mobile-device #playerScore {
+    top: 10px !important;
+    left: 10px !important;
+    bottom: auto !important;
+    transform: none !important;
+    max-width: 200px !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-align: left !important;
+}
 
-    /* Mobile score adjustments - Move to top left corner without background */
-    #playerScore {
-        top: 10px;
-        left: 10px;
-        bottom: auto;
-        transform: none;
-        max-width: 200px;
-        background: none;
-        backdrop-filter: none;
-        padding: 0;
-        border-radius: 0;
-        border: none;
-        box-shadow: none;
-        text-align: left !important;  /* Override center alignment */
-    }
-
-    .score-value {
-        font-size: 36px !important;  /* Visible size on mobile */
-        font-weight: 900;
-        background: linear-gradient(45deg, #00FF00, #00CC00, #FFD700, #00FF00, #32CD32, #00FF7F) !important;
-        background-size: 300% 300% !important;
-        -webkit-background-clip: text !important;
-        background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        animation: gradientShift 3s ease infinite !important;
-        letter-spacing: -1px;
-        padding: 0;
-        text-shadow: none;  /* Remove shadow to let gradient show */
-    }
-
-    /* Score change and medal removed - no longer needed */
+.mobile-device .score-value {
+    font-size: 36px !important;
+    font-weight: 900 !important;
+    background: linear-gradient(45deg, #00FF00, #00CC00, #FFD700, #00FF00, #32CD32, #00FF7F) !important;
+    background-size: 300% 300% !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    animation: gradientShift 3s ease infinite !important;
+    letter-spacing: -1px !important;
+    padding: 0 !important;
+    text-shadow: none !important;
 }
 
 input [type="image"]:focus {
@@ -587,34 +625,32 @@ input [type="image"]:focus {
     user-select: none;
 }
 
-/* Desktop hover effect */
-@media (min-width: 769px) {
-    #status:hover {
-        background: linear-gradient(135deg, rgba(25, 25, 25, 0.98), rgba(35, 35, 35, 0.95));
-    }
+/* Desktop hover effect - only for non-mobile devices */
+body:not(.mobile-device) #status:hover {
+    background: linear-gradient(135deg, rgba(25, 25, 25, 0.98), rgba(35, 35, 35, 0.95));
+}
 
-    /* Limit max height on desktop when expanded */
-    #status.expanded .leaderboard-content {
-        max-height: 400px;
-        overflow-y: auto;
-    }
+/* Limit max height on desktop when expanded */
+body:not(.mobile-device) #status.expanded .leaderboard-content {
+    max-height: 400px;
+    overflow-y: auto;
+}
 
-    /* Custom scrollbar for desktop */
-    #status.expanded .leaderboard-content::-webkit-scrollbar {
-        width: 4px;
-    }
+/* Custom scrollbar for desktop */
+body:not(.mobile-device) #status.expanded .leaderboard-content::-webkit-scrollbar {
+    width: 4px;
+}
 
-    #status.expanded .leaderboard-content::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 2px;
-    }
+body:not(.mobile-device) #status.expanded .leaderboard-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+}
 
-    #status.expanded .leaderboard-content::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 2px;
-    }
+body:not(.mobile-device) #status.expanded .leaderboard-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
 
-    #status.expanded .leaderboard-content::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.3);
-    }
+body:not(.mobile-device) #status.expanded .leaderboard-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }

@@ -8,28 +8,22 @@ var CellAnimations = require("./cell-animations");
 var playerNameInput = document.getElementById("playerNameInput");
 var socket;
 
-// Debug mode flag (accessible from browser console via window.DEBUG_MODE)
-/*
-window.DEBUG_MODE = false;
-window.enableDebug = function() {
-    window.DEBUG_MODE = true;
-    console.log("%c[DEBUG MODE ENABLED]", "color: green; font-weight: bold");
-    console.log("Performance warnings will be logged when large updates occur.");
-};
-window.disableDebug = function() {
-    window.DEBUG_MODE = false;
-    console.log("%c[DEBUG MODE DISABLED]", "color: orange; font-weight: bold");
-};
-*/
-
 var debug = function (args) {
     if (console && console.log) {
         console.log(args);
     }
 };
 
-if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
+// Detect mobile devices and add class to body for CSS targeting
+// This ensures mobile styles work in both portrait and landscape
+if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ||
+    ('ontouchstart' in window) ||
+    navigator.maxTouchPoints > 0) {
     global.mobile = true;
+    document.body.classList.add('mobile-device');
+    console.log('Mobile device detected - UI optimized for touch');
+} else {
+    console.log('Desktop device detected - UI optimized for mouse');
 }
 
 function generateGuestName() {
@@ -694,34 +688,75 @@ if (showFpsGame) {
 var c = window.canvas.cv;
 var graph = c.getContext("2d");
 
-// Feed button - handle both click and touch
-$("#feed").on("click touchstart", function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    playSoundEffect('eject_mass_sound');
-    socket.emit("1");
-    window.canvas.reenviar = false;
-});
-
-// Split button - handle both click and touch
-$("#split").on("click touchstart", function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (global.soundEnabled) {
-        document.getElementById('split_cell').play();
+// Mobile button handlers - using vanilla JS for reliability
+(function setupMobileControls() {
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMobileButtons);
+    } else {
+        initMobileButtons();
     }
-    socket.emit("2");
-    window.canvas.reenviar = false;
-});
 
-// Exit button - handle both click and touch
-$("#exit").on("click touchstart", function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (global.gameStart) {
-        exitGame();
+    function initMobileButtons() {
+        // Feed/Eject button
+        var feedBtn = document.getElementById('feed');
+        if (feedBtn) {
+            ['touchstart', 'click'].forEach(function(eventType) {
+                feedBtn.addEventListener(eventType, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Feed button pressed - emitting event 1 (eject mass)');
+                    if (global.soundEnabled) {
+                        playSoundEffect('eject_mass_sound');
+                    }
+                    if (socket) {
+                        socket.emit("1");
+                        window.canvas.reenviar = false;
+                    }
+                }, {passive: false});
+            });
+            console.log('Feed button handler attached');
+        } else {
+            console.warn('Feed button not found!');
+        }
+
+        // Split button
+        var splitBtn = document.getElementById('split');
+        if (splitBtn) {
+            ['touchstart', 'click'].forEach(function(eventType) {
+                splitBtn.addEventListener(eventType, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Split button pressed - emitting event 2 (split)');
+                    if (global.soundEnabled) {
+                        document.getElementById('split_cell').play();
+                    }
+                    if (socket) {
+                        socket.emit("2");
+                        window.canvas.reenviar = false;
+                    }
+                }, {passive: false});
+            });
+            console.log('Split button handler attached');
+        }
+
+        // Exit button
+        var exitBtn = document.getElementById('exit');
+        if (exitBtn) {
+            ['touchstart', 'click'].forEach(function(eventType) {
+                exitBtn.addEventListener(eventType, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Exit button pressed');
+                    if (global.gameStart) {
+                        exitGame();
+                    }
+                }, {passive: false});
+            });
+            console.log('Exit button handler attached');
+        }
     }
-});
+})();
 
 // Directional pad control - touch anywhere on screen
 (function () {
@@ -933,6 +968,9 @@ function setupSocket(socket) {
         global.game.width = gameSizes.width;
         global.game.height = gameSizes.height;
         resize();
+
+        // Request fullscreen for mobile immersive experience
+        requestMobileFullscreen();
     });
 
     socket.on("playerDied", (data) => {
@@ -1165,6 +1203,17 @@ function setupSocket(socket) {
             console.log('Error stopping background music on death:', e);
         }
 
+        // Stop escape sound if it's playing (in case player died during escape countdown)
+        try {
+            const escapeSound = document.getElementById('escape_sound');
+            if (escapeSound) {
+                escapeSound.pause();
+                escapeSound.currentTime = 0;
+            }
+        } catch (e) {
+            console.log('Error stopping escape sound on death:', e);
+        }
+
         // Removed: render.drawErrorMessage("You died!", graph, global.screen);
         // Now we go directly to landing page with notification
 
@@ -1244,6 +1293,61 @@ function setupSocket(socket) {
             render.drawErrorMessage("You were kicked!", graph, global.screen);
         }
         socket.close();
+    });
+
+    // Escape event handlers (server-authoritative)
+    socket.on("escapeStarted", function (data) {
+        console.log("Escape started, countdown:", data.countdown);
+        exitCountdownActive = true;
+        exitCountdownValue = data.countdown;
+    });
+
+    socket.on("escapeUpdate", function (data) {
+        console.log("Escape countdown update:", data.countdown);
+        exitCountdownValue = data.countdown;
+    });
+
+    socket.on("escapeComplete", function () {
+        console.log("Escape complete");
+        exitCountdownActive = false;
+        exitCountdownValue = 0;
+
+        // Play end of game sound for successful exit
+        if (global.soundEnabled) {
+            try {
+                const endGameSound = document.getElementById('end_of_game_sound');
+                if (endGameSound) {
+                    endGameSound.volume = 0.6;
+                    endGameSound.currentTime = 0;
+                    endGameSound.play().catch(function(e) {
+                        console.log('End of game sound playback failed:', e);
+                    });
+                }
+            } catch (e) {
+                console.log('End of game sound not available:', e);
+            }
+        }
+
+        // Cleanup and return to landing page
+        cleanupGame();
+        returnToLanding();
+    });
+
+    socket.on("escapeCancelled", function () {
+        console.log("Escape cancelled (player died during countdown)");
+        exitCountdownActive = false;
+        exitCountdownValue = 4;
+
+        // Stop escape sound
+        try {
+            const escapeSound = document.getElementById('escape_sound');
+            if (escapeSound) {
+                escapeSound.pause();
+                escapeSound.currentTime = 0;
+            }
+        } catch (e) {
+            console.log('Error stopping escape sound:', e);
+        }
     });
 }
 
@@ -1655,45 +1759,19 @@ function resize() {
 }
 
 // Exit Game Functionality
-var exitCountdownTimer = null;
 var exitCountdownValue = 4;
 var exitCountdownActive = false;
 
 function exitGame() {
-    // Start countdown
-    exitCountdownActive = true;
-    exitCountdownValue = 4;
+    // Request escape from server (server-authoritative)
+    if (!socket || !global.gameStart) {
+        return;
+    }
 
-    // Start countdown timer
-    exitCountdownTimer = setInterval(function () {
-        exitCountdownValue--;
+    // Send escape request to server
+    socket.emit("escapeRequest");
 
-        if (exitCountdownValue <= 0) {
-            clearInterval(exitCountdownTimer);
-            exitCountdownTimer = null;
-            exitCountdownActive = false;
-
-            // Play end of game sound for successful exit
-            if (global.soundEnabled) {
-                try {
-                    const endGameSound = document.getElementById('end_of_game_sound');
-                    if (endGameSound) {
-                        endGameSound.volume = 0.6; // Moderate volume for ending
-                        endGameSound.currentTime = 0;
-                        endGameSound.play().catch(function(e) {
-                            console.log('End of game sound playback failed:', e);
-                        });
-                    }
-                } catch (e) {
-                    console.log('End of game sound not available:', e);
-                }
-            }
-
-            // Cleanup and return to landing page
-            cleanupGame();
-            returnToLanding();
-        }
-    }, 1000);
+    console.log("Escape request sent to server");
 }
 
 function cleanupGame() {
@@ -1717,6 +1795,17 @@ function cleanupGame() {
         }
     } catch (e) {
         console.log('Error stopping background music:', e);
+    }
+
+    // Stop escape sound if it's playing
+    try {
+        const escapeSound = document.getElementById('escape_sound');
+        if (escapeSound) {
+            escapeSound.pause();
+            escapeSound.currentTime = 0;
+        }
+    } catch (e) {
+        console.log('Error stopping escape sound:', e);
     }
 
     // Set game state to stopped
@@ -1767,6 +1856,43 @@ function returnToLanding() {
 
         // Reset player name input if needed
         playerNameInput.value = "";
+    }
+}
+
+/**
+ * Request fullscreen for mobile browsers
+ * Provides an immersive gaming experience by hiding browser UI
+ */
+function requestMobileFullscreen() {
+    // Only proceed on mobile devices
+    if (!('ontouchstart' in window) && !navigator.maxTouchPoints) {
+        return; // Not a touch device, skip
+    }
+
+    try {
+        var elem = document.documentElement;
+
+        // Try Fullscreen API first (works on many mobile browsers)
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(err => {
+                console.log('Fullscreen request failed:', err.message);
+            });
+        } else if (elem.webkitRequestFullscreen) { // iOS Safari
+            elem.webkitRequestFullscreen();
+        } else if (elem.mozRequestFullScreen) { // Firefox
+            elem.mozRequestFullScreen();
+        } else if (elem.msRequestFullscreen) { // IE/Edge
+            elem.msRequestFullscreen();
+        }
+
+        // For iOS Safari: Scroll to hide address bar
+        setTimeout(() => {
+            window.scrollTo(0, 1);
+        }, 100);
+
+        console.log('Fullscreen requested for mobile');
+    } catch (e) {
+        console.log('Could not request fullscreen:', e);
     }
 }
 
@@ -1895,6 +2021,88 @@ if (document.readyState === "loading") {
             sessionStorage.removeItem('pageRefreshing');
         } else {
             displayLastScore();
+        }
+    }
+})();
+
+// Fullscreen toggle button handler
+(function() {
+    var fullscreenBtn = document.getElementById('fullscreenBtn');
+    if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            toggleFullscreen();
+        });
+
+        // Also support touch events
+        fullscreenBtn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            toggleFullscreen();
+        });
+
+        // Update icon based on fullscreen state
+        document.addEventListener('fullscreenchange', updateFullscreenIcon);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+        document.addEventListener('mozfullscreenchange', updateFullscreenIcon);
+        document.addEventListener('MSFullscreenChange', updateFullscreenIcon);
+    }
+
+    function updateFullscreenIcon() {
+        if (!fullscreenBtn) return;
+
+        var icon = fullscreenBtn.querySelector('i');
+        if (!icon) return;
+
+        var isFullscreen = document.fullscreenElement ||
+                          document.webkitFullscreenElement ||
+                          document.mozFullScreenElement ||
+                          document.msFullscreenElement;
+
+        if (isFullscreen) {
+            icon.className = 'fas fa-compress';
+        } else {
+            icon.className = 'fas fa-expand';
+        }
+    }
+
+    function toggleFullscreen() {
+        var doc = document;
+        var docEl = doc.documentElement;
+
+        var isFullscreen = doc.fullscreenElement ||
+                          doc.webkitFullscreenElement ||
+                          doc.mozFullScreenElement ||
+                          doc.msFullscreenElement;
+
+        if (!isFullscreen) {
+            // Enter fullscreen
+            if (docEl.requestFullscreen) {
+                docEl.requestFullscreen().catch(err => {
+                    console.log('Fullscreen request failed:', err);
+                });
+            } else if (docEl.webkitRequestFullscreen) {
+                docEl.webkitRequestFullscreen();
+            } else if (docEl.mozRequestFullScreen) {
+                docEl.mozRequestFullScreen();
+            } else if (docEl.msRequestFullscreen) {
+                docEl.msRequestFullscreen();
+            }
+
+            // Scroll to hide address bar on iOS
+            setTimeout(() => {
+                window.scrollTo(0, 1);
+            }, 100);
+        } else {
+            // Exit fullscreen
+            if (doc.exitFullscreen) {
+                doc.exitFullscreen();
+            } else if (doc.webkitExitFullscreen) {
+                doc.webkitExitFullscreen();
+            } else if (doc.mozCancelFullScreen) {
+                doc.mozCancelFullScreen();
+            } else if (doc.msExitFullscreen) {
+                doc.msExitFullscreen();
+            }
         }
     }
 })();

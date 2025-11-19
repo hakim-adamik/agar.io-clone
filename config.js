@@ -34,7 +34,8 @@ module.exports = {
     multiArenaEnabled: true, // Enable multi-arena system
     maxPlayersPerArena: 10, // Player capacity per arena
     arenaCleanupTimeout: 60000, // Milliseconds before cleaning empty arenas (60 seconds)
-    maxTotalArenas: 50, // Maximum concurrent arenas (resource limit)
+    // FIXME Single arena for now to prevent performance issues
+    maxTotalArenas: 1, // Maximum concurrent arenas (resource limit)
 
     // Cell movement physics
     minSpeed: 6.5, // Base movement speed for cells (reduced from 6.25 to slow down convergence)
@@ -42,13 +43,14 @@ module.exports = {
     speedDecrement: 0.5, // How quickly split speed decreases
     minDistance: 50, // Minimum distance from cursor where cells slow down
     pushingAwaySpeed: 1.5, // Speed at which overlapping cells push away from each other
-    mergeOverlapThreshold: 0.9, // Cells must overlap by this fraction of their radius to merge (0.3 = 30% overlap required)
+    mergeOverlapThreshold: 0.85, // Cells must overlap by this fraction of their radius to merge (0.3 = 30% overlap required)
     cellInertia: 0.10, // How much inertia cells have (0-1, lower = more inertia/smoother turning, higher = sharper turns)
     splitControlDelay: 600, // Time in ms before split cells respond to cursor (maintains split momentum)
 
     massLossRate: 1,
     minMassLoss: 50,
-    mergeTimer: 1000, // Time in milliseconds before cells can merge after they are fully separated (0 = immediate merge once separated)
+    mergeTimeBase: 1000, // Base time in milliseconds before cells can merge after split
+    mergeTimeRate: 10, // Time increase before merge, per unit of cell mass (mergeTime = base + mass * rate)
 
     // Client-side prediction configuration
     predictionEnabled: true,
