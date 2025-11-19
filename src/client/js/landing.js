@@ -108,10 +108,10 @@ function initHamburgerMenu() {
             e.preventDefault();
             toggleMenu(false);
 
-            // Trigger profile modal (same as desktop)
-            const profileBtn = document.getElementById('profileBtn');
-            if (profileBtn) {
-                profileBtn.click();
+            // Trigger profile modal by clicking the desktop nav item
+            const profileNavItem = document.querySelector('.nav-item[data-section="profile"]');
+            if (profileNavItem) {
+                profileNavItem.click();
             }
         });
     }
