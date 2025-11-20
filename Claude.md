@@ -52,6 +52,7 @@ A fully functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canvas
 - **Guest Play**: Free for non-authenticated users
 - **Escape Rewards**: Score added to wallet on successful escape
 - **Death Penalty**: Lose entry fee (no refund)
+- **Arena Segregation**: PAID arenas (authenticated) vs FREE arenas (guests/bots)
 
 ### Socket & Payment Architecture
 
@@ -103,7 +104,8 @@ npm test
 // config.js key settings
 minPlayersToStart: 2,    // Waiting room minimum
 maxPlayersPerArena: 10,   // Arena capacity
-maxTotalArenas: 50,       // Total arena limit
+maxFreeArenas: 5,        // Max FREE arenas (guests/bots)
+maxPaidArenas: 5,        // Max PAID arenas (authenticated)
 entryFee: 1.0,           // Entry fee in dollars (0 = free to play)
 // No maxHeartbeatInterval - inactivity kicking removed
 ```
@@ -162,12 +164,17 @@ const SPLIT_CELL_SPEED = 20;  // Split velocity
 ### Known Issues
 - Session tracking temporarily disabled (causes disconnects)
 - Disconnected players removed immediately (no reconnection)
+- Arena capacity not enforced when all arenas full (players can join beyond 10-player limit)
 
 ### Next Priorities
 1. Fix session tracking disconnect issue
 2. Real-time stats during gameplay
 3. Leaderboard persistence
 4. Wallet earnings from gameplay
+5. **Arena Capacity Enforcement** (when high usage):
+   - Currently: When all arenas of a type are full, players still join overcrowded arenas
+   - Needed: Proper "servers full" message when at capacity
+   - Enforce hard limit of 10 players per arena
 
 ---
 
