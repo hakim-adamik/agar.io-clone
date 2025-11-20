@@ -31,6 +31,7 @@ class Arena {
         this.waitingPlayers = new Map(); // socketId -> {socket, player, ready}
         this.waitingStartTime = Date.now(); // Track how long we've been waiting
         this.countdownTimer = null; // Timer for countdown when starting
+        this.waitTimeCheckInterval = null; // Timer to check for max wait time
 
         // Game state (isolated per arena)
         this.map = new mapUtils.Map(config);
@@ -129,6 +130,8 @@ class Arena {
         if (this.tickInterval) clearInterval(this.tickInterval);
         if (this.gameloopInterval) clearInterval(this.gameloopInterval);
         if (this.updateInterval) clearInterval(this.updateInterval);
+        if (this.waitTimeCheckInterval) clearInterval(this.waitTimeCheckInterval);
+        if (this.countdownTimer) clearInterval(this.countdownTimer);
 
         console.log(`[ARENA ${this.id}] Stopped game loops`);
     }
@@ -212,6 +215,18 @@ class Arena {
 
         // Check if we can start the game
         this.checkStartConditions();
+
+        // Start a timer to check for max wait time (only if not already running)
+        if (!this.waitTimeCheckInterval && this.config.allowSinglePlayerStart) {
+            this.waitTimeCheckInterval = setInterval(() => {
+                if (this.state === 'WAITING' && this.waitingTimeExceeded() && this.waitingPlayers.size > 0) {
+                    console.log(`[ARENA ${this.id}] Max wait time exceeded, starting with ${this.waitingPlayers.size} player(s)`);
+                    clearInterval(this.waitTimeCheckInterval);
+                    this.waitTimeCheckInterval = null;
+                    this.startCountdown();
+                }
+            }, 1000); // Check every second
+        }
     }
 
     /**
@@ -290,6 +305,35 @@ class Arena {
         }, 1000);
 
         this.countdownTimer = countdownInterval;
+    }
+
+    /**
+     * Reset arena to waiting state when all players leave
+     */
+    resetToWaitingState() {
+        // Stop game loops
+        if (this.tickInterval) {
+            clearInterval(this.tickInterval);
+            this.tickInterval = null;
+        }
+        if (this.gameloopInterval) {
+            clearInterval(this.gameloopInterval);
+            this.gameloopInterval = null;
+        }
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
+
+        // Reset state
+        this.state = 'WAITING';
+        this.waitingStartTime = Date.now();
+        this.waitingPlayers.clear();
+
+        // Clear the map
+        this.map = new mapUtils.Map(this.config);
+
+        console.log(`[ARENA ${this.id}] Reset to WAITING state`);
     }
 
     /**
@@ -891,6 +935,10 @@ class Arena {
                 this.config.defaultPlayerMass,
                 this.config.minMassLoss
             );
+        } else if (this.state === 'ACTIVE' && this.getPlayerCount() === 0) {
+            // If arena is active but has no players, reset it to WAITING state
+            console.log(`[ARENA ${this.id}] No players remaining, resetting to WAITING state`);
+            this.resetToWaitingState();
         }
 
         this.map.balanceMass(
