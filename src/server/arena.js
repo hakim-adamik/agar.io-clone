@@ -113,6 +113,10 @@ class Arena {
             console.log(
                 `[ARENA ${this.id}] Player ${clientPlayerData.name} connecting!`
             );
+
+            // Take spawn mass from food reserve
+            this.map.foodReserve -= this.config.minCellMass;
+
             currentPlayer.init(
                 this.generateSpawnpoint(),
                 this.config.minCellMass
@@ -163,8 +167,16 @@ class Arena {
     setupPlayerEvents(socket, currentPlayer) {
         // Respawn handler - client sends this first to request spawn
         socket.on("respawn", () => {
+            // Return old player mass to reserve before removing
+            if (currentPlayer.massTotal > 0) {
+                this.map.foodReserve += currentPlayer.massTotal;
+            }
+
             // Remove any existing player data
             this.map.players.removePlayerByID(currentPlayer.id);
+
+            // Take spawn mass from food reserve
+            this.map.foodReserve -= this.config.minCellMass;
 
             // IMPORTANT: Reinitialize the player with fresh state
             // This ensures they get new cells and can move
@@ -192,6 +204,11 @@ class Arena {
 
         // Disconnect handler
         socket.on("disconnect", async () => {
+            // Return player mass to reserve before disconnect
+            if (currentPlayer && currentPlayer.massTotal > 0) {
+                this.map.foodReserve += currentPlayer.massTotal;
+            }
+
             // Clear any active escape timer
             this.clearEscapeTimer(currentPlayer.id);
 
@@ -577,10 +594,14 @@ class Arena {
             );
 
             // Add mass from eaten food based on tier multipliers
-            massGained += eatenFoodIndexes.reduce(
+            const foodMassGained = eatenFoodIndexes.reduce(
                 (acc, index) => acc + this.map.food.data[index].tier.multiplier * this.config.foodMass,
                 0
             );
+            massGained += foodMassGained;
+
+            // Return eaten food mass to the reserve
+            this.map.foodReserve += foodMassGained;
 
             this.map.food.delete(eatenFoodIndexes);
             this.map.massFood.remove(eatenMassIndexes);
@@ -710,13 +731,23 @@ class Arena {
                 visibleMass,
                 visibleViruses
             ) => {
+                // Calculate debug stats
+                const foodMassOnMap = this.map.food.data.reduce((sum, food) => sum + food.mass, 0);
+                const playerTotalMass = this.map.players.getTotalMass();
+                const debugStats = {
+                    foodReserve: Math.round(this.map.foodReserve),
+                    foodMassOnMap: Math.round(foodMassOnMap),
+                    totalMassWithPlayers: Math.round(foodMassOnMap + playerTotalMass)
+                };
+
                 this.sockets[playerData.id].emit(
                     "serverTellPlayerMove",
                     playerData,
                     visiblePlayers,
                     visibleFood,
                     visibleMass,
-                    visibleViruses
+                    visibleViruses,
+                    debugStats
                 );
 
                 if (this.leaderboardChanged) {

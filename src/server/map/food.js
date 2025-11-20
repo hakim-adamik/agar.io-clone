@@ -47,10 +47,14 @@ exports.FoodManager = class {
 
     addNew(number) {
         const radius = util.massToRadius(this.foodMass);
+        let totalMassGenerated = 0;
         while (number--) {
-            const position = getPosition(this.foodUniformDisposition, radius, this.data)
-            this.data.push(new Food(position, radius));
+            const position = getPosition(this.foodUniformDisposition, radius, this.data);
+            const newFood = new Food(position, radius);
+            this.data.push(newFood);
+            totalMassGenerated += newFood.mass;
         }
+        return totalMassGenerated;
     }
 
     removeExcess(number) {

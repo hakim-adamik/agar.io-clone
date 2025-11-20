@@ -15,6 +15,17 @@ var debug = function (args) {
     }
 };
 
+// Update debug stats display
+function updateDebugStats(stats) {
+    var foodReserveEl = document.getElementById('foodReserve');
+    var foodOnMapEl = document.getElementById('foodOnMap');
+    var totalMassEl = document.getElementById('totalMass');
+
+    if (foodReserveEl) foodReserveEl.textContent = stats.foodReserve.toLocaleString();
+    if (foodOnMapEl) foodOnMapEl.textContent = stats.foodMassOnMap.toLocaleString();
+    if (totalMassEl) totalMassEl.textContent = stats.totalMassWithPlayers.toLocaleString();
+}
+
 // Detect mobile devices and add class to body for CSS targeting
 // This ensures mobile styles work in both portrait and landscape
 if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ||
@@ -1076,7 +1087,7 @@ function setupSocket(socket) {
     // Handle movement.
     socket.on(
         "serverTellPlayerMove",
-        function (playerData, userData, foodsList, massList, virusList) {
+        function (playerData, userData, foodsList, massList, virusList, debugStats) {
 
 
             if (global.playerType == "player") {
@@ -1086,6 +1097,11 @@ function setupSocket(socket) {
                 player.hue = playerData.hue;
                 player.massTotal = playerData.massTotal;
                 player.score = playerData.cells.reduce((sum, cell) => sum + (cell.score || 0), 0);
+
+                // Update debug stats display
+                if (debugStats) {
+                    updateDebugStats(debugStats);
+                }
 
                 // Update prediction system with server data
                 const predictedState = predictionSystem.updatePlayerState(playerData, now);
