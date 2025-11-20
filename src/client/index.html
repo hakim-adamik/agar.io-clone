@@ -81,7 +81,42 @@
 
             <div class="landing-container">
                 <!-- Top Navigation -->
-                <nav class="top-nav"></nav>
+                <nav class="top-nav">
+                    <!-- Hamburger Menu for Mobile -->
+                    <button class="hamburger-menu" id="hamburgerMenu" aria-label="Menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                </nav>
+
+                <!-- Mobile Slide-out Menu -->
+                <div class="mobile-menu" id="mobileMenu">
+                    <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+                    <div class="mobile-menu-panel">
+                        <button class="mobile-menu-close" id="mobileMenuClose">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <nav class="mobile-nav">
+                            <a href="#" class="mobile-nav-item" data-section="social">
+                                <i class="fab fa-discord"></i>
+                                <span>Social</span>
+                            </a>
+                            <a href="#" class="mobile-nav-item" data-section="support">
+                                <i class="fas fa-headset"></i>
+                                <span>Support</span>
+                            </a>
+                            <a href="#" class="mobile-nav-item" data-section="leaders">
+                                <i class="fas fa-trophy"></i>
+                                <span>Leaders</span>
+                            </a>
+                            <a href="#" class="mobile-nav-item" id="profileBtnMobile">
+                                <i class="fas fa-user"></i>
+                                <span>Profile</span>
+                            </a>
+                        </nav>
+                    </div>
+                </div>
 
                 <!-- Main content area -->
                 <main class="main-content">
@@ -101,6 +136,9 @@
                             <button class="play-btn" id="playBtn">
                                 <span>Play</span>
                             </button>
+
+                            <!-- Exit Message Display (shows why game ended) -->
+                            <div class="exit-message" id="exitMessage" style="display: none;"></div>
 
                             <!-- Last Score Display -->
                             <div class="last-score-box" id="lastScoreBox">
