@@ -680,11 +680,13 @@ class Arena {
     gameloop() {
         if (this.map.players.data.length > 0) {
             this.calculateLeaderboard();
-            this.map.players.shrinkCells(
+            const massLostToDecay = this.map.players.shrinkCells(
                 this.config.massLossRate,
                 this.config.minCellMass,
                 this.config.minMassLoss
             );
+            // Add all decayed mass back to the food reserve
+            this.map.foodReserve += massLostToDecay;
         }
 
         this.map.balanceMass(

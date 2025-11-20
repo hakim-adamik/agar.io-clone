@@ -181,15 +181,18 @@ exports.Player = class {
     loseMassIfNeeded(massLossRate, minCellMass) {
         // Safety check: ensure cells array exists
         if (!this.cells) {
-            return;
+            return 0;
         }
 
+        let totalMassLost = 0;
         for (let i in this.cells) {
             if (this.cells[i].mass * (1 - (massLossRate / 1000)) > minCellMass) {
                 var massLoss = this.cells[i].mass * (massLossRate / 1000);
                 this.changeCellMass(i, -massLoss);
+                totalMassLost += massLoss;
             }
         }
+        return totalMassLost;
     }
 
     changeCellMass(cellIndex, massDifference) {
@@ -598,9 +601,11 @@ exports.PlayerManager = class {
     }
 
     shrinkCells(massLossRate, minCellMass) {
+        let totalMassLost = 0;
         for (let player of this.data) {
-            player.loseMassIfNeeded(massLossRate, minCellMass);
+            totalMassLost += player.loseMassIfNeeded(massLossRate, minCellMass);
         }
+        return totalMassLost;
     }
 
     removeCell(playerIndex, cellIndex) {
