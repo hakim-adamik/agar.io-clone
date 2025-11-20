@@ -9,7 +9,7 @@ exports.playerUtils = require('./player');
 
 exports.Map = class {
     constructor(config) {
-        this.food = new exports.foodUtils.FoodManager(config.foodMass, config.foodUniformDisposition);
+        this.food = new exports.foodUtils.FoodManager(config.massUnit, config.foodUniformDisposition);
         this.viruses = new exports.virusUtils.VirusManager(config.virus);
         this.massFood = new exports.massFoodUtils.MassFoodManager();
         this.players = new exports.playerUtils.PlayerManager();
@@ -20,36 +20,24 @@ exports.Map = class {
         // Track last food generation time for fixed frequency generation
         this.lastFoodGenerationTime = Date.now();
         this.foodGenerationInterval = config.foodGenerationInterval; // Generate food at fixed intervals
+        this.foodGenerationBatchMass = config.foodGenerationBatchMass; // Max mass per batch
     }
 
-    balanceMass(foodMass, maxVirus) {
+    balanceMass(massUnit, maxVirus) {
         // With the reserve system, food count is naturally regulated by available reserve
         // Generate food on a fixed 2-second frequency
         const now = Date.now();
         const timeSinceLastGeneration = now - this.lastFoodGenerationTime;
 
         if (timeSinceLastGeneration >= this.foodGenerationInterval && this.foodReserve > 0) {
-            // Estimate average food mass to determine how many we can afford
-            // Average tier multiplier: (1+3+9+27+81)/5 = 24.2
-            // Average food mass: 2.5 * 24.2 = 60.5
-            const avgFoodMass = 60.5;
+            // Generate food in mass batches (not count-based)
+            // Mass to generate is the minimum of: available reserve or configured batch size
+            const massToGenerate = Math.min(this.foodReserve, this.foodGenerationBatchMass);
 
-            // Calculate how many food items we can afford with current reserve
-            const affordableCount = Math.floor(this.foodReserve / avgFoodMass);
-
-            // Generate in batches (50 at a time) for performance
-            const batchSize = 50;
-            const actualCountToGenerate = Math.min(affordableCount, batchSize);
-
-            if (actualCountToGenerate > 0) {
-                const actualMassGenerated = this.food.addNew(actualCountToGenerate);
+            if (massToGenerate > 0) {
+                // addNew now takes mass amount and fills deterministically with tiers
+                const actualMassGenerated = this.food.addNew(massToGenerate);
                 this.foodReserve -= actualMassGenerated;
-
-                // If we went negative (due to random variance), clamp to 0
-                if (this.foodReserve < 0) {
-                    console.warn(`[MAP] Food reserve went negative: ${this.foodReserve}. Clamping to 0.`);
-                    this.foodReserve = 0;
-                }
 
                 // Update last generation time
                 this.lastFoodGenerationTime = now;

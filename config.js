@@ -2,8 +2,9 @@ module.exports = {
     host: "0.0.0.0",
     port: (typeof process !== 'undefined' && process.env && process.env.PORT) ? process.env.PORT : 3000,
     logpath: "logger.php",
-    foodMass: 1,
+    foodTarget: 1000, // Target nb of food on the map
     foodGenerationInterval: 2000, // Generate food from reserve every 2 seconds (in milliseconds)
+    foodGenerationBatchMass: 3000, // Maximum mass of food to generate per batch
     fireFood: 20,
     limitSplit: 16,
     minCellMass: 20,
@@ -47,6 +48,8 @@ module.exports = {
     massLossRate: 1,
     mergeTimeBase: 1000, // Base time in milliseconds before cells can merge after split
     mergeTimeRate: 5, // Time increase before merge, per unit of cell mass (mergeTime = base + mass * rate)
+
+    massUnit: 1,
 
     // Score calculation
     initialStake: 1, // In dollars $ - converted to mass and contributed to reserve when player enters

@@ -602,9 +602,9 @@ class Arena {
                 0
             );
 
-            // Add mass from eaten food based on tier multipliers
+            // Add mass from eaten food based on tier mass scaled by massUnit
             const foodMassGained = eatenFoodIndexes.reduce(
-                (acc, index) => acc + this.map.food.data[index].tier.multiplier * this.config.foodMass,
+                (acc, index) => acc + this.map.food.data[index].tier.mass * this.config.massUnit,
                 0
             );
             massGained += foodMassGained;
@@ -698,7 +698,7 @@ class Arena {
         }
 
         this.map.balanceMass(
-            this.config.foodMass,
+            this.config.massUnit,
             this.config.maxVirus
         );
     }
@@ -714,7 +714,9 @@ class Arena {
             this.leaderboardChanged = true;
         } else {
             for (let i = 0; i < this.leaderboard.length; i++) {
-                if (this.leaderboard[i].id !== topPlayers[i].id) {
+                // Check if either the ID or the score has changed
+                if (this.leaderboard[i].id !== topPlayers[i].id ||
+                    this.leaderboard[i].score !== topPlayers[i].score) {
                     this.leaderboard = topPlayers;
                     this.leaderboardChanged = true;
                     break;
@@ -740,7 +742,7 @@ class Arena {
                 visibleViruses
             ) => {
                 // Calculate debug stats
-                const foodMassOnMap = this.map.food.data.reduce((sum, food) => sum + food.mass, 0);
+                const foodMassOnMap = this.map.food.data.reduce((sum, food) => sum + food.tier.mass * this.config.massUnit, 0);
                 const playerTotalMass = this.map.players.getTotalMass();
                 const debugStats = {
                     foodReserve: Math.round(this.map.foodReserve),
