@@ -398,7 +398,6 @@ module.exports = {
 
     // Performance optimizations for production
     networkUpdateFactor: 60,
-    maxFood: 1000,
     maxVirus: 50,
 };
 ```
@@ -534,7 +533,6 @@ gcloud run services describe raga-io --region europe-west1 --format="export" > s
 ```javascript
 // Optimize game configuration for cost
 module.exports = {
-    maxFood: 500, // Reduce entity count
     maxVirus: 25, // Fewer viruses
     networkUpdateFactor: 40, // Lower update frequency
     maxHeartbeatInterval: 10000, // Longer heartbeat interval

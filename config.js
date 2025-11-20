@@ -20,7 +20,6 @@ module.exports = {
     gameHeight: 5000,
     adminPass: "DEFAULT",
     gameMass: 20000,
-    maxFood: 1000,
     maxVirus: 50,
     slowBase: 20,
     networkUpdateFactor: 60,

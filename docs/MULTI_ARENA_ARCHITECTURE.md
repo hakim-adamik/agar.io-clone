@@ -625,7 +625,6 @@ class Arena {
         this.map.balanceMass(
             this.config.baseMass,
             this.config.gameMass,
-            this.config.maxFood,
             this.config.maxVirus
         );
     }
@@ -1012,7 +1011,6 @@ module.exports = {
     gameHeight: 5000,
     minCellMass: 10,
     foodMass: 1,
-    maxFood: 1000,
     maxVirus: 50,
     slowBase: 4.5,
     massLossRate: 1,

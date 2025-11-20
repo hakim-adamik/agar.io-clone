@@ -18,14 +18,10 @@ exports.Map = class {
         this.foodReserve = config.gameMass;
     }
 
-    balanceMass(foodMass, gameMass, maxFood, maxVirus) {
-        // With the reserve system, we generate food one-by-one until:
-        // 1. We reach maxFood count, OR
-        // 2. We run out of reserve mass
-        const currentFoodCount = this.food.data.length;
-        const foodToGenerate = maxFood - currentFoodCount;
-
-        if (foodToGenerate > 0 && this.foodReserve > 0) {
+    balanceMass(foodMass, gameMass, maxVirus) {
+        // With the reserve system, food count is naturally regulated by available reserve
+        // Generate food in batches as long as there's reserve available
+        if (this.foodReserve > 0) {
             // Estimate average food mass to determine how many we can afford
             // Average tier multiplier: (1+3+9+27+81)/5 = 24.2
             // Average food mass: 2.5 * 24.2 = 60.5
@@ -34,8 +30,9 @@ exports.Map = class {
             // Calculate how many food items we can afford with current reserve
             const affordableCount = Math.floor(this.foodReserve / avgFoodMass);
 
-            // Generate the minimum of: what we need, what we can afford
-            const actualCountToGenerate = Math.min(foodToGenerate, affordableCount);
+            // Generate in batches (50 at a time) for performance
+            const batchSize = 50;
+            const actualCountToGenerate = Math.min(affordableCount, batchSize);
 
             if (actualCountToGenerate > 0) {
                 const actualMassGenerated = this.food.addNew(actualCountToGenerate);

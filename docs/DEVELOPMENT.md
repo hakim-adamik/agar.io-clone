@@ -193,7 +193,6 @@ To verify improvements:
 Key configuration values in `config.js`:
 
 - `networkUpdateFactor: 60` - Server update frequency (lower = less frequent = better performance but less responsive)
-- `maxFood: 1000` - Maximum food items (fewer = better performance)
 - `maxVirus: 50` - Maximum viruses (fewer = better performance)
 
 ---

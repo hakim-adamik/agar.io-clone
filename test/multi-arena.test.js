@@ -15,7 +15,6 @@ const mockConfig = {
     gameHeight: 5000,
     minCellMass: 10,
     foodMass: 1,
-    maxFood: 1000,
     maxVirus: 50,
     slowBase: 4.5,
     networkUpdateFactor: 60,
