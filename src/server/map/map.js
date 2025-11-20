@@ -21,6 +21,7 @@ exports.Map = class {
         this.lastFoodGenerationTime = Date.now();
         this.foodGenerationInterval = config.foodGenerationInterval; // Generate food at fixed intervals
         this.foodGenerationBatchMass = config.foodGenerationBatchMass; // Max mass per batch
+        this.foodTarget = config.foodTarget; // Target number of food items on map
     }
 
     balanceMass(massUnit, maxVirus) {
@@ -35,8 +36,14 @@ exports.Map = class {
             const massToGenerate = Math.min(this.foodReserve, this.foodGenerationBatchMass);
 
             if (massToGenerate > 0) {
-                // addNew now takes mass amount and fills deterministically with tiers
-                const actualMassGenerated = this.food.addNew(massToGenerate);
+                // Determine tier order based on current food count vs target
+                const currentFoodCount = this.food.data.length;
+                const useLargestFirst = currentFoodCount >= this.foodTarget;
+
+                console.log(`[MAP] Food generation: count=${currentFoodCount}, target=${this.foodTarget}, useLargestFirst=${useLargestFirst}, massToGenerate=${massToGenerate}`);
+
+                // addNew now takes mass amount and tier order preference
+                const actualMassGenerated = this.food.addNew(massToGenerate, useLargestFirst);
                 this.foodReserve -= actualMassGenerated;
 
                 // Update last generation time

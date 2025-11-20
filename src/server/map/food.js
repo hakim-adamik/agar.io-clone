@@ -42,12 +42,19 @@ exports.FoodManager = class {
         this.foodUniformDisposition = foodUniformDisposition;
     }
 
-    addNew(massToCreate) {
+    addNew(massToCreate, useLargestFirst = false) {
         let totalMassGenerated = 0;
         let massRemaining = massToCreate;
 
-        // Fill mass deterministically: start with smallest tier, then move up
-        for (let tier of FOOD_TIERS) {
+        // Choose tier order based on current food count vs target
+        // Below target: smallest first (creates more items)
+        // Above target: largest first (creates fewer, more valuable items)
+        const tiers = useLargestFirst ? [...FOOD_TIERS].reverse() : FOOD_TIERS;
+
+        console.log(`[FOOD] addNew: massToCreate=${massToCreate}, useLargestFirst=${useLargestFirst}, tier order=[${tiers.map(t => t.name).join(', ')}]`);
+
+        // Fill mass deterministically with chosen tier order
+        for (let tier of tiers) {
             // Calculate actual mass per food (tier.mass * massUnit)
             const actualMassPerFood = tier.mass * this.massUnit;
 
@@ -55,6 +62,10 @@ exports.FoodManager = class {
             const foodsOfThisTier = Math.floor(massRemaining / actualMassPerFood);
 
             // Create each food of this tier
+            if (foodsOfThisTier > 0) {
+                console.log(`[FOOD] Creating ${foodsOfThisTier} foods of tier ${tier.name} (mass=${tier.mass})`);
+            }
+
             for (let i = 0; i < foodsOfThisTier; i++) {
                 const radius = tier.displayRadius;
 
