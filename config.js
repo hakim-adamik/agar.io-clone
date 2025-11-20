@@ -26,7 +26,6 @@ module.exports = {
     maxVirus: 50,
     slowBase: 20,
     networkUpdateFactor: 60,
-    // maxHeartbeatInterval: 5000, // REMOVED: Inactivity kicking disabled - players stay until eaten/exit
     foodUniformDisposition: true,
     newPlayerInitialPosition: "farthest", // Multi-arena supports farthest with max 10 players per arena
 

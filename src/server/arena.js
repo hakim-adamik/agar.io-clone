@@ -133,8 +133,6 @@ class Arena {
     addPlayer(socket) {
         const currentPlayer = new mapUtils.playerUtils.Player(socket.id, this.config);
 
-        // Heartbeat initialization removed - no longer tracking inactivity
-
         socket.on("gotit", (clientPlayerData) => {
             console.log(
                 `[ARENA ${this.id}] Player ${clientPlayerData.name} connecting! Arena state: ${this.state}`
@@ -220,8 +218,6 @@ class Arena {
             this.generateSpawnpoint(),
             this.config.defaultPlayerMass
         );
-
-        // Heartbeat tracking removed - no longer needed
 
         if (this.map.players.findIndexByID(socket.id) > -1) {
             console.log(
@@ -332,7 +328,6 @@ class Arena {
                 this.generateSpawnpoint(),
                 this.config.defaultPlayerMass
             );
-            // Heartbeat tracking removed - no longer needed
 
             // Add to active game
             this.sockets[socketId] = socket;
@@ -524,7 +519,6 @@ class Arena {
 
         // Movement handler (0)
         socket.on("0", (target) => {
-            // Heartbeat tracking removed - no longer needed
             if (target.x !== currentPlayer.x || target.y !== currentPlayer.y) {
                 currentPlayer.target = target;
             }
@@ -782,9 +776,6 @@ class Arena {
      * Tick a single player (physics, eating, collisions)
      */
     tickPlayer(currentPlayer) {
-        // Inactivity kick removed - players stay until eaten or escaped
-        // This allows players to take breaks without losing progress
-
         // Move player
         currentPlayer.move(
             this.config.slowBase,

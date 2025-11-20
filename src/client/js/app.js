@@ -1593,8 +1593,6 @@ function setupSocket(socket) {
     });
 
     socket.on("kick", function (reason) {
-        // Kick handler for admin kicks or other reasons (not inactivity)
-        // Inactivity kicks have been removed from the game
         let userMessage = reason;
 
         // Use unified exit handler instead of showing ugly canvas message

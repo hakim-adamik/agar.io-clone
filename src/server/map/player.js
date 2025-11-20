@@ -131,7 +131,6 @@ exports.Player = class {
         this.config = config; // Store config for all settings
         this.lastSplitTime = 0; // Track last split to prevent spam
         this.isSplitting = false; // Flag to prevent concurrent splits
-        // Heartbeat initialization removed - no longer tracking inactivity
     }
 
     /* Initalizes things that change with every respawn */
@@ -165,10 +164,7 @@ exports.Player = class {
         this.name = playerData.name;
         this.screenWidth = playerData.screenWidth;
         this.screenHeight = playerData.screenHeight;
-        // Heartbeat tracking removed - no longer needed
     }
-
-    // setLastHeartbeat method removed - no longer tracking inactivity
 
     setMergeTimer() {
         // Set timer for when each cell can merge, based on its mass
