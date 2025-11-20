@@ -517,20 +517,17 @@ const addPlayerToArena = async (socket) => {
     socket.arenaId = arena.id;
 
     // TODO: Fix session tracking - temporarily disabled to fix black screen issue
-    // Session creation works but causes immediate disconnects for logged-in users
-    // Needs investigation into the disconnect flow
-    /*
-    // Start game session if authenticated user
+    // Start game session if authenticated user (re-enabled with better error handling)
     if (socket.userId) {
         try {
             const sessionId = await AuthService.startGameSession(socket.userId, arena.id, playerName);
             socket.sessionId = sessionId;
-            console.log(`[SERVER] Started session ${sessionId} for user ${socket.userId}`);
+            console.log(`[SERVER] Started session ${sessionId} for user ${socket.userId} in arena ${arena.id}`);
         } catch (error) {
             console.error('[SERVER] Failed to start game session:', error);
+            // Don't disconnect on session creation failure - game can continue without stats
         }
     }
-    */
 
     // Join Socket.io room
     socket.join(arena.id);

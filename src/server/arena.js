@@ -578,25 +578,22 @@ class Arena {
             // Clear any active escape timer
             this.clearEscapeTimer(currentPlayer.id);
 
-            // TODO: Re-enable session tracking once disconnect issue is fixed
-            /*
-            // End game session if authenticated user
+            // End game session if authenticated user (re-enabled with better error handling)
             if (socket.sessionId && socket.userId) {
                 try {
                     const finalStats = {
                         userId: socket.userId,
-                        final_score: currentPlayer.massTotal || 0,
-                        final_mass: currentPlayer.massTotal || 0,
-                        mass_eaten: currentPlayer.massEaten || 0,
-                        players_eaten: currentPlayer.playersEaten || 0
+                        final_score: currentPlayer.getScore ? currentPlayer.getScore() : 0,
+                        players_eaten: currentPlayer.playersEaten || 0,
+                        game_result: 'disconnected' // Neither win nor loss
                     };
                     await AuthService.endGameSession(socket.sessionId, finalStats);
-                    console.log(`[ARENA ${this.id}] Ended session ${socket.sessionId} for user ${socket.userId}`);
+                    console.log(`[ARENA ${this.id}] Ended session ${socket.sessionId} for user ${socket.userId} (disconnected) with score ${finalStats.final_score}`);
                 } catch (error) {
-                    console.error('[ARENA] Failed to end game session:', error);
+                    console.error(`[ARENA ${this.id}] Failed to end game session:`, error);
+                    // Don't throw - let the disconnect continue normally
                 }
             }
-            */
 
             this.map.players.removePlayerByID(currentPlayer.id);
             delete this.sockets[socket.id];
@@ -750,6 +747,24 @@ class Arena {
             } else {
                 // Countdown complete, handle escape rewards
                 this.clearEscapeTimer(player.id);
+
+                // End game session if authenticated user (on successful escape - WIN)
+                if (socket.sessionId && socket.userId) {
+                    const finalStats = {
+                        userId: socket.userId,
+                        final_score: player.getScore ? player.getScore() : 0,
+                        players_eaten: player.playersEaten || 0,
+                        game_result: 'won' // Successful escape = win
+                    };
+
+                    AuthService.endGameSession(socket.sessionId, finalStats)
+                        .then(() => {
+                            console.log(`[ARENA ${this.id}] Ended session ${socket.sessionId} for user ${socket.userId} (WON - escaped) with score ${finalStats.final_score}`);
+                        })
+                        .catch(error => {
+                            console.error(`[ARENA ${this.id}] Failed to end game session on escape:`, error);
+                        });
+                }
 
                 // Credit wallet ONLY in PAID arenas for logged-in users
                 if (this.arenaType === 'PAID' && socket.userId) {
@@ -922,6 +937,8 @@ class Arena {
             this.map.food.delete(eatenFoodIndexes);
             this.map.massFood.remove(eatenMassIndexes);
             massGained += eatenFoodIndexes.length * this.config.foodMass;
+
+
             currentPlayer.changeCellMass(cellIndex, massGained);
         }
         currentPlayer.virusSplit(
@@ -952,6 +969,16 @@ class Arena {
             const eatingPlayer = this.map.players.data[eater.playerIndex];
             const eatenPlayer = this.map.players.data[gotEaten.playerIndex];
 
+            // Track stats for the eating player
+            if (eatingPlayer) {
+                // Check if this results in the eaten player dying completely
+                const willPlayerDie = this.map.players.data[gotEaten.playerIndex] &&
+                                     this.map.players.data[gotEaten.playerIndex].cells.length === 1;
+                if (willPlayerDie) {
+                    eatingPlayer.playersEaten = (eatingPlayer.playersEaten || 0) + 1;
+                }
+            }
+
             if (eatingPlayer && eatenPlayer && this.sockets[eatingPlayer.id]) {
                 this.sockets[eatingPlayer.id].emit("playerEaten", {
                     eatenPlayerName: eatenPlayer.name,
@@ -973,6 +1000,23 @@ class Arena {
                 this.broadcastToArena("playerDied", {
                     name: playerGotEaten.name,
                 });
+
+                // End game session if authenticated user (on death - LOSS)
+                const deadSocket = this.sockets[playerGotEaten.id];
+                if (deadSocket && deadSocket.sessionId && deadSocket.userId) {
+                    try {
+                        const finalStats = {
+                            userId: deadSocket.userId,
+                            final_score: playerGotEaten.getScore ? playerGotEaten.getScore() : 0,
+                            players_eaten: playerGotEaten.playersEaten || 0,
+                            game_result: 'lost' // Being eaten = loss
+                        };
+                        await AuthService.endGameSession(deadSocket.sessionId, finalStats);
+                        console.log(`[ARENA ${this.id}] Ended session ${deadSocket.sessionId} for user ${deadSocket.userId} (LOST - died) with score ${finalStats.final_score}`);
+                    } catch (error) {
+                        console.error(`[ARENA ${this.id}] Failed to end game session on death:`, error);
+                    }
+                }
 
                 // Send RIP event to the dead player
                 this.sockets[playerGotEaten.id].emit("RIP");

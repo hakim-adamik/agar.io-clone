@@ -78,15 +78,13 @@ class SessionRepository {
 
             await pool.query(
                 `UPDATE game_sessions SET
-                 ended_at = $1, duration = $2, final_score = $3, final_mass = $4,
-                 mass_eaten = $5, players_eaten = $6
-                 WHERE id = $7`,
+                 ended_at = $1, duration = $2, final_score = $3,
+                 players_eaten = $4, mass_eaten = 0, final_mass = 0
+                 WHERE id = $5`,
                 [
                     Date.now(),
                     timePlayed,
                     finalData.final_score || 0,
-                    finalData.final_mass || 0,
-                    finalData.mass_eaten || 0,
                     finalData.players_eaten || 0,
                     sessionId
                 ]

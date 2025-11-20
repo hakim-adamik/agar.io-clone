@@ -143,6 +143,8 @@ exports.Player = class {
             x: 0,
             y: 0
         };
+        // Stats tracking for session recording
+        this.playersEaten = 0;  // Number of players eaten
     }
 
     /* Calculate score for a specific cell: mass - (defaultPlayerMass / number of cells) */

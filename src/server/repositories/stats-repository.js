@@ -75,7 +75,7 @@ class StatsRepository {
             // Calculate new stats
             const newStats = {
                 games_played: currentStats.games_played + 1,
-                total_mass_eaten: currentStats.total_mass_eaten + (sessionData.mass_eaten || 0),
+                total_mass_eaten: currentStats.total_mass_eaten,  // Keep existing, not tracking anymore
                 total_players_eaten: currentStats.total_players_eaten + (sessionData.players_eaten || 0),
                 total_playtime: currentStats.total_playtime + (sessionData.time_played || 0),
                 highest_mass: Math.max(currentStats.highest_mass, sessionData.final_score || 0),
@@ -83,12 +83,20 @@ class StatsRepository {
                 updated_at: Date.now()
             };
 
-            // Update in database
+            // Track wins and losses
+            if (sessionData.game_result === 'won') {
+                newStats.games_won = (currentStats.games_won || 0) + 1;
+            } else if (sessionData.game_result === 'lost') {
+                newStats.games_lost = (currentStats.games_lost || 0) + 1;
+            }
+
+            // Update in database (including wins/losses)
             await pool.query(
                 `UPDATE game_stats SET
                  games_played = $1, total_mass_eaten = $2, total_players_eaten = $3,
-                 total_playtime = $4, highest_mass = $5, longest_survival = $6, updated_at = $7
-                 WHERE user_id = $8`,
+                 total_playtime = $4, highest_mass = $5, longest_survival = $6,
+                 games_won = $7, games_lost = $8, updated_at = $9
+                 WHERE user_id = $10`,
                 [
                     newStats.games_played,
                     newStats.total_mass_eaten,
@@ -96,6 +104,8 @@ class StatsRepository {
                     newStats.total_playtime,
                     newStats.highest_mass,
                     newStats.longest_survival,
+                    newStats.games_won || currentStats.games_won || 0,
+                    newStats.games_lost || currentStats.games_lost || 0,
                     newStats.updated_at,
                     userId
                 ]
