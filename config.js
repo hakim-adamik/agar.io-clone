@@ -50,6 +50,7 @@ module.exports = {
     mergeTimeRate: 5, // Time increase before merge, per unit of cell mass (mergeTime = base + mass * rate)
 
     // Score calculation
+    initialStake: 1, // In dollars $ - converted to mass and contributed to reserve when player enters
     scoreUnit: 0.001, // Factor to convert mass to score (score = mass * scoreUnit)
 
     // Camera zoom configuration

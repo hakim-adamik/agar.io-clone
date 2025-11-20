@@ -114,8 +114,10 @@ class Arena {
                 `[ARENA ${this.id}] Player ${clientPlayerData.name} connecting!`
             );
 
-            // Take spawn mass from food reserve
-            this.map.foodReserve -= this.config.minCellMass;
+            // Player adds their initial stake as mass to the food reserve
+            const stakeAsMass = this.config.initialStake / this.config.scoreUnit;
+            this.map.foodReserve += stakeAsMass;
+            console.log(`[ARENA ${this.id}] Added ${Math.round(stakeAsMass)} mass to reserve from new player`);
 
             currentPlayer.init(
                 this.generateSpawnpoint(),
@@ -204,9 +206,13 @@ class Arena {
 
         // Disconnect handler
         socket.on("disconnect", async () => {
-            // Return player mass to reserve before disconnect
-            if (currentPlayer && currentPlayer.massTotal > 0) {
+            // Return player mass to reserve ONLY if this is NOT a successful escape
+            // On successful escape, player keeps their mass (doesn't return to reserve)
+            if (currentPlayer && currentPlayer.massTotal > 0 && !currentPlayer.successfulEscape) {
                 this.map.foodReserve += currentPlayer.massTotal;
+                console.log(`[ARENA ${this.id}] Returned ${Math.round(currentPlayer.massTotal)} mass to reserve on disconnect`);
+            } else if (currentPlayer && currentPlayer.successfulEscape) {
+                console.log(`[ARENA ${this.id}] 🎉 Player ${currentPlayer.name} escaped with ${Math.round(currentPlayer.massTotal)} mass`);
             }
 
             // Clear any active escape timer
@@ -440,6 +446,9 @@ class Arena {
 
                 console.log(`[ARENA ${this.id}] Player ${player.name} escaped successfully`);
 
+                // Mark this as a successful escape so disconnect handler doesn't return mass
+                player.successfulEscape = true;
+
                 // Give client a moment to receive the message before disconnecting
                 setTimeout(() => {
                     if (socket.connected) {
@@ -600,8 +609,7 @@ class Arena {
             );
             massGained += foodMassGained;
 
-            // Return eaten food mass to the reserve
-            this.map.foodReserve += foodMassGained;
+            // Food eaten is NOT returned to reserve (players keep it)
 
             this.map.food.delete(eatenFoodIndexes);
             this.map.massFood.remove(eatenMassIndexes);
