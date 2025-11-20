@@ -1004,18 +1004,20 @@ class Arena {
                 // End game session if authenticated user (on death - LOSS)
                 const deadSocket = this.sockets[playerGotEaten.id];
                 if (deadSocket && deadSocket.sessionId && deadSocket.userId) {
-                    try {
-                        const finalStats = {
-                            userId: deadSocket.userId,
-                            final_score: playerGotEaten.getScore ? playerGotEaten.getScore() : 0,
-                            players_eaten: playerGotEaten.playersEaten || 0,
-                            game_result: 'lost' // Being eaten = loss
-                        };
-                        await AuthService.endGameSession(deadSocket.sessionId, finalStats);
-                        console.log(`[ARENA ${this.id}] Ended session ${deadSocket.sessionId} for user ${deadSocket.userId} (LOST - died) with score ${finalStats.final_score}`);
-                    } catch (error) {
-                        console.error(`[ARENA ${this.id}] Failed to end game session on death:`, error);
-                    }
+                    const finalStats = {
+                        userId: deadSocket.userId,
+                        final_score: playerGotEaten.getScore ? playerGotEaten.getScore() : 0,
+                        players_eaten: playerGotEaten.playersEaten || 0,
+                        game_result: 'lost' // Being eaten = loss
+                    };
+
+                    AuthService.endGameSession(deadSocket.sessionId, finalStats)
+                        .then(() => {
+                            console.log(`[ARENA ${this.id}] Ended session ${deadSocket.sessionId} for user ${deadSocket.userId} (LOST - died) with score ${finalStats.final_score}`);
+                        })
+                        .catch(error => {
+                            console.error(`[ARENA ${this.id}] Failed to end game session on death:`, error);
+                        });
                 }
 
                 // Send RIP event to the dead player
