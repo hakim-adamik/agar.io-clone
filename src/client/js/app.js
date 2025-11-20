@@ -1041,9 +1041,13 @@ function setupSocket(socket) {
         socket.emit("gotit", player);
         global.gameStart = true;
 
-        // Store arena ID for multi-arena support
+        // Store arena info for multi-arena support
         if (gameSizes.arenaId) {
             global.arenaId = gameSizes.arenaId;
+            // Set flag if this is a PAID arena for wallet calculation
+            if (gameSizes.arenaType === 'PAID') {
+                localStorage.setItem("wasInPaidArena", "true");
+            }
             // Joined arena
         }
 
@@ -2186,6 +2190,77 @@ function requestMobileFullscreen() {
     }
 }
 
+
+function displaySimpleWalletResult(netProfit, entryFee, lastScoreBox, lastScoreValue, isDeath) {
+    try {
+        if (isDeath) {
+            // Player died - they lost their entry fee
+            lastScoreValue.style.display = "none";
+
+            const lastScoreLabel = lastScoreBox.querySelector('span:first-child');
+            if (lastScoreLabel) {
+                lastScoreLabel.textContent = `You lost $${entryFee.toFixed(2)}! Try again!`;
+                lastScoreLabel.style.color = "#ff4757"; // Red for loss
+                lastScoreLabel.style.fontSize = "1.1rem";
+                lastScoreLabel.style.fontWeight = "bold";
+            }
+        } else {
+            // Player escaped - show wallet profit/loss
+            const lastScoreLabel = lastScoreBox.querySelector('span:first-child');
+
+            if (netProfit > 0) {
+                // Profit
+                lastScoreValue.textContent = `+$${netProfit.toFixed(2)}`;
+                lastScoreValue.style.color = "#27ae60"; // Green
+                if (lastScoreLabel) {
+                    lastScoreLabel.textContent = "Wallet Profit";
+                    lastScoreLabel.style.color = "#27ae60";
+                }
+            } else if (netProfit < 0) {
+                // Loss
+                lastScoreValue.textContent = `-$${Math.abs(netProfit).toFixed(2)}`;
+                lastScoreValue.style.color = "#ff4757"; // Red
+                if (lastScoreLabel) {
+                    lastScoreLabel.textContent = "Wallet Loss";
+                    lastScoreLabel.style.color = "#ff4757";
+                }
+            } else {
+                // Break even
+                lastScoreValue.textContent = "$0.00";
+                lastScoreValue.style.color = "#888";
+                if (lastScoreLabel) {
+                    lastScoreLabel.textContent = "Broke Even";
+                    lastScoreLabel.style.color = "#888";
+                }
+            }
+
+            // Reset styling
+            lastScoreValue.style.display = "";
+            if (lastScoreLabel) {
+                lastScoreLabel.style.fontSize = "";
+                lastScoreLabel.style.fontWeight = "";
+            }
+        }
+
+        // Remove any encouraging messages
+        const encourageMsg = lastScoreBox.querySelector('.encourage-message');
+        if (encourageMsg) {
+            encourageMsg.remove();
+        }
+
+        lastScoreBox.style.display = "flex";
+
+        console.log("Simple wallet result displayed:", {
+            netProfit: netProfit,
+            entryFee: entryFee,
+            isDeath: isDeath
+        });
+
+    } catch (e) {
+        console.log("Could not display simple wallet result:", e);
+    }
+}
+
 // Save last score to localStorage
 function saveLastScore(score) {
     try {
@@ -2205,7 +2280,20 @@ function displayLastScore(isDeath = false) {
         var lastScoreValue = document.getElementById("lastScoreValue");
 
         if (lastScoreValue && lastScoreBox) {
-            if (lastScore) {
+            // Check if this was a PAID game for authenticated user
+            var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
+            var wasInPaidArena = localStorage.getItem("wasInPaidArena") === "true";
+
+            if (lastScore && privyUser && privyUser.dbUserId && wasInPaidArena) {
+                // Show wallet profit/loss: Last Score - Entry Fee
+                var score = parseFloat(lastScore);
+                var entryFee = 1.0; // From config.js
+                var netProfit = score - entryFee;
+
+                displaySimpleWalletResult(netProfit, entryFee, lastScoreBox, lastScoreValue, isDeath);
+                // Clear the flag
+                localStorage.removeItem("wasInPaidArena");
+            } else if (lastScore) {
                 if (isDeath) {
                     // Death: Show encouraging message without amount
                     lastScoreValue.style.display = "none"; // Hide the score value

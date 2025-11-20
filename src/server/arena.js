@@ -532,6 +532,7 @@ class Arena {
                 width: this.config.gameWidth,
                 height: this.config.gameHeight,
                 arenaId: this.id,
+                arenaType: this.arenaType,
             });
 
             console.log(
