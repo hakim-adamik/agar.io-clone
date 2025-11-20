@@ -46,6 +46,40 @@ A fully functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canvas
 - **Reconnection**: Currently, disconnected players are removed (future: allow reconnect)
 - **Exit Options**: ESC key or being eaten
 
+### Wallet & Entry Fee System
+- **Entry Fee**: Configurable in `config.js` (default: $1.00)
+- **Payment Timing**: Fee deducted when game starts (not in waiting room)
+- **Guest Play**: Free for non-authenticated users
+- **Escape Rewards**: Score added to wallet on successful escape
+- **Death Penalty**: Lose entry fee (no refund)
+
+### Socket & Payment Architecture
+
+#### Socket Lifecycle
+```
+Click Play → Socket connects (socket.id assigned) → "pass" event → "gotit" event →
+Enter waiting room → Game starts → Fee deducted → "respawn" event → "gotit" event AGAIN →
+Spawn in game → Play until death/escape → Disconnect
+```
+
+#### Important Socket.io Concepts
+- **Socket.id**: Created immediately on connection, persists throughout session
+- **"gotit" event**: Fires TWICE - once on initial connection, again after game starts
+- **"respawn" event**: Misleadingly named - used for initial spawn, not after death
+- **Death = Game Over**: No respawn after death in Agar.io, must pay again for new game
+
+#### Payment Tracking
+- **paidPlayers Set**: Tracks socket.ids that have paid for current game
+- **Balance Check**: Only for NEW connections, skipped for paid players
+- **Deduction Timing**: Only when transitioning from waiting room → active game
+- **Cleanup**: Payment tracking cleared on disconnect
+
+#### Why This Architecture?
+1. **Can't charge on socket creation**: Socket exists before entering waiting room
+2. **Can't charge in waiting room**: Players might leave without playing
+3. **Must track paid players**: "gotit" fires multiple times, would cause double-charging
+4. **Socket.id is perfect key**: Unique per session, cleared on disconnect
+
 ---
 
 ## 🚀 Quick Start
@@ -70,6 +104,7 @@ npm test
 minPlayersToStart: 2,    // Waiting room minimum
 maxPlayersPerArena: 10,   // Arena capacity
 maxTotalArenas: 50,       // Total arena limit
+entryFee: 1.0,           // Entry fee in dollars (0 = free to play)
 // No maxHeartbeatInterval - inactivity kicking removed
 ```
 

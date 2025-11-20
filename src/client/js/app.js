@@ -211,6 +211,11 @@ function syncSettingsCheckboxes() {
 }
 
 function startGame(type) {
+    // Reset waiting room state when starting a new game
+    // This ensures clean state for each game attempt
+    window.inWaitingRoom = false;
+    window.countdownActive = false;
+
     // Auto-generate guest name if empty
     if (!playerNameInput.value) {
         playerNameInput.value = generateGuestName();
@@ -727,8 +732,8 @@ function leaveWaitingRoom() {
         socket.emit('leaveWaitingRoom');
     }
 
-    // Reset waiting room state
-    window.inWaitingRoom = false;
+    // Don't reset inWaitingRoom flag here - let the server events control it
+    // This prevents music from playing if user quickly re-enters waiting room
     window.countdownActive = false;
 
     // Hide UI
@@ -737,6 +742,10 @@ function leaveWaitingRoom() {
 
     // Return to landing page
     cleanupGame();
+
+    // Now reset the waiting room flag after cleanup
+    window.inWaitingRoom = false;
+
     returnToLanding("You left the waiting room");
 }
 
@@ -1212,6 +1221,31 @@ function setupSocket(socket) {
         if (global.connectionErrorShown) {
             global.connectionErrorShown = false;
         }
+    });
+
+    // Handle wallet updates
+    socket.on("walletUpdate", function(data) {
+        console.log("Wallet update received:", data);
+
+        // Show wallet update notification
+        showWalletNotification(data);
+
+        // Update wallet balance display if user is logged in
+        if (window.loadWalletBalance) {
+            window.loadWalletBalance();
+        }
+    });
+
+    // Handle insufficient funds
+    socket.on("insufficientFunds", function(data) {
+        console.log("Insufficient funds:", data);
+
+        // Stop the game immediately to prevent broken state
+        global.gameStart = false;
+        global.disconnectReason = "insufficient_funds";
+
+        // Return to landing page with modal
+        window.returnToLandingWithInsufficientFunds(data);
     });
 
     socket.on("reconnect", function(attemptNumber) {
@@ -2251,6 +2285,90 @@ function returnToLanding(exitReason, exitMessage) {
 }
 
 /**
+ * Return to landing page with insufficient funds modal
+ */
+window.returnToLandingWithInsufficientFunds = function(data) {
+    // First cleanup and return to landing
+    cleanupGame();
+
+    // Clear game state
+    global.gameStart = false;
+    player = null;
+    users = [];
+    leaderboard = [];
+    target = {
+        x: global.playerX,
+        y: global.playerY
+    };
+    foods = [];
+    viruses = [];
+    fireFood = [];
+    global.arenaId = null;
+
+    var landingView = document.getElementById("landingView");
+    var gameView = document.getElementById("gameView");
+
+    if (landingView && gameView) {
+        // Hide game view
+        gameView.style.display = "none";
+        document.getElementById("gameAreaWrapper").style.opacity = 0;
+
+        // Show landing view
+        landingView.style.display = "block";
+
+        // Reset player name input if needed
+        playerNameInput.value = "";
+
+        // Show the insufficient funds modal
+        showInsufficientFundsModal(data);
+    }
+};
+
+/**
+ * Show insufficient funds modal
+ */
+function showInsufficientFundsModal(data) {
+    // Create modal content
+    const modalHTML = `
+        <div class="modal show" id="insufficientFundsModal" style="z-index: 10000;">
+            <div class="modal-content">
+                <h2 style="color: #ff4444; margin-bottom: 20px;">💰 Insufficient Funds</h2>
+                <div style="margin: 20px 0; font-size: 18px; line-height: 1.6;">
+                    <p style="margin-bottom: 15px;">You need <strong>$${data.required.toFixed(2)}</strong> to enter the arena.</p>
+                    <p style="color: #888; margin-bottom: 20px;">Each game requires a $${data.required.toFixed(2)} entry fee. Win by escaping to earn your score as profit!</p>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 30px;">
+                    <button class="modal-button" onclick="
+                        document.getElementById('insufficientFundsModal').remove();
+                        // Open profile modal to add funds
+                        document.querySelector('[data-section=\\'profile\\']').click();
+                    " style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        Add Funds
+                    </button>
+                    <button class="modal-button secondary" onclick="
+                        document.getElementById('insufficientFundsModal').remove();
+                    " style="background: #444;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Add modal to page
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHTML;
+    document.body.appendChild(modalContainer.firstElementChild);
+
+    // Play error sound if available
+    try {
+        playErrorSound();
+    } catch(e) {
+        // Sound might not be available
+    }
+}
+
+/**
  * Display exit reason message on the landing page
  */
 function displayExitMessage(reason, message) {
@@ -2546,6 +2664,89 @@ if (document.readyState === "loading") {
         }
     }
 })();
+
+/**
+ * Show wallet update notification
+ */
+function showWalletNotification(data) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: linear-gradient(135deg, #0f1922, #1a2332);
+        border: 2px solid ${data.amount > 0 ? '#4acfa0' : '#ff6b6b'};
+        border-radius: 10px;
+        padding: 15px 20px;
+        color: white;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: 16px;
+        z-index: 10000;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        animation: slideInRight 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    `;
+
+    // Add animation keyframes if not already present
+    if (!document.getElementById('walletAnimations')) {
+        const style = document.createElement('style');
+        style.id = 'walletAnimations';
+        style.textContent = `
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Create icon based on type
+    const icon = document.createElement('span');
+    icon.style.fontSize = '24px';
+    if (data.type === 'entry_fee') {
+        icon.textContent = '💰';
+    } else if (data.type === 'escape_reward') {
+        icon.textContent = '🏆';
+    } else {
+        icon.textContent = data.amount > 0 ? '📈' : '📉';
+    }
+
+    // Create text content
+    const text = document.createElement('div');
+    const amountColor = data.amount > 0 ? '#4acfa0' : '#ff6b6b';
+    const amountPrefix = data.amount > 0 ? '+' : '';
+    text.innerHTML = `
+        <div style="font-weight: bold; margin-bottom: 5px;">Wallet Update</div>
+        <div style="color: ${amountColor}; font-size: 20px; font-weight: bold;">
+            ${amountPrefix}$${Math.abs(data.amount).toFixed(2)}
+        </div>
+        <div style="font-size: 12px; opacity: 0.8; margin-top: 3px;">
+            ${data.description || ''}
+        </div>
+    `;
+
+    notification.appendChild(icon);
+    notification.appendChild(text);
+    document.body.appendChild(notification);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        notification.style.transition = 'opacity 0.3s ease';
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 5000);
+}
 
 // Export functions to global scope for landing page integration
 window.startGame = startGame;
