@@ -11,7 +11,7 @@ exports.validNick = function (nickname) {
     return regex.test(nickname) && nickname.trim().length > 0;
 };
 
-// determine mass from radius of circle
+// determine radius from mass
 exports.massToRadius = function (mass) {
     return 4 + Math.sqrt(mass) * 6;
 };

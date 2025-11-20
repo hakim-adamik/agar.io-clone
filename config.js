@@ -2,11 +2,10 @@ module.exports = {
     host: "0.0.0.0",
     port: (typeof process !== 'undefined' && process.env && process.env.PORT) ? process.env.PORT : 3000,
     logpath: "logger.php",
-    foodMass: 0.001,
+    foodMass: 1,
     fireFood: 20,
     limitSplit: 16,
-    defaultPlayerMass: 20,
-    minSplitMass: 20,
+    minCellMass: 20,
     virus: {
         fill: "#33ff33",
         stroke: "#19D119",
@@ -15,7 +14,6 @@ module.exports = {
             from: 100,
             to: 150,
         },
-        splitMass: 180,
         uniformDisposition: false,
     },
     gameWidth: 5000,
@@ -48,9 +46,14 @@ module.exports = {
     splitControlDelay: 600, // Time in ms before split cells respond to cursor (maintains split momentum)
 
     massLossRate: 1,
-    minMassLoss: 50,
     mergeTimeBase: 1000, // Base time in milliseconds before cells can merge after split
-    mergeTimeRate: 10, // Time increase before merge, per unit of cell mass (mergeTime = base + mass * rate)
+    mergeTimeRate: 5, // Time increase before merge, per unit of cell mass (mergeTime = base + mass * rate)
+
+    // Score calculation
+    scoreUnit: 0.001, // Factor to convert mass to score (score = mass * scoreUnit)
+
+    // Camera zoom configuration
+    zoomRatio: 0.04, // How much to zoom out as player grows (0 = no zoom, 0.2 = moderate zoom out)
 
     // Client-side prediction configuration
     predictionEnabled: true,

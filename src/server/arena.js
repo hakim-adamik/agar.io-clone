@@ -41,7 +41,7 @@ class Arena {
 
         // Constants
         this.INIT_MASS_LOG = util.mathLog(
-            config.minSplitMass,
+            config.minCellMass,
             config.slowBase
         );
     }
@@ -115,7 +115,7 @@ class Arena {
             );
             currentPlayer.init(
                 this.generateSpawnpoint(),
-                this.config.defaultPlayerMass
+                this.config.minCellMass
             );
 
             // Reset heartbeat after init
@@ -170,7 +170,7 @@ class Arena {
             // This ensures they get new cells and can move
             currentPlayer.init(
                 this.generateSpawnpoint(),
-                this.config.defaultPlayerMass
+                this.config.minCellMass
             );
 
             // Reset player stats for fresh spawn
@@ -249,7 +249,7 @@ class Arena {
         // Eject mass handler (1)
         socket.on("1", () => {
             const minCellMass =
-                this.config.defaultPlayerMass + this.config.fireFood;
+                this.config.minCellMass + this.config.fireFood;
             for (let i = 0; i < currentPlayer.cells.length; i++) {
                 if (currentPlayer.cells[i].mass >= minCellMass) {
                     currentPlayer.changeCellMass(i, -this.config.fireFood);
@@ -267,7 +267,7 @@ class Arena {
         socket.on("2", () => {
             currentPlayer.userSplit(
                 this.config.limitSplit,
-                this.config.minSplitMass
+                this.config.minCellMass
             );
             this.lastActivityAt = Date.now();
         });
@@ -470,7 +470,7 @@ class Arena {
      * Generate spawn point for this arena
      */
     generateSpawnpoint() {
-        const radius = util.massToRadius(this.config.defaultPlayerMass);
+        const radius = util.massToRadius(this.config.minCellMass);
         return getPosition(
             this.config.newPlayerInitialPosition === "farthest",
             radius,
@@ -589,7 +589,7 @@ class Arena {
         currentPlayer.virusSplit(
             cellsToSplit,
             this.config.limitSplit,
-            this.config.minSplitMass
+            this.config.minCellMass
         );
     }
 
@@ -661,7 +661,7 @@ class Arena {
             this.calculateLeaderboard();
             this.map.players.shrinkCells(
                 this.config.massLossRate,
-                this.config.defaultPlayerMass,
+                this.config.minCellMass,
                 this.config.minMassLoss
             );
         }

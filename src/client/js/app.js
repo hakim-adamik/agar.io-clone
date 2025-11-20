@@ -4,6 +4,7 @@ var Canvas = require("./canvas");
 var global = require("./global");
 var PredictionSystem = require("./prediction");
 var CellAnimations = require("./cell-animations");
+var config = require("../../../config");
 
 var playerNameInput = document.getElementById("playerNameInput");
 var socket;
@@ -1556,6 +1557,8 @@ function isEntityVisible(entity, screen, padding = 50) {
 // Throttle socket emissions to reduce network overhead
 var lastSocketEmit = 0;
 var socketEmitInterval = 16; // ~60fps for socket updates (every ~16ms)
+var lastZoom = 1;
+var lastZoomUpdate = 0;
 
 function gameLoop() {
     if (global.gameStart) {
@@ -1574,6 +1577,22 @@ function gameLoop() {
         // This prevents micro-stutters from different parts of the render using slightly different positions
         var frameCameraX = player.x;
         var frameCameraY = player.y;
+
+        // Calculate dynamic zoom based on player's total mass
+        var playerMass = player.massTotal || config.minCellMass || 20;
+        var minCellMass = config.minCellMass || 20;
+        var zoomRatio = config.zoomRatio || 0;
+        // Zoom formula: zoom out as player grows (zoom = (minMass / playerMass) ^ zoomRatio)
+        var zoom = Math.pow(minCellMass / playerMass, zoomRatio);
+
+        // Calculate effective screen dimensions (viewport in world coordinates)
+        // Add 20% margin for server culling to prevent flickering during async updates
+        var effectiveScreenWidth = global.screen.width / zoom;
+        var effectiveScreenHeight = global.screen.height / zoom;
+        var serverMargin = 1.2; // 20% buffer for server
+        var serverScreenWidth = effectiveScreenWidth * serverMargin;
+        var serverScreenHeight = effectiveScreenHeight * serverMargin;
+
         // Update predicted cells in users array for rendering
         for (var i = 0; i < users.length; i++) {
             if (users[i].id === player.id) {
@@ -1593,54 +1612,59 @@ function gameLoop() {
         graph.fillStyle = global.backgroundColor;
         graph.fillRect(0, 0, global.screen.width, global.screen.height);
 
+        // Apply zoom transformation to the canvas
+        graph.save();
+        graph.translate(global.screen.width / 2, global.screen.height / 2);
+        graph.scale(zoom, zoom);
+        graph.translate(-global.screen.width / 2, -global.screen.height / 2);
+
         // Only draw grid if user preference allows it
         if (global.showGrid) {
             // Use cached camera position for consistent grid rendering
             var gridPlayer = { x: frameCameraX, y: frameCameraY };
-            render.drawGrid(global, gridPlayer, global.screen, graph);
+            // Pass zoom and effective dimensions for proper grid rendering
+            render.drawGrid(global, gridPlayer, global.screen, graph, zoom, effectiveScreenWidth, effectiveScreenHeight);
         }
 
-        // Client-side viewport culling for food
+        // Client-side viewport culling uses server dimensions (entities outside won't exist anyway)
         foods.forEach((food) => {
-            // Inline position calculation to avoid object allocation (GC pressure reduction)
-            let posX = food.x - frameCameraX + global.screen.width / 2;
-            let posY = food.y - frameCameraY + global.screen.height / 2;
-            if (
-                isEntityVisible(
-                    { x: posX, y: posY, radius: food.radius },
-                    global.screen
-                )
-            ) {
+            // Check visibility in world coordinates before transformation
+            let worldOffsetX = food.x - frameCameraX;
+            let worldOffsetY = food.y - frameCameraY;
+
+            // Entity is visible if within server screen bounds (which has margin built in)
+            if (Math.abs(worldOffsetX) <= serverScreenWidth / 2 + food.radius &&
+                Math.abs(worldOffsetY) <= serverScreenHeight / 2 + food.radius) {
+                let posX = worldOffsetX + global.screen.width / 2;
+                let posY = worldOffsetY + global.screen.height / 2;
                 render.drawFood({ x: posX, y: posY }, food, graph);
             }
         });
 
         // Client-side viewport culling for fireFood
         fireFood.forEach((fireFood) => {
-            // Inline position calculation to avoid object allocation (GC pressure reduction)
-            let posX = fireFood.x - frameCameraX + global.screen.width / 2;
-            let posY = fireFood.y - frameCameraY + global.screen.height / 2;
-            if (
-                isEntityVisible(
-                    { x: posX, y: posY, radius: fireFood.radius },
-                    global.screen
-                )
-            ) {
+            // Check visibility in world coordinates
+            let worldOffsetX = fireFood.x - frameCameraX;
+            let worldOffsetY = fireFood.y - frameCameraY;
+
+            if (Math.abs(worldOffsetX) <= serverScreenWidth / 2 + fireFood.radius &&
+                Math.abs(worldOffsetY) <= serverScreenHeight / 2 + fireFood.radius) {
+                let posX = worldOffsetX + global.screen.width / 2;
+                let posY = worldOffsetY + global.screen.height / 2;
                 render.drawFireFood({ x: posX, y: posY }, fireFood, playerConfig, graph);
             }
         });
 
         // Client-side viewport culling for viruses
         viruses.forEach((virus) => {
-            // Inline position calculation to avoid object allocation (GC pressure reduction)
-            let posX = virus.x - frameCameraX + global.screen.width / 2;
-            let posY = virus.y - frameCameraY + global.screen.height / 2;
-            if (
-                isEntityVisible(
-                    { x: posX, y: posY, radius: virus.radius },
-                    global.screen
-                )
-            ) {
+            // Check visibility in world coordinates
+            let worldOffsetX = virus.x - frameCameraX;
+            let worldOffsetY = virus.y - frameCameraY;
+
+            if (Math.abs(worldOffsetX) <= serverScreenWidth / 2 + virus.radius &&
+                Math.abs(worldOffsetY) <= serverScreenHeight / 2 + virus.radius) {
+                let posX = worldOffsetX + global.screen.width / 2;
+                let posY = worldOffsetY + global.screen.height / 2;
                 render.drawVirus({ x: posX, y: posY }, virus, graph);
             }
         });
@@ -1664,10 +1688,9 @@ function gameLoop() {
             let borderColor = getHSLColor(users[i].hue, 45);
             let isCurrentPlayer = users[i].id === player.id;
             for (var j = 0; j < users[i].cells.length; j++) {
-                let screenX =
-                    users[i].cells[j].x - frameCameraX + global.screen.width / 2;
-                let screenY =
-                    users[i].cells[j].y - frameCameraY + global.screen.height / 2;
+                // Check visibility in world coordinates first
+                let worldOffsetX = users[i].cells[j].x - frameCameraX;
+                let worldOffsetY = users[i].cells[j].y - frameCameraY;
 
                 // Get animated radius for smooth merge animation
                 let actualRadius = users[i].cells[j].radius;
@@ -1681,16 +1704,10 @@ function gameLoop() {
                 }
 
                 // Client-side viewport culling for cells (use animated radius for visibility check)
-                if (
-                    isEntityVisible(
-                        {
-                            x: screenX,
-                            y: screenY,
-                            radius: animatedRadius,
-                        },
-                        global.screen
-                    )
-                ) {
+                if (Math.abs(worldOffsetX) <= serverScreenWidth / 2 + animatedRadius &&
+                    Math.abs(worldOffsetY) <= serverScreenHeight / 2 + animatedRadius) {
+                    let screenX = worldOffsetX + global.screen.width / 2;
+                    let screenY = worldOffsetY + global.screen.height / 2;
                     cellsToDraw.push({
                         color: color,
                         borderColor: borderColor,
@@ -1719,8 +1736,22 @@ function gameLoop() {
             player
         );
 
-        // Throttle socket emissions instead of every frame
+        // Restore canvas state (undo zoom transformation)
+        graph.restore();
+
+        // Notify server of zoom changes (affects server-side culling)
+        // Send update if zoom changed significantly (>5%) and at least 500ms since last update
         var now = Date.now();
+        if (Math.abs(zoom - lastZoom) / lastZoom > 0.05 && now - lastZoomUpdate > 500) {
+            socket.emit("windowResized", {
+                screenWidth: serverScreenWidth,
+                screenHeight: serverScreenHeight,
+            });
+            lastZoom = zoom;
+            lastZoomUpdate = now;
+        }
+
+        // Throttle socket emissions instead of every frame
         if (now - lastSocketEmit >= socketEmitInterval) {
             socket.emit("0", window.canvas.target); // playerSendTarget "Heartbeat".
             lastSocketEmit = now;

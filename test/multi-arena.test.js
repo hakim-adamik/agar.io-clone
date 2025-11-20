@@ -13,7 +13,7 @@ const mockConfig = {
     port: 8080,
     gameWidth: 5000,
     gameHeight: 5000,
-    defaultPlayerMass: 10,
+    minCellMass: 10,
     foodMass: 1,
     maxFood: 1000,
     maxVirus: 50,
@@ -32,7 +32,6 @@ const mockConfig = {
         stroke: "#19D119",
         strokeWidth: 20,
         defaultMass: { from: 100, to: 150 },
-        splitMass: 180,
         uniformDisposition: false,
     },
     adminPass: "TEST",
@@ -284,7 +283,7 @@ describe('Multi-Arena System', function() {
         it('should generate spawn points within boundaries', function() {
             const spawnpoint = arena.generateSpawnpoint();
 
-            const radius = 4 + Math.sqrt(mockConfig.defaultPlayerMass) * 6; // massToRadius formula
+            const radius = 4 + Math.sqrt(mockConfig.minCellMass) * 6; // massToRadius formula
 
             assert.isAtLeast(spawnpoint.x, radius);
             assert.isAtMost(spawnpoint.x, mockConfig.gameWidth - radius);

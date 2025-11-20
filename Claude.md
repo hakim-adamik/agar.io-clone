@@ -237,7 +237,7 @@ npm test
 2. **Modifying game balance:**
 
     - Configuration: `config.js`
-    - Key parameters: `defaultPlayerMass`, `foodMass`, `slowBase`, `massLossRate`
+    - Key parameters: `minCellMass`, `foodMass`, `slowBase`, `massLossRate`
 
 3. **Default Game Settings:**
 

@@ -186,7 +186,7 @@ class Arena {
 
         // Constants
         this.INIT_MASS_LOG = util.mathLog(
-            config.defaultPlayerMass,
+            config.minCellMass,
             config.slowBase
         );
     }
@@ -446,7 +446,7 @@ class Arena {
             );
             currentPlayer.init(
                 this.generateSpawnpoint(),
-                this.config.defaultPlayerMass
+                this.config.minCellMass
             );
 
             if (this.map.players.findIndexByID(socket.id) > -1) {
@@ -529,7 +529,7 @@ class Arena {
         socket.on("2", () => {
             currentPlayer.userSplit(
                 this.config.limitSplit,
-                this.config.defaultPlayerMass
+                this.config.minCellMass
             );
             this.lastActivityAt = Date.now();
         });
@@ -537,7 +537,7 @@ class Arena {
         // Eject mass handler
         socket.on("1", () => {
             const minCellMass =
-                this.config.defaultPlayerMass + this.config.fireFood;
+                this.config.minCellMass + this.config.fireFood;
             for (let i = 0; i < currentPlayer.cells.length; i++) {
                 if (currentPlayer.cells[i].mass >= minCellMass) {
                     currentPlayer.changeCellMass(i, -this.config.fireFood);
@@ -560,7 +560,7 @@ class Arena {
      * Generate spawn point for this arena
      */
     generateSpawnpoint() {
-        const radius = util.massToRadius(this.config.defaultPlayerMass);
+        const radius = util.massToRadius(this.config.minCellMass);
         return getPosition(
             this.config.newPlayerInitialPosition === "farthest",
             radius,
@@ -618,13 +618,12 @@ class Arena {
             this.calculateLeaderboard();
             this.map.players.shrinkCells(
                 this.config.massLossRate,
-                this.config.defaultPlayerMass,
-                this.config.minMassLoss
+                this.config.minCellMass,
             );
         }
 
         this.map.balanceMass(
-            this.config.foodMass,
+            this.config.baseMass,
             this.config.gameMass,
             this.config.maxFood,
             this.config.maxVirus
@@ -1011,13 +1010,12 @@ module.exports = {
     port: process.env.PORT || 8080,
     gameWidth: 5000,
     gameHeight: 5000,
-    defaultPlayerMass: 10,
+    minCellMass: 10,
     foodMass: 1,
     maxFood: 1000,
     maxVirus: 50,
     slowBase: 4.5,
     massLossRate: 1,
-    minMassLoss: 50,
     // ... other existing settings
 
     // NEW: Multi-arena configuration

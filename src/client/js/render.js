@@ -171,10 +171,7 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph, exitCou
 };
 
 // Reusable canvas for grid drawing (created once to reduce GC pressure)
-let gridCanvas = null;
-let gridContext = null;
-
-const drawGrid = (global, player, screen, graph) => {
+const drawGrid = (global, player, screen, graph, zoom = 1, effectiveWidth = null, effectiveHeight = null) => {
     // Don't draw grid if disabled by user preference
     if (!global.showGrid) {
         return;
@@ -186,62 +183,51 @@ const drawGrid = (global, player, screen, graph) => {
     const playerX = player.x !== undefined && !isNaN(player.x) ? player.x : 0;
     const playerY = player.y !== undefined && !isNaN(player.y) ? player.y : 0;
 
-    // Calculate how much the grid should be offset on screen
-    // Following the same transformation as getPosition(): screenPos = worldPos - playerPos + screenCenter
-    // For a grid line at world position 0, its screen position would be: 0 - playerX + screen.width/2
-    // We want to find the offset for the nearest grid line
-    const gridOffsetX = ((-playerX + screen.width / 2) % gridSize + gridSize) % gridSize;
-    const gridOffsetY = ((-playerY + screen.height / 2) % gridSize + gridSize) % gridSize;
+    // The grid is drawn AFTER zoom transformation, so coordinates will be scaled
+    // To fill the actual screen, we need to expand our drawing area by 1/zoom
+    // After transformation: finalPos = (pos - center) * zoom + center
+    // To reach screen edges, we need: pos = (finalPos - center) / zoom + center
+    const expandedMinX = screen.width / 2 - (screen.width / 2) / zoom;
+    const expandedMaxX = screen.width / 2 + (screen.width / 2) / zoom;
+    const expandedMinY = screen.height / 2 - (screen.height / 2) / zoom;
+    const expandedMaxY = screen.height / 2 + (screen.height / 2) / zoom;
 
-    // Create off-screen canvas for grid only once (reuse to reduce GC pressure)
-    if (!gridCanvas) {
-        gridCanvas = document.createElement("canvas");
-        gridContext = gridCanvas.getContext("2d");
-    }
+    // Calculate which grid lines we need to draw to cover the expanded screen area
+    // For vertical lines: screenX = worldX - playerX + screen.width / 2
+    // We need: expandedMinX <= screenX <= expandedMaxX
+    // So: worldX = screenX + playerX - screen.width / 2
+    const worldMinX = expandedMinX + playerX - screen.width / 2;
+    const worldMaxX = expandedMaxX + playerX - screen.width / 2;
+    const worldMinY = expandedMinY + playerY - screen.height / 2;
+    const worldMaxY = expandedMaxY + playerY - screen.height / 2;
 
-    // Resize canvas only if screen dimensions changed
-    if (gridCanvas.width !== screen.width || gridCanvas.height !== screen.height) {
-        gridCanvas.width = screen.width;
-        gridCanvas.height = screen.height;
-    }
+    // Find the first grid line before the visible area
+    const firstGridX = Math.floor(worldMinX / gridSize) * gridSize;
+    const firstGridY = Math.floor(worldMinY / gridSize) * gridSize;
 
-    // Draw grid every frame to follow player movement smoothly
-    gridContext.clearRect(0, 0, screen.width, screen.height);
-    gridContext.lineWidth = 1;
-    gridContext.strokeStyle = global.lineColor;
-    gridContext.globalAlpha = 0.15;
-    gridContext.beginPath();
+    graph.lineWidth = 1;
+    graph.strokeStyle = global.lineColor;
+    graph.globalAlpha = 0.15;
+    graph.beginPath();
 
     // Draw vertical lines
-    for (let x = gridOffsetX; x <= screen.width; x += gridSize) {
-        gridContext.moveTo(x, 0);
-        gridContext.lineTo(x, screen.height);
-    }
-    // Handle the case where gridOffsetX > 0 (need to draw a line on the left)
-    if (gridOffsetX > 0) {
-        const x = gridOffsetX - gridSize;
-        gridContext.moveTo(x, 0);
-        gridContext.lineTo(x, screen.height);
+    for (let worldX = firstGridX; worldX <= worldMaxX; worldX += gridSize) {
+        // Transform to screen coordinates (same as food rendering)
+        let screenX = worldX - playerX + screen.width / 2;
+        graph.moveTo(screenX, expandedMinY);
+        graph.lineTo(screenX, expandedMaxY);
     }
 
     // Draw horizontal lines
-    for (let y = gridOffsetY; y <= screen.height; y += gridSize) {
-        gridContext.moveTo(0, y);
-        gridContext.lineTo(screen.width, y);
-    }
-    // Handle the case where gridOffsetY > 0 (need to draw a line on the top)
-    if (gridOffsetY > 0) {
-        const y = gridOffsetY - gridSize;
-        gridContext.moveTo(0, y);
-        gridContext.lineTo(screen.width, y);
+    for (let worldY = firstGridY; worldY <= worldMaxY; worldY += gridSize) {
+        // Transform to screen coordinates (same as food rendering)
+        let screenY = worldY - playerY + screen.height / 2;
+        graph.moveTo(expandedMinX, screenY);
+        graph.lineTo(expandedMaxX, screenY);
     }
 
-    gridContext.stroke();
-    gridContext.globalAlpha = 1;
-
-    // Draw grid to main canvas
+    graph.stroke();
     graph.globalAlpha = 1;
-    graph.drawImage(gridCanvas, 0, 0);
 };
 
 const drawBorder = (borders, graph) => {
