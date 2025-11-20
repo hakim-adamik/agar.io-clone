@@ -48,15 +48,21 @@ The `src/server/sql.js` provides direct PostgreSQL connectivity:
 
 **Session Tracking Temporarily Disabled:**
 - Game session creation/ending temporarily disabled in `src/server/server.js` and `src/server/arena.js`
-- Issue: Session tracking causes immediate socket disconnects for authenticated users
-- Impact: Stats tracking during gameplay is not currently working
+- Issue: Session tracking causes immediate socket disconnects for authenticated users when `startGameSession()` tries to clean up existing sessions
+- Impact: Stats tracking during gameplay is not currently working (wins/losses/win rate won't update)
 - Priority: High - needs investigation in future PR
 - Workaround: Game functions normally for all users, just without session-based stats
 
-**Root Cause Investigation Needed:**
-- Why does `AuthService.startGameSession()` cause socket disconnects?
-- Potentially related to database connection timing or transaction locks
-- May require async/await refactoring in socket handlers
+**Current State:**
+- **Profile UI**: Shows Games Won, Games Lost, Win Rate % (but values don't update)
+- **Database**: Has games_won and games_lost columns ready
+- **Wallet System**: Still functions properly for escape rewards
+- **Game Logic**: Tracks whether player won (escaped) or lost (was eaten)
+
+**Root Cause:**
+- `AuthService.startGameSession()` tries to end any existing active sessions for the user
+- This cleanup process triggers a disconnect, preventing the game from starting
+- Need to investigate the disconnect flow and session cleanup timing
 
 ## 🔄 Architecture Simplification (November 2024)
 
@@ -1166,6 +1172,27 @@ CREATE INDEX idx_user_achievements_user ON user_achievements(user_id, unlocked_a
 -   Points system for gamification
 
 ---
+
+## Stats Tracking Implementation Status
+
+### Current Implementation (November 2024)
+
+**✅ Simplified Stats:**
+- **Games Won**: Tracked when player escapes successfully (Esc key)
+- **Games Lost**: Tracked when player is eaten
+- **Win Rate**: Calculated as games_won / (games_won + games_lost) * 100
+- **Players Eaten**: Count of other players absorbed during gameplay
+
+**❌ Removed Concepts (Too Complex):**
+- Mass eaten tracking (not meaningful for competitive play)
+- Performance percentage calculations
+- Starting/ending mass comparisons
+
+**⚠️ Session Tracking Issue:**
+- Database migration `20241120_001_add_win_loss_tracking.js` created games_won/games_lost columns
+- Stats UI shows wins/losses/win rate in profile modal
+- **BUT**: Session tracking disabled, so these stats don't actually update during gameplay
+- Need to fix session disconnect issue before stats will track properly
 
 ## Implementation Plan
 

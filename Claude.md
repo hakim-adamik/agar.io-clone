@@ -162,7 +162,10 @@ const SPLIT_CELL_SPEED = 20;  // Split velocity
 - ✅ Virtual wallet system
 
 ### Known Issues
-- Session tracking temporarily disabled (causes disconnects)
+- **Session tracking disabled** - `startGameSession()` causes immediate disconnects, preventing game start
+  - Stats structure in place (games_won, games_lost, players_eaten)
+  - Profile UI shows win/loss stats but values won't update
+  - Wallet rewards still function properly
 - Disconnected players removed immediately (no reconnection)
 - Arena capacity not enforced when all arenas full (players can join beyond 10-player limit)
 
