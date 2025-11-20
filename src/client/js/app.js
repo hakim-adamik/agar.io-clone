@@ -322,6 +322,7 @@ function startGame(type) {
             type: type,
             arenaId: global.arenaId || null,
             userId: userData?.dbUserId || null,
+            privyId: userData?.id || null,  // Privy ID is stored as 'id' in userData
             playerName:
                 playerNameInput.value ||
                 userData?.username ||

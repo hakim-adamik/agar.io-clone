@@ -19,12 +19,15 @@ const SessionRepository = require("./repositories/session-repository");
 const Vector = SAT.Vector;
 
 class Arena {
-    constructor(arenaId, config, io) {
+    constructor(arenaId, config, io, arenaType = 'FREE') {
         this.id = arenaId;
         this.config = config;
         this.io = io;  // Store io instance for room broadcasting
+        this.arenaType = arenaType; // 'PAID' for authenticated users, 'FREE' for guests/bots
         this.createdAt = Date.now();
         this.lastActivityAt = Date.now();
+
+        console.log(`[ARENA ${this.id}] Created as ${arenaType} arena`);
 
         // Arena state management
         this.state = 'WAITING'; // WAITING, STARTING, ACTIVE, CLOSING
@@ -152,18 +155,18 @@ class Arena {
             clientPlayerData.name = sanitizedName;
             currentPlayer.clientProvidedData(clientPlayerData);
 
-            // Check balance ONLY for NEW players, not those who already paid for this game
+            // Only check balance in PAID arenas for authenticated users
             // Skip check if player already paid (they're respawning after gameStart)
-            if (socket.userId && !this.paidPlayers.has(socket.id)) {
+            if (this.arenaType === 'PAID' && socket.userId && !this.paidPlayers.has(socket.id)) {
                 const canAfford = await this.canAffordEntry(socket);
 
                 if (!canAfford) {
                     // User can't afford entry - send insufficient funds event and return
-                    console.log(`[ARENA ${this.id}] User ${socket.userId} cannot afford entry fee`);
+                    console.log(`[ARENA ${this.id}] User ${socket.userId} cannot afford entry fee in PAID arena`);
 
                     socket.emit('insufficientFunds', {
                         required: this.config.entryFee,
-                        message: `You need $${this.config.entryFee.toFixed(2)} to enter the arena. You can add funds from your profile.`
+                        message: `You need $${this.config.entryFee.toFixed(2)} to enter the paid arena. You can add funds from your profile.`
                     });
 
                     // Important: Don't add them to any game state
@@ -232,9 +235,9 @@ class Arena {
      * @returns {Promise<boolean>} - true if fee was successfully deducted, false otherwise
      */
     async deductEntryFee(socket) {
-        // Only charge logged-in users
-        if (!socket.userId) {
-            return true; // Guest users play for free
+        // Only charge in PAID arenas for logged-in users
+        if (this.arenaType !== 'PAID' || !socket.userId) {
+            return true; // FREE arena or guest users play for free
         }
 
         const WalletRepository = require('./repositories/wallet-repository');
@@ -827,8 +830,8 @@ class Arena {
                 // Countdown complete, handle escape rewards
                 this.clearEscapeTimer(player.id);
 
-                // Credit wallet for logged-in users (they must have paid to be in the game)
-                if (socket.userId) {
+                // Credit wallet ONLY in PAID arenas for logged-in users
+                if (this.arenaType === 'PAID' && socket.userId) {
                     const WalletRepository = require('./repositories/wallet-repository');
 
                     // Calculate score to add to wallet

@@ -33,8 +33,8 @@ module.exports = {
     multiArenaEnabled: true, // Enable multi-arena system
     maxPlayersPerArena: 10, // Player capacity per arena
     arenaCleanupTimeout: 60000, // Milliseconds before cleaning empty arenas (60 seconds)
-    // FIXME Single arena for now to prevent performance issues
-    maxTotalArenas: 1, // Maximum concurrent arenas (resource limit)
+    maxFreeArenas: 5, // Maximum FREE arenas (for guests/bots)
+    maxPaidArenas: 5, // Maximum PAID arenas (for authenticated users)
 
     // Waiting room configuration
     minPlayersToStart: 2, // Minimum players required to start an arena
