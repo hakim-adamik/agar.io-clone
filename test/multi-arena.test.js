@@ -23,7 +23,6 @@ const mockConfig = {
     newPlayerInitialPosition: "random",
     massLossRate: 1,
     minMassLoss: 50,
-    gameMass: 20000,
     fireFood: 20,
     limitSplit: 16,
     virus: {

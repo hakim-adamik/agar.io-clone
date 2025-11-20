@@ -22,9 +22,9 @@ var scoreUpdateTimer = null;
  */
 exports.formatAsCurrency = function(value) {
     if (typeof value !== 'number' || isNaN(value)) {
-        return `${SCORE_CONFIG.currencySymbol}0.00`;
+        return `${SCORE_CONFIG.currencySymbol}0.0000`;
     }
-    return `${SCORE_CONFIG.currencySymbol}${value.toFixed(2)}`;
+    return `${SCORE_CONFIG.currencySymbol}${value.toFixed(4)}`;
 };
 
 /**
@@ -131,9 +131,9 @@ exports.clearSavedScore = function() {
  */
 exports.formatLeaderboardScore = function(score) {
     if (score >= 1000000) {
-        return `${SCORE_CONFIG.currencySymbol}${(score / 1000000).toFixed(2)}M`;
+        return `${SCORE_CONFIG.currencySymbol}${(score / 1000000).toFixed(4)}M`;
     } else if (score >= 1000) {
-        return `${SCORE_CONFIG.currencySymbol}${(score / 1000).toFixed(1)}K`;
+        return `${SCORE_CONFIG.currencySymbol}${(score / 1000).toFixed(4)}K`;
     } else {
         return exports.formatAsCurrency(score);
     }
@@ -145,6 +145,6 @@ exports.formatLeaderboardScore = function(score) {
 exports.initScoreDisplay = function() {
     var scoreEl = document.getElementById("playerScore");
     if (scoreEl && !scoreEl.querySelector(".score-value")) {
-        scoreEl.innerHTML = '<div class="score-value">$0.00</div>';
+        scoreEl.innerHTML = '<div class="score-value">$0.0000</div>';
     }
 };

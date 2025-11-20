@@ -160,8 +160,8 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph, exitCou
                 if (cell.name.length === 0) fontSize = 0;
 
                 var score = cell.score !== undefined ? cell.score : 0;
-                // Round to 2 decimals for display, remove trailing zeros
-                var displayScore = parseFloat(score.toFixed(2));
+                // Round to 4 decimals for display
+                var displayScore = score.toFixed(4);
 
                 graph.strokeText(displayScore, cell.x, cell.y + fontSize);
                 graph.fillText(displayScore, cell.x, cell.y + fontSize);

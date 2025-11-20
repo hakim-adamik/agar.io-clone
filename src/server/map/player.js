@@ -638,7 +638,7 @@ exports.PlayerManager = class {
             topPlayers.push({
                 id: this.data[i].id,
                 name: this.data[i].name,
-                score: Math.round(score * 100) / 100 // Round to 2 decimals for display
+                score: Math.round(score * 10000) / 10000 // Round to 4 decimals for display
             });
         }
         return topPlayers;

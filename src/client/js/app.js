@@ -440,10 +440,10 @@ function animateScore() {
         displayedScore = targetScore;
     }
 
-    // Format with 2 decimal places, thousand separators, and $ sign
+    // Format with 4 decimal places, thousand separators, and $ sign
     var formattedScore = displayedScore.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4
     });
     scoreValueEl.textContent = formattedScore + '$';
 
@@ -1042,7 +1042,10 @@ function setupSocket(socket) {
             }
 
             var score = leaderboard[i].score || 0;
-            var displayScore = score.toLocaleString('en-US', { maximumFractionDigits: 0 });
+            var displayScore = score.toLocaleString('en-US', {
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 4
+            });
 
             // Add rank with medals for top 3
             var rank = "";
@@ -1946,8 +1949,8 @@ function requestMobileFullscreen() {
 // Save last score to localStorage
 function saveLastScore(score) {
     try {
-        // Round to 2 decimals for display consistency
-        var preciseScore = Math.round(score * 100) / 100;
+        // Round to 4 decimals for display consistency
+        var preciseScore = Math.round(score * 10000) / 10000;
         localStorage.setItem("lastScore", preciseScore);
     } catch (e) {
         console.log("Could not save last score:", e);

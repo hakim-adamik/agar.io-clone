@@ -8,7 +8,7 @@
  */
 const DEFAULT_PREFERENCES = {
     darkMode: true,        // Enable dark theme by default
-    showMass: true,        // Display cell mass values
+    showMass: false,        // Display cell mass values
     showBorder: true,      // Show game area borders
     showGrid: true,        // Show background grid
     continuity: true,      // Continue moving when mouse leaves screen
