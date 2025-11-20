@@ -16,12 +16,19 @@ exports.Map = class {
 
         // Initialize food reserve with gameMass
         this.foodReserve = config.gameMass;
+
+        // Track last food generation time for fixed frequency generation
+        this.lastFoodGenerationTime = Date.now();
+        this.foodGenerationInterval = config.foodGenerationInterval; // Generate food at fixed intervals
     }
 
     balanceMass(foodMass, gameMass, maxVirus) {
         // With the reserve system, food count is naturally regulated by available reserve
-        // Generate food in batches as long as there's reserve available
-        if (this.foodReserve > 0) {
+        // Generate food on a fixed 2-second frequency
+        const now = Date.now();
+        const timeSinceLastGeneration = now - this.lastFoodGenerationTime;
+
+        if (timeSinceLastGeneration >= this.foodGenerationInterval && this.foodReserve > 0) {
             // Estimate average food mass to determine how many we can afford
             // Average tier multiplier: (1+3+9+27+81)/5 = 24.2
             // Average food mass: 2.5 * 24.2 = 60.5
@@ -43,9 +50,12 @@ exports.Map = class {
                     console.warn(`[MAP] Food reserve went negative: ${this.foodReserve}. Clamping to 0.`);
                     this.foodReserve = 0;
                 }
+
+                // Update last generation time
+                this.lastFoodGenerationTime = now;
             }
         }
-        // Note: We don't remove excess food anymore - food is only removed when eaten
+        // Note: Food is added back to reserve immediately when eaten (in arena.js)
 
         const virusesToAdd = maxVirus - this.viruses.data.length;
         if (virusesToAdd > 0) {

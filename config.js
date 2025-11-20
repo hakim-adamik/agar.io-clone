@@ -3,6 +3,7 @@ module.exports = {
     port: (typeof process !== 'undefined' && process.env && process.env.PORT) ? process.env.PORT : 3000,
     logpath: "logger.php",
     foodMass: 1,
+    foodGenerationInterval: 2000, // Generate food from reserve every 2 seconds (in milliseconds)
     fireFood: 20,
     limitSplit: 16,
     minCellMass: 20,
