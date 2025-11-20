@@ -14,15 +14,15 @@ exports.Map = class {
         this.massFood = new exports.massFoodUtils.MassFoodManager();
         this.players = new exports.playerUtils.PlayerManager();
 
-        // Initialize food reserve with gameMass
-        this.foodReserve = config.gameMass;
+        // Initialize food reserve at 0 - filled only by player stakes and cell decay
+        this.foodReserve = 0;
 
         // Track last food generation time for fixed frequency generation
         this.lastFoodGenerationTime = Date.now();
         this.foodGenerationInterval = config.foodGenerationInterval; // Generate food at fixed intervals
     }
 
-    balanceMass(foodMass, gameMass, maxVirus) {
+    balanceMass(foodMass, maxVirus) {
         // With the reserve system, food count is naturally regulated by available reserve
         // Generate food on a fixed 2-second frequency
         const now = Date.now();

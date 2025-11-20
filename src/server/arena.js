@@ -699,7 +699,6 @@ class Arena {
 
         this.map.balanceMass(
             this.config.foodMass,
-            this.config.gameMass,
             this.config.maxVirus
         );
     }
