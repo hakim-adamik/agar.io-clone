@@ -488,9 +488,6 @@ function showWaitingRoomUI(data) {
                 'Game will start soon!'}
         </div>
         <div id="waitingPlayersList" style="margin-top: 20px;"></div>
-        <div style="margin-top: 15px; font-size: 12px; color: #666;">
-            Max wait time: ${Math.ceil((data.maxWaitTime - data.timeWaiting) / 1000)}s
-        </div>
     `;
 }
 

@@ -29,9 +29,7 @@ class Arena {
         // Arena state management
         this.state = 'WAITING'; // WAITING, STARTING, ACTIVE, CLOSING
         this.waitingPlayers = new Map(); // socketId -> {socket, player, ready}
-        this.waitingStartTime = Date.now(); // Track how long we've been waiting
         this.countdownTimer = null; // Timer for countdown when starting
-        this.waitTimeCheckInterval = null; // Timer to check for max wait time
 
         // Game state (isolated per arena)
         this.map = new mapUtils.Map(config);
@@ -88,12 +86,6 @@ class Arena {
         return this.waitingPlayers.size >= this.config.minPlayersToStart;
     }
 
-    /**
-     * Check if waiting time exceeded
-     */
-    waitingTimeExceeded() {
-        return Date.now() - this.waitingStartTime > this.config.maxWaitingTime;
-    }
 
     /**
      * Start arena game loops (only called when transitioning from WAITING to ACTIVE)
@@ -130,7 +122,6 @@ class Arena {
         if (this.tickInterval) clearInterval(this.tickInterval);
         if (this.gameloopInterval) clearInterval(this.gameloopInterval);
         if (this.updateInterval) clearInterval(this.updateInterval);
-        if (this.waitTimeCheckInterval) clearInterval(this.waitTimeCheckInterval);
         if (this.countdownTimer) clearInterval(this.countdownTimer);
 
         console.log(`[ARENA ${this.id}] Stopped game loops`);
@@ -203,9 +194,7 @@ class Arena {
         socket.emit('waitingRoom', {
             arenaId: this.id,
             playersWaiting: this.waitingPlayers.size,
-            minPlayers: this.config.minPlayersToStart,
-            maxWaitTime: this.config.maxWaitingTime,
-            timeWaiting: Date.now() - this.waitingStartTime
+            minPlayers: this.config.minPlayersToStart
         });
 
         // Update all waiting players
@@ -215,18 +204,6 @@ class Arena {
 
         // Check if we can start the game
         this.checkStartConditions();
-
-        // Start a timer to check for max wait time (only if not already running)
-        if (!this.waitTimeCheckInterval && this.config.allowSinglePlayerStart) {
-            this.waitTimeCheckInterval = setInterval(() => {
-                if (this.state === 'WAITING' && this.waitingTimeExceeded() && this.waitingPlayers.size > 0) {
-                    console.log(`[ARENA ${this.id}] Max wait time exceeded, starting with ${this.waitingPlayers.size} player(s)`);
-                    clearInterval(this.waitTimeCheckInterval);
-                    this.waitTimeCheckInterval = null;
-                    this.startCountdown();
-                }
-            }, 1000); // Check every second
-        }
     }
 
     /**
@@ -263,13 +240,6 @@ class Arena {
 
         // Check if we have minimum players
         if (this.hasMinimumPlayers()) {
-            this.startCountdown();
-        }
-        // Check if wait time exceeded and we allow single player start
-        else if (this.config.allowSinglePlayerStart &&
-                 this.waitingPlayers.size > 0 &&
-                 this.waitingTimeExceeded()) {
-            console.log(`[ARENA ${this.id}] Max wait time exceeded, starting with ${this.waitingPlayers.size} player(s)`);
             this.startCountdown();
         }
     }
@@ -327,7 +297,6 @@ class Arena {
 
         // Reset state
         this.state = 'WAITING';
-        this.waitingStartTime = Date.now();
         this.waitingPlayers.clear();
 
         // Clear the map
