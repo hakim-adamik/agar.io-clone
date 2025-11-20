@@ -755,7 +755,7 @@ class Arena {
                     const WalletRepository = require('./repositories/wallet-repository');
 
                     // Calculate score to add to wallet
-                    const scoreToAdd = player.score || 0;
+                    const scoreToAdd = player.getScore() || 0;
 
                     if (scoreToAdd > 0) {
                         WalletRepository.addBalance(socket.userId, scoreToAdd)
@@ -778,7 +778,7 @@ class Arena {
                 // Notify client that escape is complete
                 socket.emit("escapeComplete");
 
-                console.log(`[ARENA ${this.id}] Player ${player.name} escaped successfully with score ${player.score}`);
+                console.log(`[ARENA ${this.id}] Player ${player.name} escaped successfully with score ${player.getScore()}`);
 
                 // Give client a moment to receive the message before disconnecting
                 setTimeout(() => {
