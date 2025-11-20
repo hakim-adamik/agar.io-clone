@@ -443,6 +443,164 @@ function animateScore() {
     }
 }
 
+// Waiting Room UI Functions
+function showWaitingRoomUI(data) {
+    // Hide game UI elements
+    const gameCanvas = document.getElementById('canvas');
+    if (gameCanvas) {
+        gameCanvas.style.opacity = '0.3';
+    }
+
+    // Create or update waiting room overlay
+    let overlay = document.getElementById('waitingRoomOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'waitingRoomOverlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 30px;
+            color: white;
+            font-family: 'Ubuntu', sans-serif;
+            text-align: center;
+            z-index: 999;
+            min-width: 300px;
+        `;
+        document.body.appendChild(overlay);
+    }
+
+    overlay.innerHTML = `
+        <h2 style="color: #00ff00; margin-bottom: 20px;">Waiting Room</h2>
+        <div style="font-size: 18px; margin-bottom: 10px;">
+            Arena: <span style="color: #00ff00;">${data.arenaId}</span>
+        </div>
+        <div style="font-size: 24px; margin: 20px 0;">
+            Players: <span style="color: #00ff00;">${data.playersWaiting}</span> / <span style="color: #ffff00;">${data.minPlayers}</span>
+        </div>
+        <div style="font-size: 14px; color: #888;">
+            ${data.playersWaiting < data.minPlayers ?
+                `Waiting for ${data.minPlayers - data.playersWaiting} more player(s)...` :
+                'Game will start soon!'}
+        </div>
+        <div id="waitingPlayersList" style="margin-top: 20px;"></div>
+        <div style="margin-top: 15px; font-size: 12px; color: #666;">
+            Max wait time: ${Math.ceil((data.maxWaitTime - data.timeWaiting) / 1000)}s
+        </div>
+    `;
+}
+
+function updateWaitingRoomUI(data) {
+    const overlay = document.getElementById('waitingRoomOverlay');
+    if (!overlay) return;
+
+    // Update player count
+    const playersElement = overlay.querySelector('div[style*="font-size: 24px"]');
+    if (playersElement) {
+        playersElement.innerHTML = `
+            Players: <span style="color: #00ff00;">${data.playersWaiting}</span> / <span style="color: #ffff00;">${data.minPlayers}</span>
+        `;
+    }
+
+    // Update waiting message
+    const messageElement = overlay.querySelector('div[style*="font-size: 14px"]');
+    if (messageElement) {
+        messageElement.innerHTML = data.playersWaiting < data.minPlayers ?
+            `Waiting for ${data.minPlayers - data.playersWaiting} more player(s)...` :
+            'Game will start soon!';
+    }
+
+    // Update players list
+    if (data.players && data.players.length > 0) {
+        const listElement = document.getElementById('waitingPlayersList');
+        if (listElement) {
+            listElement.innerHTML = '<div style="color: #aaa; margin-bottom: 10px;">Players in room:</div>' +
+                data.players.map(p => `
+                    <div style="padding: 5px; color: ${p.ready ? '#00ff00' : '#fff'};">
+                        ${p.name} ${p.ready ? '✓' : ''}
+                    </div>
+                `).join('');
+        }
+    }
+}
+
+function hideWaitingRoomUI() {
+    const overlay = document.getElementById('waitingRoomOverlay');
+    if (overlay) {
+        overlay.remove();
+    }
+
+    // Restore game canvas opacity
+    const gameCanvas = document.getElementById('canvas');
+    if (gameCanvas) {
+        gameCanvas.style.opacity = '1';
+    }
+}
+
+function showCountdownUI(seconds) {
+    hideWaitingRoomUI();
+
+    let countdown = document.getElementById('countdownOverlay');
+    if (!countdown) {
+        countdown = document.createElement('div');
+        countdown.id = 'countdownOverlay';
+        countdown.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 120px;
+            font-weight: bold;
+            color: #00ff00;
+            text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+            z-index: 1000;
+            font-family: 'Ubuntu', sans-serif;
+        `;
+        document.body.appendChild(countdown);
+    }
+
+    countdown.textContent = seconds;
+
+    // Add pulse animation
+    countdown.style.animation = 'pulse 1s ease-in-out';
+}
+
+function updateCountdownUI(seconds) {
+    const countdown = document.getElementById('countdownOverlay');
+    if (!countdown) return;
+
+    countdown.textContent = seconds > 0 ? seconds : 'GO!';
+
+    // Change color as countdown progresses
+    if (seconds === 3) {
+        countdown.style.color = '#00ff00';
+    } else if (seconds === 2) {
+        countdown.style.color = '#ffff00';
+    } else if (seconds === 1) {
+        countdown.style.color = '#ff6600';
+    } else if (seconds === 0) {
+        countdown.style.color = '#ff0000';
+        countdown.style.fontSize = '150px';
+    }
+
+    // Re-trigger animation
+    countdown.style.animation = 'none';
+    setTimeout(() => {
+        countdown.style.animation = 'pulse 1s ease-in-out';
+    }, 10);
+}
+
+function hideCountdownUI() {
+    const countdown = document.getElementById('countdownOverlay');
+    if (countdown) {
+        countdown.remove();
+    }
+}
+
 // Setup leaderboard toggle for all devices
 function setupLeaderboardToggle() {
     var statusEl = document.getElementById("status");
@@ -1348,6 +1506,53 @@ function setupSocket(socket) {
         } catch (e) {
             console.log('Error stopping escape sound:', e);
         }
+    });
+
+    // Waiting room event handlers
+    socket.on("waitingRoom", function (data) {
+        console.log("Entered waiting room:", data);
+        window.inWaitingRoom = true;
+        window.waitingRoomData = data;
+
+        // Show waiting room UI
+        showWaitingRoomUI(data);
+    });
+
+    socket.on("waitingRoomUpdate", function (data) {
+        console.log("Waiting room update:", data);
+        updateWaitingRoomUI(data);
+    });
+
+    socket.on("countdownStart", function (data) {
+        console.log("Countdown started:", data.seconds);
+        window.countdownActive = true;
+        showCountdownUI(data.seconds);
+    });
+
+    socket.on("countdownUpdate", function (data) {
+        updateCountdownUI(data.seconds);
+    });
+
+    socket.on("countdownCancelled", function (data) {
+        console.log("Countdown cancelled:", data.reason);
+        window.countdownActive = false;
+        hideCountdownUI();
+        showWaitingRoomUI(window.waitingRoomData);
+    });
+
+    socket.on("gameStart", function (data) {
+        console.log("Game starting!", data);
+        window.inWaitingRoom = false;
+        window.countdownActive = false;
+        hideWaitingRoomUI();
+        hideCountdownUI();
+
+        // Request spawn
+        socket.emit("respawn");
+    });
+
+    socket.on("arenaStarted", function (data) {
+        console.log("Arena has started with", data.playerCount, "players");
     });
 }
 

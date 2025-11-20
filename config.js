@@ -37,6 +37,12 @@ module.exports = {
     // FIXME Single arena for now to prevent performance issues
     maxTotalArenas: 1, // Maximum concurrent arenas (resource limit)
 
+    // Waiting room configuration
+    minPlayersToStart: 2, // Minimum players required to start an arena
+    maxWaitingTime: 30000, // Max time to wait before starting with fewer players (30 seconds)
+    waitingRoomCountdown: 3000, // Countdown duration when minimum players reached (3 seconds)
+    allowSinglePlayerStart: true, // Allow starting with 1 player after maxWaitingTime
+
     // Cell movement physics
     minSpeed: 6.5, // Base movement speed for cells (reduced from 6.25 to slow down convergence)
     splitCellSpeed: 15, // Initial speed when a cell splits
