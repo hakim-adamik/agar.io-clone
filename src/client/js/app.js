@@ -21,9 +21,9 @@ if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ||
     navigator.maxTouchPoints > 0) {
     global.mobile = true;
     document.body.classList.add('mobile-device');
-    console.log('Mobile device detected - UI optimized for touch');
+    // Mobile device detected - UI optimized for touch
 } else {
-    console.log('Desktop device detected - UI optimized for mouse');
+    // Desktop device detected - UI optimized for mouse
 }
 
 function generateGuestName() {
@@ -48,7 +48,7 @@ function applyDefaultGameSettings() {
     // Try to load user preferences from server if authenticated
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
-        console.log('Loading preferences for user:', privyUser.dbUserId);
+        // Loading preferences for user
         loadUserPreferences(privyUser.dbUserId);
     } else {
         // Fall back to default settings if not authenticated
@@ -74,7 +74,7 @@ function loadUserPreferences(userId) {
 
 // Apply user preferences from server
 function applyUserPreferences(prefs) {
-    console.log("Applying user preferences:", prefs);
+    // Applying user preferences
 
     var DARK = "#111111";
     var LIGHT = "#f2fbff";
@@ -288,11 +288,11 @@ function startGame(type) {
 
         // ALWAYS create a new socket connection when starting the game
         // Even if socket exists, we need a fresh connection after death
-        console.log("[Socket] Current socket state:", socket ? "exists" : "null");
+        // Check current socket state
 
         // Clean up any existing socket first
         if (socket) {
-            console.log("[Socket] Cleaning up existing socket before creating new one");
+            // Cleaning up existing socket before creating new one
             socket.disconnect();
             socket = null;
             window.canvas.socket = null;
@@ -331,7 +331,7 @@ function startGame(type) {
 
             // Clean up any existing socket connection
             if (socket) {
-                console.log("[Socket] Cleaning up previous connection");
+                // Cleaning up previous connection
                 socket.disconnect();
                 socket = null;
                 window.canvas.socket = null;
@@ -373,10 +373,10 @@ function startGame(type) {
     // Load user preferences when starting the game
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
-        console.log('Loading user preferences for game start, userId:', privyUser.dbUserId);
+        // Loading user preferences for game start
         loadUserPreferences(privyUser.dbUserId).then(continueGameStart);
     } else {
-        console.log('No authenticated user, applying default settings');
+        // No authenticated user, applying default settings
         applyConfigDefaults();
         continueGameStart();
     }
@@ -626,32 +626,44 @@ function showCountdownUI(seconds) {
         countdown.id = 'countdownOverlay';
         countdown.style.cssText = `
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 120px;
-            font-weight: bold;
-            color: #00ff00;
-            text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
-            z-index: 1000;
-            font-family: 'Ubuntu', sans-serif;
-            width: 300px;
-            height: 300px;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0;
-            padding: 0;
-            line-height: 1;
-            box-sizing: border-box;
+            z-index: 1000;
+            pointer-events: none;
         `;
         document.body.appendChild(countdown);
+
+        // Create inner text element for the countdown number
+        const countdownText = document.createElement('div');
+        countdownText.id = 'countdownText';
+        countdownText.style.cssText = `
+            font-size: 150px;
+            font-weight: bold;
+            color: #00ff00;
+            text-shadow: 0 0 30px rgba(0, 255, 0, 0.8);
+            font-family: 'Ubuntu', sans-serif;
+            text-align: center;
+            line-height: 1;
+        `;
+        countdown.appendChild(countdownText);
     }
 
-    countdown.textContent = seconds;
+    const textElement = document.getElementById('countdownText');
+    textElement.textContent = seconds;
 
-    // Add pulse animation
-    countdown.style.animation = 'pulse 1s ease-in-out';
+    // Simple fade-in animation
+    textElement.style.opacity = '0';
+    textElement.style.transform = 'scale(0.8)';
+    setTimeout(() => {
+        textElement.style.transition = 'all 0.3s ease';
+        textElement.style.opacity = '1';
+        textElement.style.transform = 'scale(1)';
+    }, 10);
 
     // Play escape countdown sound when countdown starts (only on first call)
     if (seconds === 3 && global.soundEnabled) {
@@ -671,32 +683,32 @@ function showCountdownUI(seconds) {
 }
 
 function updateCountdownUI(seconds) {
-    const countdown = document.getElementById('countdownOverlay');
-    if (!countdown) return;
+    const textElement = document.getElementById('countdownText');
+    if (!textElement) return;
 
-    countdown.textContent = seconds > 0 ? seconds : 'GO!';
+    textElement.textContent = seconds > 0 ? seconds : 'GO!';
+
+    // Keep font size consistent to prevent jumping
+    textElement.style.fontSize = '150px';
 
     // Change color as countdown progresses
     if (seconds === 3) {
-        countdown.style.color = '#00ff00';
+        textElement.style.color = '#00ff00';
     } else if (seconds === 2) {
-        countdown.style.color = '#ffff00';
+        textElement.style.color = '#ffff00';
     } else if (seconds === 1) {
-        countdown.style.color = '#ff6600';
+        textElement.style.color = '#ff6600';
     } else if (seconds === 0) {
-        countdown.style.color = '#ff0000';
-        // Keep the same font size to prevent shifting
-        countdown.style.fontSize = '120px';
-        // Make "GO!" stand out with different styling instead
-        countdown.style.fontWeight = '900';
-        countdown.style.letterSpacing = '10px';
+        textElement.style.color = '#ff0000';
     }
 
-    // Re-trigger animation
-    countdown.style.animation = 'none';
+    // Simple pulse animation without changing size
+    textElement.style.opacity = '0.7';
+    textElement.style.transform = 'scale(0.95)';
     setTimeout(() => {
-        countdown.style.animation = 'pulse 1s ease-in-out';
-    }, 10);
+        textElement.style.opacity = '1';
+        textElement.style.transform = 'scale(1)';
+    }, 50);
 }
 
 function hideCountdownUI() {
@@ -708,7 +720,7 @@ function hideCountdownUI() {
 
 // Leave waiting room function
 function leaveWaitingRoom() {
-    console.log("Leaving waiting room...");
+    // Leaving waiting room
 
     // Tell server we're leaving the waiting room
     if (socket) {
@@ -990,7 +1002,7 @@ var graph = c.getContext("2d");
                 feedBtn.addEventListener(eventType, function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Feed button pressed - emitting event 1 (eject mass)');
+                    // Feed button pressed - emitting event 1 (eject mass)
                     if (global.soundEnabled) {
                         playSoundEffect('eject_mass_sound');
                     }
@@ -1000,7 +1012,7 @@ var graph = c.getContext("2d");
                     }
                 }, {passive: false});
             });
-            console.log('Feed button handler attached');
+            // Feed button handler attached
         } else {
             console.warn('Feed button not found!');
         }
@@ -1012,7 +1024,7 @@ var graph = c.getContext("2d");
                 splitBtn.addEventListener(eventType, function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Split button pressed - emitting event 2 (split)');
+                    // Split button pressed - emitting event 2 (split)
                     if (global.soundEnabled) {
                         document.getElementById('split_cell').play();
                     }
@@ -1022,7 +1034,7 @@ var graph = c.getContext("2d");
                     }
                 }, {passive: false});
             });
-            console.log('Split button handler attached');
+            // Split button handler attached
         }
 
         // Exit button
@@ -1032,13 +1044,13 @@ var graph = c.getContext("2d");
                 exitBtn.addEventListener(eventType, function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Exit button pressed');
+                    // Exit button pressed
                     if (global.gameStart) {
                         exitGame();
                     }
                 }, {passive: false});
             });
-            console.log('Exit button handler attached');
+            // Exit button handler attached
         }
     }
 })();
@@ -1169,7 +1181,7 @@ function handleDisconnect() {
 function setupSocket(socket) {
     // Connection event handlers for better user feedback
     socket.on("connect", function() {
-        console.log("[Socket] Connected successfully");
+        // Socket connected successfully
         // Hide any connection error messages
         if (global.connectionErrorShown) {
             global.connectionErrorShown = false;
@@ -1177,7 +1189,7 @@ function setupSocket(socket) {
     });
 
     socket.on("reconnect", function(attemptNumber) {
-        console.log("[Socket] Reconnected after " + attemptNumber + " attempts");
+        // Reconnected after attempts
         // Optionally show success message briefly
         if (global.gameStart) {
             // Reset animations on reconnect to ensure clean state
@@ -1188,7 +1200,7 @@ function setupSocket(socket) {
     });
 
     socket.on("reconnect_attempt", function(attemptNumber) {
-        console.log("[Socket] Reconnection attempt #" + attemptNumber);
+        // Reconnection attempt
         if (!global.connectionErrorShown && global.gameStart) {
             render.drawErrorMessage("Reconnecting...", graph, global.screen);
             global.connectionErrorShown = true;
@@ -1196,7 +1208,7 @@ function setupSocket(socket) {
     });
 
     socket.on("reconnect_failed", function() {
-        console.log("[Socket] Reconnection failed after all attempts");
+        // Reconnection failed after all attempts
         render.drawErrorMessage("Connection Lost - Please Refresh", graph, global.screen);
     });
 
@@ -1216,13 +1228,13 @@ function setupSocket(socket) {
     });
 
     socket.on("disconnect", function(reason) {
-        console.log("[Socket] Disconnected:", reason);
+        // Socket disconnected
         // Only show disconnect for unexpected disconnects (not user-initiated)
         if (reason === "io server disconnect" || reason === "ping timeout") {
             handleDisconnect();
         } else if (reason === "transport close" || reason === "transport error") {
             // Let automatic reconnection handle these
-            console.log("[Socket] Connection issue, will attempt reconnection");
+            // Connection issue, will attempt reconnection
         }
     });
 
@@ -1240,7 +1252,7 @@ function setupSocket(socket) {
         // Store arena ID for multi-arena support
         if (gameSizes.arenaId) {
             global.arenaId = gameSizes.arenaId;
-            console.log(`[CLIENT] Joined arena: ${gameSizes.arenaId}`);
+            // Joined arena
         }
 
         // Start music only if not flagged for waiting room (direct spawn into active game)
@@ -1280,7 +1292,7 @@ function setupSocket(socket) {
 
     socket.on("playerEaten", (data) => {
         // Play player eaten sound when current player eats another player
-        console.log(`🍽️ Player eaten: ${data.eatenPlayerName} (+${data.massGained} mass)`);
+        // Player eaten
 
         if (global.soundEnabled) {
             try {
@@ -1590,18 +1602,18 @@ function setupSocket(socket) {
 
     // Escape event handlers (server-authoritative)
     socket.on("escapeStarted", function (data) {
-        console.log("Escape started, countdown:", data.countdown);
+        // Escape started
         exitCountdownActive = true;
         exitCountdownValue = data.countdown;
     });
 
     socket.on("escapeUpdate", function (data) {
-        console.log("Escape countdown update:", data.countdown);
+        // Escape countdown update
         exitCountdownValue = data.countdown;
     });
 
     socket.on("escapeComplete", function () {
-        console.log("Escape complete");
+        // Escape complete
         exitCountdownActive = false;
         exitCountdownValue = 0;
 
@@ -1627,7 +1639,7 @@ function setupSocket(socket) {
     });
 
     socket.on("escapeCancelled", function () {
-        console.log("Escape cancelled (player died during countdown)");
+        // Escape cancelled (player died during countdown)
         exitCountdownActive = false;
         exitCountdownValue = 4;
 
@@ -1645,7 +1657,7 @@ function setupSocket(socket) {
 
     // Waiting room event handlers
     socket.on("waitingRoom", function (data) {
-        console.log("Entered waiting room:", data);
+        // Entered waiting room
         window.inWaitingRoom = true;
         window.waitingRoomData = data;
 
@@ -1654,12 +1666,12 @@ function setupSocket(socket) {
     });
 
     socket.on("waitingRoomUpdate", function (data) {
-        console.log("Waiting room update:", data);
+        // Waiting room update
         updateWaitingRoomUI(data);
     });
 
     socket.on("countdownStart", function (data) {
-        console.log("Countdown started:", data.seconds);
+        // Countdown started
         window.countdownActive = true;
         showCountdownUI(data.seconds);
     });
@@ -1669,14 +1681,14 @@ function setupSocket(socket) {
     });
 
     socket.on("countdownCancelled", function (data) {
-        console.log("Countdown cancelled:", data.reason);
+        // Countdown cancelled
         window.countdownActive = false;
         hideCountdownUI();
         showWaitingRoomUI(window.waitingRoomData);
     });
 
     socket.on("gameStart", function (data) {
-        console.log("Game starting!", data);
+        // Game starting
         window.inWaitingRoom = false;
         window.countdownActive = false;
         hideWaitingRoomUI();
@@ -1690,7 +1702,7 @@ function setupSocket(socket) {
     });
 
     socket.on("arenaStarted", function (data) {
-        console.log("Arena has started with", data.playerCount, "players");
+        // Arena has started
     });
 }
 
@@ -2114,7 +2126,7 @@ function exitGame() {
     // Send escape request to server
     socket.emit("escapeRequest");
 
-    console.log("Escape request sent to server");
+    // Escape request sent to server
 }
 
 function cleanupGame() {
@@ -2233,7 +2245,7 @@ function requestMobileFullscreen() {
             window.scrollTo(0, 1);
         }, 100);
 
-        console.log('Fullscreen requested for mobile');
+        // Fullscreen requested for mobile
     } catch (e) {
         console.log('Could not request fullscreen:', e);
     }
