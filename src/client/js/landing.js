@@ -281,16 +281,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Use real stats from database if available, otherwise use defaults
                     const stats = user.stats || {
                         gamesPlayed: 0,
+                        gamesWon: 0,
+                        gamesLost: 0,
                         highScore: 0,
-                        totalMassEaten: 0,
                         totalPlayersEaten: 0,
                         totalTimePlayed: 0,
                         rank: null
                     };
 
-                    // Calculate win rate (placeholder for now)
-                    const winRate = stats.gamesPlayed > 0 ?
-                        ((stats.totalPlayersEaten / Math.max(1, stats.gamesPlayed * 2)) * 100).toFixed(1) :
+                    // Calculate win rate based on actual wins and losses
+                    const totalGames = (stats.gamesWon || 0) + (stats.gamesLost || 0);
+                    const winRate = totalGames > 0 ?
+                        ((stats.gamesWon / totalGames) * 100).toFixed(1) :
                         '0.0';
 
                     return `
@@ -363,24 +365,43 @@ document.addEventListener('DOMContentLoaded', function() {
                             </h3>
                             <div class="stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
                                 <div style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
-                                    <i class="fas fa-crown" style="color: #4CAF50; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
-                                    <div style="font-size: 1.75rem; font-weight: bold; color: #4CAF50; line-height: 1;">${(stats.highScore || 0).toLocaleString()}</div>
-                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Best Score</div>
+                                    <i class="fas fa-trophy" style="color: #4CAF50; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
+                                    <div style="font-size: 1.75rem; font-weight: bold; color: #4CAF50; line-height: 1;">${stats.gamesWon || 0}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Games Won</div>
+                                </div>
+                                <div style="background: linear-gradient(135deg, rgba(244, 67, 54, 0.2), rgba(244, 67, 54, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
+                                    <i class="fas fa-skull" style="color: #F44336; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
+                                    <div style="font-size: 1.75rem; font-weight: bold; color: #F44336; line-height: 1;">${stats.gamesLost || 0}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Games Lost</div>
+                                </div>
+                                <div style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 193, 7, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
+                                    <i class="fas fa-percentage" style="color: #FFC107; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
+                                    <div style="font-size: 1.75rem; font-weight: bold; color: #FFC107; line-height: 1;">${winRate}%</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Win Rate</div>
                                 </div>
                                 <div style="background: linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
                                     <i class="fas fa-crosshairs" style="color: #2196F3; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
                                     <div style="font-size: 1.75rem; font-weight: bold; color: #2196F3; line-height: 1;">${stats.totalPlayersEaten || 0}</div>
                                     <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Players Eaten</div>
                                 </div>
-                                <div style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.2), rgba(255, 152, 0, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
-                                    <i class="fas fa-cookie-bite" style="color: #FF9800; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
-                                    <div style="font-size: 1.75rem; font-weight: bold; color: #FF9800; line-height: 1;">${Math.floor((stats.totalMassEaten || 0) / 1000)}K</div>
-                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Mass Eaten</div>
+                            </div>
+
+                            <!-- Additional stats row -->
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 0.75rem;">
+                                <div style="background: linear-gradient(135deg, rgba(156, 39, 176, 0.2), rgba(156, 39, 176, 0.1)); border-radius: 12px; padding: 1rem; text-align: center; transition: transform 0.2s;">
+                                    <i class="fas fa-crown" style="color: #9C27B0; font-size: 1rem; margin-bottom: 0.35rem;"></i>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: #9C27B0; line-height: 1;">${(stats.highScore || 0).toLocaleString()}</div>
+                                    <div style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.35rem; text-transform: uppercase;">Best Score</div>
                                 </div>
-                                <div style="background: linear-gradient(135deg, rgba(156, 39, 176, 0.2), rgba(156, 39, 176, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
-                                    <i class="fas fa-clock" style="color: #9C27B0; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
-                                    <div style="font-size: 1.75rem; font-weight: bold; color: #9C27B0; line-height: 1;">${Math.floor((stats.totalTimePlayed || 0) / 60)}h</div>
-                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Play Time</div>
+                                <div style="background: linear-gradient(135deg, rgba(0, 188, 212, 0.2), rgba(0, 188, 212, 0.1)); border-radius: 12px; padding: 1rem; text-align: center; transition: transform 0.2s;">
+                                    <i class="fas fa-gamepad" style="color: #00BCD4; font-size: 1rem; margin-bottom: 0.35rem;"></i>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: #00BCD4; line-height: 1;">${stats.gamesPlayed || 0}</div>
+                                    <div style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.35rem; text-transform: uppercase;">Total Games</div>
+                                </div>
+                                <div style="background: linear-gradient(135deg, rgba(103, 58, 183, 0.2), rgba(103, 58, 183, 0.1)); border-radius: 12px; padding: 1rem; text-align: center; transition: transform 0.2s;">
+                                    <i class="fas fa-clock" style="color: #673AB7; font-size: 1rem; margin-bottom: 0.35rem;"></i>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: #673AB7; line-height: 1;">${Math.floor((stats.totalTimePlayed || 0) / 3600)}h</div>
+                                    <div style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.35rem; text-transform: uppercase;">Play Time</div>
                                 </div>
                             </div>
                         </div>

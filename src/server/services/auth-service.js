@@ -44,7 +44,8 @@ class AuthService {
                 },
                 stats: {
                     gamesPlayed: stats.games_played,
-                    totalMassEaten: stats.total_mass_eaten,
+                    gamesWon: stats.games_won || 0,
+                    gamesLost: stats.games_lost || 0,
                     totalPlayersEaten: stats.total_players_eaten,
                     totalTimePlayed: stats.total_playtime,
                     highScore: stats.highest_mass,
@@ -82,7 +83,8 @@ class AuthService {
             },
             stats: {
                 gamesPlayed: 0,
-                totalMassEaten: 0,
+                gamesWon: 0,
+                gamesLost: 0,
                 totalPlayersEaten: 0,
                 totalTimePlayed: 0,
                 highScore: 0,
