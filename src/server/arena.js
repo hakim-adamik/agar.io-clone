@@ -578,8 +578,8 @@ class Arena {
             // Clear any active escape timer
             this.clearEscapeTimer(currentPlayer.id);
 
-            // End game session if authenticated user (re-enabled with better error handling)
-            if (socket.sessionId && socket.userId) {
+            // End game session if authenticated user (disabled until session creation is fixed)
+            if (false && socket.sessionId && socket.userId) {
                 try {
                     const finalStats = {
                         userId: socket.userId,
@@ -748,8 +748,8 @@ class Arena {
                 // Countdown complete, handle escape rewards
                 this.clearEscapeTimer(player.id);
 
-                // End game session if authenticated user (on successful escape - WIN)
-                if (socket.sessionId && socket.userId) {
+                // End game session if authenticated user (disabled until session creation is fixed)
+                if (false && socket.sessionId && socket.userId) {
                     const finalStats = {
                         userId: socket.userId,
                         final_score: player.getScore ? player.getScore() : 0,
@@ -1001,9 +1001,9 @@ class Arena {
                     name: playerGotEaten.name,
                 });
 
-                // End game session if authenticated user (on death - LOSS)
+                // End game session if authenticated user (disabled until session creation is fixed)
                 const deadSocket = this.sockets[playerGotEaten.id];
-                if (deadSocket && deadSocket.sessionId && deadSocket.userId) {
+                if (false && deadSocket && deadSocket.sessionId && deadSocket.userId) {
                     const finalStats = {
                         userId: deadSocket.userId,
                         final_score: playerGotEaten.getScore ? playerGotEaten.getScore() : 0,

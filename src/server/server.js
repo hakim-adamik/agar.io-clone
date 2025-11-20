@@ -516,8 +516,10 @@ const addPlayerToArena = async (socket) => {
     // Store arena ID on socket BEFORE joining room
     socket.arenaId = arena.id;
 
-    // TODO: Fix session tracking - temporarily disabled to fix black screen issue
-    // Start game session if authenticated user (re-enabled with better error handling)
+    // TODO: Fix session tracking - temporarily disabled to prevent game start issues
+    // The startGameSession method is causing disconnects when it tries to clean up existing sessions
+    // Stats are still tracked on death/escape, but session creation is disabled
+    /*
     if (socket.userId) {
         try {
             const sessionId = await AuthService.startGameSession(socket.userId, arena.id, playerName);
@@ -528,6 +530,7 @@ const addPlayerToArena = async (socket) => {
             // Don't disconnect on session creation failure - game can continue without stats
         }
     }
+    */
 
     // Join Socket.io room
     socket.join(arena.id);
