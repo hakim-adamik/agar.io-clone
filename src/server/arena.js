@@ -197,6 +197,13 @@ class Arena {
             minPlayers: this.config.minPlayersToStart
         });
 
+        // If countdown is already in progress, notify the new player
+        if (this.state === 'STARTING' && this.currentCountdown !== undefined) {
+            socket.emit('countdownStart', {
+                seconds: this.currentCountdown
+            });
+        }
+
         // Update all waiting players
         this.updateWaitingRoom();
 
@@ -254,6 +261,7 @@ class Arena {
         console.log(`[ARENA ${this.id}] Starting countdown...`);
 
         let countdown = this.config.waitingRoomCountdown / 1000; // Convert to seconds
+        this.currentCountdown = countdown; // Track current countdown for late joiners
 
         // Send countdown start to all waiting players
         this.broadcastToWaitingRoom('countdownStart', {
@@ -263,6 +271,7 @@ class Arena {
         // Update countdown every second
         const countdownInterval = setInterval(() => {
             countdown--;
+            this.currentCountdown = countdown; // Update tracked countdown
 
             if (countdown > 0) {
                 this.broadcastToWaitingRoom('countdownUpdate', {
@@ -270,6 +279,7 @@ class Arena {
                 });
             } else {
                 clearInterval(countdownInterval);
+                this.currentCountdown = undefined; // Clear countdown tracking
                 this.startGame();
             }
         }, 1000);
@@ -297,6 +307,7 @@ class Arena {
 
         // Reset state
         this.state = 'WAITING';
+        this.currentCountdown = undefined; // Clear any countdown tracking
         this.waitingPlayers.clear();
 
         // Clear the map
@@ -469,6 +480,37 @@ class Arena {
                 name: currentPlayer.name,
             });
             this.lastActivityAt = Date.now();
+        });
+
+        // Leave waiting room handler
+        socket.on("leaveWaitingRoom", () => {
+            if (this.waitingPlayers.has(socket.id)) {
+                this.waitingPlayers.delete(socket.id);
+                console.log(
+                    `[ARENA ${this.id}] Player ${currentPlayer.name} left waiting room by choice. Remaining: ${this.waitingPlayers.size}`
+                );
+
+                // Update waiting room
+                this.updateWaitingRoom();
+
+                // If we're in countdown and drop below minimum, cancel countdown
+                if (this.state === 'STARTING' && !this.hasMinimumPlayers()) {
+                    if (this.countdownTimer) {
+                        clearInterval(this.countdownTimer);
+                        this.countdownTimer = null;
+                    }
+                    this.state = 'WAITING';
+                    this.broadcastToWaitingRoom('countdownCancelled', {
+                        reason: 'Not enough players',
+                        playersWaiting: this.waitingPlayers.size,
+                        minPlayers: this.config.minPlayersToStart
+                    });
+                    console.log(`[ARENA ${this.id}] Countdown cancelled - player left waiting room`);
+                }
+
+                // Disconnect the socket to trigger cleanup
+                socket.disconnect();
+            }
         });
 
         // Ping check
