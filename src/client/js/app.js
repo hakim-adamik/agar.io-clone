@@ -225,8 +225,8 @@ function startGame(type) {
     global.screen.height = window.innerHeight;
 
 
-    // Function to set up seamless background music
-    function setupBackgroundMusic() {
+    // Function to set up seamless background music (made global for socket events)
+    window.setupBackgroundMusic = function() {
         try {
             const backgroundMusic = document.getElementById('background_music');
             if (backgroundMusic && global.musicEnabled) {
@@ -246,7 +246,11 @@ function startGame(type) {
 
                 // Add seamless looping event listener to prevent gaps
                 backgroundMusic.addEventListener('ended', window.musicLoopHandler);
-                backgroundMusic.play().catch(console.log);
+
+                // Don't play if in waiting room
+                if (!window.inWaitingRoom) {
+                    backgroundMusic.play().catch(console.log);
+                }
             }
         } catch (e) {
             console.log('Background music not available:', e);
@@ -267,15 +271,13 @@ function startGame(type) {
             document.getElementById("gameAreaWrapper").style.opacity = 1;
         }, 50);
 
-            // Start background music if enabled (after preferences are loaded)
-            setupBackgroundMusic();
+            // Don't start music here - will start when game actually begins
     } else {
         // Fallback for old flow
         document.getElementById("startMenuWrapper").style.maxHeight = "0px";
         document.getElementById("gameAreaWrapper").style.opacity = 1;
 
-            // Start background music (fallback flow) if enabled
-            setupBackgroundMusic();
+            // Don't start music here - will start when game actually begins
         }
 
         // Show the player score display when game starts
@@ -633,13 +635,15 @@ function showCountdownUI(seconds) {
             text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
             z-index: 1000;
             font-family: 'Ubuntu', sans-serif;
-            width: 200px;
-            height: 200px;
+            width: 300px;
+            height: 300px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0;
             padding: 0;
+            line-height: 1;
+            box-sizing: border-box;
         `;
         document.body.appendChild(countdown);
     }
@@ -648,6 +652,22 @@ function showCountdownUI(seconds) {
 
     // Add pulse animation
     countdown.style.animation = 'pulse 1s ease-in-out';
+
+    // Play escape countdown sound when countdown starts (only on first call)
+    if (seconds === 3 && global.soundEnabled) {
+        try {
+            const escapeSound = document.getElementById('escape_sound');
+            if (escapeSound) {
+                escapeSound.volume = 0.5;
+                escapeSound.currentTime = 0;
+                escapeSound.play().catch(function(e) {
+                    console.log('Countdown sound playback failed:', e);
+                });
+            }
+        } catch (e) {
+            console.log('Countdown sound not available:', e);
+        }
+    }
 }
 
 function updateCountdownUI(seconds) {
@@ -665,7 +685,11 @@ function updateCountdownUI(seconds) {
         countdown.style.color = '#ff6600';
     } else if (seconds === 0) {
         countdown.style.color = '#ff0000';
-        countdown.style.fontSize = '150px';
+        // Keep the same font size to prevent shifting
+        countdown.style.fontSize = '120px';
+        // Make "GO!" stand out with different styling instead
+        countdown.style.fontWeight = '900';
+        countdown.style.letterSpacing = '10px';
     }
 
     // Re-trigger animation
@@ -1219,6 +1243,14 @@ function setupSocket(socket) {
             console.log(`[CLIENT] Joined arena: ${gameSizes.arenaId}`);
         }
 
+        // Start music only if not flagged for waiting room (direct spawn into active game)
+        // We check a small delay to see if waitingRoom event comes immediately after
+        setTimeout(function() {
+            if (!window.inWaitingRoom && global.gameStart) {
+                window.setupBackgroundMusic();
+            }
+        }, 100);
+
         // Reset cell animations for new game session
         cellAnimations.reset();
 
@@ -1649,6 +1681,9 @@ function setupSocket(socket) {
         window.countdownActive = false;
         hideWaitingRoomUI();
         hideCountdownUI();
+
+        // Start background music now that game is actually starting
+        window.setupBackgroundMusic();
 
         // Request spawn
         socket.emit("respawn");
