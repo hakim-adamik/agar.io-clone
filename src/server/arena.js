@@ -133,8 +133,7 @@ class Arena {
     addPlayer(socket) {
         const currentPlayer = new mapUtils.playerUtils.Player(socket.id, this.config);
 
-        // Initialize heartbeat immediately to prevent premature disconnect
-        currentPlayer.setLastHeartbeat();
+        // Heartbeat initialization removed - no longer tracking inactivity
 
         socket.on("gotit", (clientPlayerData) => {
             console.log(
@@ -222,8 +221,7 @@ class Arena {
             this.config.defaultPlayerMass
         );
 
-        // Reset heartbeat after init
-        player.setLastHeartbeat();
+        // Heartbeat tracking removed - no longer needed
 
         if (this.map.players.findIndexByID(socket.id) > -1) {
             console.log(
@@ -334,7 +332,7 @@ class Arena {
                 this.generateSpawnpoint(),
                 this.config.defaultPlayerMass
             );
-            player.setLastHeartbeat();
+            // Heartbeat tracking removed - no longer needed
 
             // Add to active game
             this.sockets[socketId] = socket;
@@ -526,7 +524,7 @@ class Arena {
 
         // Movement handler (0)
         socket.on("0", (target) => {
-            currentPlayer.lastHeartbeat = new Date().getTime();
+            // Heartbeat tracking removed - no longer needed
             if (target.x !== currentPlayer.x || target.y !== currentPlayer.y) {
                 currentPlayer.target = target;
             }
@@ -784,20 +782,8 @@ class Arena {
      * Tick a single player (physics, eating, collisions)
      */
     tickPlayer(currentPlayer) {
-        // Check heartbeat
-        if (
-            currentPlayer.lastHeartbeat <
-            new Date().getTime() - this.config.maxHeartbeatInterval
-        ) {
-            this.sockets[currentPlayer.id].emit(
-                "kick",
-                "Last heartbeat received over " +
-                    this.config.maxHeartbeatInterval +
-                    " ago."
-            );
-            this.sockets[currentPlayer.id].disconnect();
-            return;
-        }
+        // Inactivity kick removed - players stay until eaten or escaped
+        // This allows players to take breaks without losing progress
 
         // Move player
         currentPlayer.move(
