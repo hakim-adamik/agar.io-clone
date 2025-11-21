@@ -41,7 +41,7 @@ class ArenaManager {
             const arena = this.arenas.get(preferredArenaId);
             if (!arena.isFull()) {
                 console.log(
-                    `[ARENA MANAGER] Assigning to preferred arena ${preferredArenaId}`
+                    `[ARENA MANAGER] Assigning to preferred arena ${preferredArenaId} (state: ${arena.state})`
                 );
                 return arena;
             }
@@ -50,18 +50,28 @@ class ArenaManager {
             );
         }
 
-        // 2. Find any non-full arena
+        // 2. Prioritize WAITING arenas that need more players
         for (const [id, arena] of this.arenas) {
-            if (!arena.isFull()) {
+            if (arena.state === 'WAITING' && !arena.isFull()) {
                 console.log(
-                    `[ARENA MANAGER] Assigning to available arena ${id}`
+                    `[ARENA MANAGER] Assigning to WAITING arena ${id} (${arena.getWaitingPlayerCount()}/${arena.config.minPlayersToStart} players)`
                 );
                 return arena;
             }
         }
 
-        // 3. Create new arena if all are full
-        console.log("[ARENA MANAGER] All arenas full, creating new arena");
+        // 3. Find any ACTIVE non-full arena
+        for (const [id, arena] of this.arenas) {
+            if (arena.state === 'ACTIVE' && !arena.isFull()) {
+                console.log(
+                    `[ARENA MANAGER] Assigning to ACTIVE arena ${id}`
+                );
+                return arena;
+            }
+        }
+
+        // 4. Create new arena if all are full or no suitable arena found
+        console.log("[ARENA MANAGER] No suitable arena found, creating new WAITING arena");
         return this.createArena();
     }
 
@@ -82,12 +92,12 @@ class ArenaManager {
         const arenaId = `arena_${this.nextArenaId++}`;
         const arena = new Arena(arenaId, this.config, this.io);
 
-        // Start arena game loops
-        arena.start();
+        // Don't start game loops yet - arena is in WAITING state
+        // Game loops will start when minimum players join
 
         this.arenas.set(arenaId, arena);
         console.log(
-            `[ARENA MANAGER] Created ${arenaId}. Total arenas: ${this.arenas.size}`
+            `[ARENA MANAGER] Created ${arenaId} in WAITING state. Total arenas: ${this.arenas.size}`
         );
 
         return arena;

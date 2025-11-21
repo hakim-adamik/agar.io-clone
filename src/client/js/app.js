@@ -4,6 +4,7 @@ var Canvas = require("./canvas");
 var global = require("./global");
 var PredictionSystem = require("./prediction");
 var CellAnimations = require("./cell-animations");
+var WaitingRoom = require("./waiting-room");
 
 var playerNameInput = document.getElementById("playerNameInput");
 var socket;
@@ -21,9 +22,9 @@ if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ||
     navigator.maxTouchPoints > 0) {
     global.mobile = true;
     document.body.classList.add('mobile-device');
-    console.log('Mobile device detected - UI optimized for touch');
+    // Mobile device detected - UI optimized for touch
 } else {
-    console.log('Desktop device detected - UI optimized for mouse');
+    // Desktop device detected - UI optimized for mouse
 }
 
 function generateGuestName() {
@@ -48,7 +49,7 @@ function applyDefaultGameSettings() {
     // Try to load user preferences from server if authenticated
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
-        console.log('Loading preferences for user:', privyUser.dbUserId);
+        // Loading preferences for user
         loadUserPreferences(privyUser.dbUserId);
     } else {
         // Fall back to default settings if not authenticated
@@ -74,7 +75,7 @@ function loadUserPreferences(userId) {
 
 // Apply user preferences from server
 function applyUserPreferences(prefs) {
-    console.log("Applying user preferences:", prefs);
+    // Applying user preferences
 
     var DARK = "#111111";
     var LIGHT = "#f2fbff";
@@ -225,8 +226,8 @@ function startGame(type) {
     global.screen.height = window.innerHeight;
 
 
-    // Function to set up seamless background music
-    function setupBackgroundMusic() {
+    // Function to set up seamless background music (made global for socket events)
+    window.setupBackgroundMusic = function() {
         try {
             const backgroundMusic = document.getElementById('background_music');
             if (backgroundMusic && global.musicEnabled) {
@@ -246,7 +247,11 @@ function startGame(type) {
 
                 // Add seamless looping event listener to prevent gaps
                 backgroundMusic.addEventListener('ended', window.musicLoopHandler);
-                backgroundMusic.play().catch(console.log);
+
+                // Don't play if in waiting room
+                if (!window.inWaitingRoom) {
+                    backgroundMusic.play().catch(console.log);
+                }
             }
         } catch (e) {
             console.log('Background music not available:', e);
@@ -267,15 +272,13 @@ function startGame(type) {
             document.getElementById("gameAreaWrapper").style.opacity = 1;
         }, 50);
 
-            // Start background music if enabled (after preferences are loaded)
-            setupBackgroundMusic();
+            // Don't start music here - will start when game actually begins
     } else {
         // Fallback for old flow
         document.getElementById("startMenuWrapper").style.maxHeight = "0px";
         document.getElementById("gameAreaWrapper").style.opacity = 1;
 
-            // Start background music (fallback flow) if enabled
-            setupBackgroundMusic();
+            // Don't start music here - will start when game actually begins
         }
 
         // Show the player score display when game starts
@@ -286,11 +289,11 @@ function startGame(type) {
 
         // ALWAYS create a new socket connection when starting the game
         // Even if socket exists, we need a fresh connection after death
-        console.log("[Socket] Current socket state:", socket ? "exists" : "null");
+        // Check current socket state
 
         // Clean up any existing socket first
         if (socket) {
-            console.log("[Socket] Cleaning up existing socket before creating new one");
+            // Cleaning up existing socket before creating new one
             socket.disconnect();
             socket = null;
             window.canvas.socket = null;
@@ -329,7 +332,7 @@ function startGame(type) {
 
             // Clean up any existing socket connection
             if (socket) {
-                console.log("[Socket] Cleaning up previous connection");
+                // Cleaning up previous connection
                 socket.disconnect();
                 socket = null;
                 window.canvas.socket = null;
@@ -371,10 +374,10 @@ function startGame(type) {
     // Load user preferences when starting the game
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
-        console.log('Loading user preferences for game start, userId:', privyUser.dbUserId);
+        // Loading user preferences for game start
         loadUserPreferences(privyUser.dbUserId).then(continueGameStart);
     } else {
-        console.log('No authenticated user, applying default settings');
+        // No authenticated user, applying default settings
         applyConfigDefaults();
         continueGameStart();
     }
@@ -441,6 +444,31 @@ function animateScore() {
     } else {
         scoreAnimationFrame = null;
     }
+}
+
+// Leave waiting room function (must be global for button onclick)
+window.leaveWaitingRoom = leaveWaitingRoom;
+
+// Leave waiting room function
+function leaveWaitingRoom() {
+    // Leaving waiting room
+
+    // Tell server we're leaving the waiting room
+    if (socket) {
+        socket.emit('leaveWaitingRoom');
+    }
+
+    // Reset waiting room state
+    window.inWaitingRoom = false;
+    window.countdownActive = false;
+
+    // Hide UI
+    WaitingRoom.hideWaitingRoomUI();
+    WaitingRoom.hideCountdownUI();
+
+    // Return to landing page
+    cleanupGame();
+    returnToLanding("You left the waiting room");
 }
 
 // Setup leaderboard toggle for all devices
@@ -738,7 +766,7 @@ var graph = c.getContext("2d");
                 splitBtn.addEventListener(eventType, function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Split button pressed - emitting event 2 (split)');
+                    // Split button pressed - emitting event 2 (split)
                     if (global.soundEnabled) {
                         document.getElementById('split_cell').play();
                     }
@@ -748,7 +776,7 @@ var graph = c.getContext("2d");
                     }
                 }, {passive: false});
             });
-            console.log('Split button handler attached');
+            // Split button handler attached
         }
 
         // Exit button
@@ -758,7 +786,7 @@ var graph = c.getContext("2d");
                 exitBtn.addEventListener(eventType, function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Exit button pressed');
+                    // Exit button pressed
                     if (global.gameStart) {
                         // Play escape sound
                         if (global.soundEnabled) {
@@ -779,7 +807,7 @@ var graph = c.getContext("2d");
                     }
                 }, {passive: false});
             });
-            console.log('Exit button handler attached');
+            // Exit button handler attached
         }
     }
 })();
@@ -910,7 +938,7 @@ function handleDisconnect() {
 function setupSocket(socket) {
     // Connection event handlers for better user feedback
     socket.on("connect", function() {
-        console.log("[Socket] Connected successfully");
+        // Socket connected successfully
         // Hide any connection error messages
         if (global.connectionErrorShown) {
             global.connectionErrorShown = false;
@@ -918,7 +946,7 @@ function setupSocket(socket) {
     });
 
     socket.on("reconnect", function(attemptNumber) {
-        console.log("[Socket] Reconnected after " + attemptNumber + " attempts");
+        // Reconnected after attempts
         // Optionally show success message briefly
         if (global.gameStart) {
             // Reset animations on reconnect to ensure clean state
@@ -929,7 +957,7 @@ function setupSocket(socket) {
     });
 
     socket.on("reconnect_attempt", function(attemptNumber) {
-        console.log("[Socket] Reconnection attempt #" + attemptNumber);
+        // Reconnection attempt
         if (!global.connectionErrorShown && global.gameStart) {
             render.drawErrorMessage("Reconnecting...", graph, global.screen);
             global.connectionErrorShown = true;
@@ -937,7 +965,7 @@ function setupSocket(socket) {
     });
 
     socket.on("reconnect_failed", function() {
-        console.log("[Socket] Reconnection failed after all attempts");
+        // Reconnection failed after all attempts
         render.drawErrorMessage("Connection Lost - Please Refresh", graph, global.screen);
     });
 
@@ -957,13 +985,13 @@ function setupSocket(socket) {
     });
 
     socket.on("disconnect", function(reason) {
-        console.log("[Socket] Disconnected:", reason);
+        // Socket disconnected
         // Only show disconnect for unexpected disconnects (not user-initiated)
         if (reason === "io server disconnect" || reason === "ping timeout") {
             handleDisconnect();
         } else if (reason === "transport close" || reason === "transport error") {
             // Let automatic reconnection handle these
-            console.log("[Socket] Connection issue, will attempt reconnection");
+            // Connection issue, will attempt reconnection
         }
     });
 
@@ -981,8 +1009,16 @@ function setupSocket(socket) {
         // Store arena ID for multi-arena support
         if (gameSizes.arenaId) {
             global.arenaId = gameSizes.arenaId;
-            console.log(`[CLIENT] Joined arena: ${gameSizes.arenaId}`);
+            // Joined arena
         }
+
+        // Start music only if not flagged for waiting room (direct spawn into active game)
+        // We check a small delay to see if waitingRoom event comes immediately after
+        setTimeout(function() {
+            if (!window.inWaitingRoom && global.gameStart) {
+                window.setupBackgroundMusic();
+            }
+        }, 100);
 
         // Reset cell animations for new game session
         cellAnimations.reset();
@@ -1013,7 +1049,7 @@ function setupSocket(socket) {
 
     socket.on("playerEaten", (data) => {
         // Play player eaten sound when current player eats another player
-        console.log(`🍽️ Player eaten: ${data.eatenPlayerName} (+${data.massGained} mass)`);
+        // Player eaten
 
         if (global.soundEnabled) {
             try {
@@ -1301,18 +1337,18 @@ function setupSocket(socket) {
 
     // Escape event handlers (server-authoritative)
     socket.on("escapeStarted", function (data) {
-        console.log("Escape started, countdown:", data.countdown);
+        // Escape started
         exitCountdownActive = true;
         exitCountdownValue = data.countdown;
     });
 
     socket.on("escapeUpdate", function (data) {
-        console.log("Escape countdown update:", data.countdown);
+        // Escape countdown update
         exitCountdownValue = data.countdown;
     });
 
     socket.on("escapeComplete", function () {
-        console.log("Escape complete");
+        // Escape complete
         exitCountdownActive = false;
         exitCountdownValue = 0;
 
@@ -1337,7 +1373,7 @@ function setupSocket(socket) {
     });
 
     socket.on("escapeCancelled", function () {
-        console.log("Escape cancelled (player died during countdown)");
+        // Escape cancelled (player died during countdown)
         exitCountdownActive = false;
         exitCountdownValue = 4;
 
@@ -1351,6 +1387,56 @@ function setupSocket(socket) {
         } catch (e) {
             console.log('Error stopping escape sound:', e);
         }
+    });
+
+    // Waiting room event handlers
+    socket.on("waitingRoom", function (data) {
+        // Entered waiting room
+        window.inWaitingRoom = true;
+        window.waitingRoomData = data;
+
+        // Show waiting room UI
+        WaitingRoom.showWaitingRoomUI(data);
+    });
+
+    socket.on("waitingRoomUpdate", function (data) {
+        // Waiting room update
+        WaitingRoom.updateWaitingRoomUI(data);
+    });
+
+    socket.on("countdownStart", function (data) {
+        // Countdown started
+        window.countdownActive = true;
+        WaitingRoom.showCountdownUI(data.seconds);
+    });
+
+    socket.on("countdownUpdate", function (data) {
+        WaitingRoom.updateCountdownUI(data.seconds);
+    });
+
+    socket.on("countdownCancelled", function (data) {
+        // Countdown cancelled
+        window.countdownActive = false;
+        WaitingRoom.hideCountdownUI();
+        WaitingRoom.showWaitingRoomUI(window.waitingRoomData);
+    });
+
+    socket.on("gameStart", function (data) {
+        // Game starting
+        window.inWaitingRoom = false;
+        window.countdownActive = false;
+        WaitingRoom.hideWaitingRoomUI();
+        WaitingRoom.hideCountdownUI();
+
+        // Start background music now that game is actually starting
+        window.setupBackgroundMusic();
+
+        // Request spawn
+        socket.emit("respawn");
+    });
+
+    socket.on("arenaStarted", function (data) {
+        // Arena has started
     });
 }
 
@@ -1774,7 +1860,7 @@ function exitGame() {
     // Send escape request to server
     socket.emit("escapeRequest");
 
-    console.log("Escape request sent to server");
+    // Escape request sent to server
 }
 
 function cleanupGame() {
@@ -1979,7 +2065,7 @@ function requestMobileFullscreen() {
             window.scrollTo(0, 1);
         }, 100);
 
-        console.log('Fullscreen requested for mobile');
+        // Fullscreen requested for mobile
     } catch (e) {
         console.log('Could not request fullscreen:', e);
     }
@@ -2061,8 +2147,8 @@ function displayLastScore(isDeath = false) {
 
 // Initialize exit functionality - Keyboard ESC key trigger
 document.addEventListener("keydown", function (event) {
-    // Check if ESC key is pressed and game is active
-    if (event.key === "Escape" && global.gameStart) {
+    // Check if ESC key is pressed and game is active (and not in waiting room)
+    if (event.key === "Escape" && global.gameStart && !window.inWaitingRoom) {
         event.preventDefault();
         // Play escape sound directly (helper function not in global scope)
         if (global.soundEnabled) {

@@ -26,6 +26,11 @@ class Arena {
         this.createdAt = Date.now();
         this.lastActivityAt = Date.now();
 
+        // Arena state management
+        this.state = 'WAITING'; // WAITING, STARTING, ACTIVE, CLOSING
+        this.waitingPlayers = new Map(); // socketId -> {socket, player, ready}
+        this.countdownTimer = null; // Timer for countdown when starting
+
         // Game state (isolated per arena)
         this.map = new mapUtils.Map(config);
         this.sockets = {}; // Players in THIS arena
@@ -64,13 +69,33 @@ class Arena {
      * Check if arena is empty
      */
     isEmpty() {
-        return this.getPlayerCount() === 0 && this.spectators.length === 0;
+        return this.getPlayerCount() === 0 && this.spectators.length === 0 && this.waitingPlayers.size === 0;
     }
 
     /**
-     * Start arena game loops
+     * Get waiting player count
+     */
+    getWaitingPlayerCount() {
+        return this.waitingPlayers.size;
+    }
+
+    /**
+     * Check if we have minimum players to start
+     */
+    hasMinimumPlayers() {
+        return this.waitingPlayers.size >= this.config.minPlayersToStart;
+    }
+
+
+    /**
+     * Start arena game loops (only called when transitioning from WAITING to ACTIVE)
      */
     start() {
+        if (this.state !== 'WAITING' && this.state !== 'STARTING') {
+            console.log(`[ARENA ${this.id}] Cannot start - already in state: ${this.state}`);
+            return;
+        }
+
         // Game tick (physics, collisions) - 60 FPS
         this.tickInterval = setInterval(() => {
             this.tickGame();
@@ -86,7 +111,8 @@ class Arena {
             this.sendUpdates();
         }, 1000 / this.config.networkUpdateFactor);
 
-        console.log(`[ARENA ${this.id}] Started game loops`);
+        this.state = 'ACTIVE';
+        console.log(`[ARENA ${this.id}] Started game loops - Arena is now ACTIVE`);
     }
 
     /**
@@ -96,6 +122,7 @@ class Arena {
         if (this.tickInterval) clearInterval(this.tickInterval);
         if (this.gameloopInterval) clearInterval(this.gameloopInterval);
         if (this.updateInterval) clearInterval(this.updateInterval);
+        if (this.countdownTimer) clearInterval(this.countdownTimer);
 
         console.log(`[ARENA ${this.id}] Stopped game loops`);
     }
@@ -111,23 +138,8 @@ class Arena {
 
         socket.on("gotit", (clientPlayerData) => {
             console.log(
-                `[ARENA ${this.id}] Player ${clientPlayerData.name} connecting!`
+                `[ARENA ${this.id}] Player ${clientPlayerData.name} connecting! Arena state: ${this.state}`
             );
-            currentPlayer.init(
-                this.generateSpawnpoint(),
-                this.config.defaultPlayerMass
-            );
-
-            // Reset heartbeat after init
-            currentPlayer.setLastHeartbeat();
-
-            if (this.map.players.findIndexByID(socket.id) > -1) {
-                console.log(
-                    `[ARENA ${this.id}] Player ID already connected, kicking.`
-                );
-                socket.disconnect();
-                return;
-            }
 
             if (!util.validNick(clientPlayerData.name)) {
                 socket.emit("kick", "Invalid username.");
@@ -135,15 +147,25 @@ class Arena {
                 return;
             }
 
-            this.sockets[socket.id] = socket;
             const sanitizedName = clientPlayerData.name.replace(
                 /(<([^>]+)>)/gi,
                 ""
             );
             clientPlayerData.name = sanitizedName;
-
             currentPlayer.clientProvidedData(clientPlayerData);
-            this.map.players.pushNew(currentPlayer);
+
+            // If arena is WAITING, add player to waiting room
+            if (this.state === 'WAITING') {
+                this.addPlayerToWaitingRoom(socket, currentPlayer);
+            }
+            // If arena is ACTIVE, add player directly to game
+            else if (this.state === 'ACTIVE') {
+                this.addPlayerToActiveGame(socket, currentPlayer);
+            }
+            // If arena is STARTING, add to waiting room (they'll spawn with others)
+            else if (this.state === 'STARTING') {
+                this.addPlayerToWaitingRoom(socket, currentPlayer);
+            }
 
             // Broadcast only to THIS arena
             this.broadcastToArena("playerJoin", { name: currentPlayer.name });
@@ -155,6 +177,211 @@ class Arena {
         });
 
         this.setupPlayerEvents(socket, currentPlayer);
+    }
+
+    /**
+     * Add player to waiting room
+     */
+    addPlayerToWaitingRoom(socket, player) {
+        // Add to waiting players
+        this.waitingPlayers.set(socket.id, {
+            socket: socket,
+            player: player,
+            ready: false
+        });
+
+        // Send waiting room status to player
+        socket.emit('waitingRoom', {
+            arenaId: this.id,
+            playersWaiting: this.waitingPlayers.size,
+            minPlayers: this.config.minPlayersToStart
+        });
+
+        // If countdown is already in progress, notify the new player
+        if (this.state === 'STARTING' && this.currentCountdown !== undefined) {
+            socket.emit('countdownStart', {
+                seconds: this.currentCountdown
+            });
+        }
+
+        // Update all waiting players
+        this.updateWaitingRoom();
+
+        console.log(`[ARENA ${this.id}] Player added to waiting room. Waiting: ${this.waitingPlayers.size}/${this.config.minPlayersToStart}`);
+
+        // Check if we can start the game
+        this.checkStartConditions();
+    }
+
+    /**
+     * Add player to active game
+     */
+    addPlayerToActiveGame(socket, player) {
+        player.init(
+            this.generateSpawnpoint(),
+            this.config.defaultPlayerMass
+        );
+
+        // Reset heartbeat after init
+        player.setLastHeartbeat();
+
+        if (this.map.players.findIndexByID(socket.id) > -1) {
+            console.log(
+                `[ARENA ${this.id}] Player ID already connected, kicking.`
+            );
+            socket.disconnect();
+            return;
+        }
+
+        this.sockets[socket.id] = socket;
+        this.map.players.pushNew(player);
+
+        console.log(`[ARENA ${this.id}] Player spawned directly in active arena`);
+    }
+
+    /**
+     * Check if we can start the arena
+     */
+    checkStartConditions() {
+        if (this.state !== 'WAITING') return;
+
+        // Check if we have minimum players
+        if (this.hasMinimumPlayers()) {
+            this.startCountdown();
+        }
+    }
+
+    /**
+     * Start countdown to game start
+     */
+    startCountdown() {
+        if (this.state !== 'WAITING') return;
+
+        this.state = 'STARTING';
+        console.log(`[ARENA ${this.id}] Starting countdown...`);
+
+        let countdown = this.config.waitingRoomCountdown / 1000; // Convert to seconds
+        this.currentCountdown = countdown; // Track current countdown for late joiners
+
+        // Send countdown start to all waiting players
+        this.broadcastToWaitingRoom('countdownStart', {
+            seconds: countdown
+        });
+
+        // Update countdown every second
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            this.currentCountdown = countdown; // Update tracked countdown
+
+            if (countdown > 0) {
+                this.broadcastToWaitingRoom('countdownUpdate', {
+                    seconds: countdown
+                });
+            } else {
+                clearInterval(countdownInterval);
+                this.currentCountdown = undefined; // Clear countdown tracking
+                this.startGame();
+            }
+        }, 1000);
+
+        this.countdownTimer = countdownInterval;
+    }
+
+    /**
+     * Reset arena to waiting state when all players leave
+     */
+    resetToWaitingState() {
+        // Stop game loops
+        if (this.tickInterval) {
+            clearInterval(this.tickInterval);
+            this.tickInterval = null;
+        }
+        if (this.gameloopInterval) {
+            clearInterval(this.gameloopInterval);
+            this.gameloopInterval = null;
+        }
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
+
+        // Reset state
+        this.state = 'WAITING';
+        this.currentCountdown = undefined; // Clear any countdown tracking
+        this.waitingPlayers.clear();
+
+        // Clear the map
+        this.map = new mapUtils.Map(this.config);
+
+        console.log(`[ARENA ${this.id}] Reset to WAITING state`);
+    }
+
+    /**
+     * Start the game for all waiting players
+     */
+    startGame() {
+        console.log(`[ARENA ${this.id}] Starting game with ${this.waitingPlayers.size} players`);
+
+        // Start game loops
+        this.start();
+
+        // Spawn all waiting players
+        for (const [socketId, waitingPlayer] of this.waitingPlayers) {
+            const { socket, player } = waitingPlayer;
+
+            // Initialize player position and state
+            player.init(
+                this.generateSpawnpoint(),
+                this.config.defaultPlayerMass
+            );
+            player.setLastHeartbeat();
+
+            // Add to active game
+            this.sockets[socketId] = socket;
+            this.map.players.pushNew(player);
+
+            // Send game start signal to player
+            socket.emit('gameStart', {
+                arenaId: this.id,
+                gameWidth: this.config.gameWidth,
+                gameHeight: this.config.gameHeight
+            });
+        }
+
+        // Clear waiting room
+        this.waitingPlayers.clear();
+
+        // Broadcast game started
+        this.broadcastToArena('arenaStarted', {
+            playerCount: this.map.players.data.length
+        });
+
+        console.log(`[ARENA ${this.id}] Game started successfully`);
+    }
+
+    /**
+     * Update waiting room status for all waiting players
+     */
+    updateWaitingRoom() {
+        const status = {
+            playersWaiting: this.waitingPlayers.size,
+            minPlayers: this.config.minPlayersToStart,
+            players: Array.from(this.waitingPlayers.values()).map(p => ({
+                name: p.player.name,
+                ready: p.ready
+            }))
+        };
+
+        this.broadcastToWaitingRoom('waitingRoomUpdate', status);
+    }
+
+    /**
+     * Broadcast to waiting room players
+     */
+    broadcastToWaitingRoom(event, data) {
+        for (const [socketId, waitingPlayer] of this.waitingPlayers) {
+            waitingPlayer.socket.emit(event, data);
+        }
     }
 
     /**
@@ -192,6 +419,35 @@ class Arena {
 
         // Disconnect handler
         socket.on("disconnect", async () => {
+            // Check if player is in waiting room
+            if (this.waitingPlayers.has(socket.id)) {
+                this.waitingPlayers.delete(socket.id);
+                console.log(
+                    `[ARENA ${this.id}] Player ${currentPlayer.name} left waiting room. Remaining: ${this.waitingPlayers.size}`
+                );
+
+                // Update waiting room
+                this.updateWaitingRoom();
+
+                // If we're in countdown and drop below minimum, cancel countdown
+                if (this.state === 'STARTING' && !this.hasMinimumPlayers()) {
+                    if (this.countdownTimer) {
+                        clearInterval(this.countdownTimer);
+                        this.countdownTimer = null;
+                    }
+                    this.state = 'WAITING';
+                    this.broadcastToWaitingRoom('countdownCancelled', {
+                        reason: 'Not enough players',
+                        playersWaiting: this.waitingPlayers.size,
+                        minPlayers: this.config.minPlayersToStart
+                    });
+                    console.log(`[ARENA ${this.id}] Countdown cancelled - not enough players`);
+                }
+
+                this.lastActivityAt = Date.now();
+                return;
+            }
+
             // Clear any active escape timer
             this.clearEscapeTimer(currentPlayer.id);
 
@@ -218,12 +474,43 @@ class Arena {
             this.map.players.removePlayerByID(currentPlayer.id);
             delete this.sockets[socket.id];
             console.log(
-                `[ARENA ${this.id}] User ${currentPlayer.name} disconnected`
+                `[ARENA ${this.id}] User ${currentPlayer.name} disconnected from active game`
             );
             this.broadcastToArena("playerDisconnect", {
                 name: currentPlayer.name,
             });
             this.lastActivityAt = Date.now();
+        });
+
+        // Leave waiting room handler
+        socket.on("leaveWaitingRoom", () => {
+            if (this.waitingPlayers.has(socket.id)) {
+                this.waitingPlayers.delete(socket.id);
+                console.log(
+                    `[ARENA ${this.id}] Player ${currentPlayer.name} left waiting room by choice. Remaining: ${this.waitingPlayers.size}`
+                );
+
+                // Update waiting room
+                this.updateWaitingRoom();
+
+                // If we're in countdown and drop below minimum, cancel countdown
+                if (this.state === 'STARTING' && !this.hasMinimumPlayers()) {
+                    if (this.countdownTimer) {
+                        clearInterval(this.countdownTimer);
+                        this.countdownTimer = null;
+                    }
+                    this.state = 'WAITING';
+                    this.broadcastToWaitingRoom('countdownCancelled', {
+                        reason: 'Not enough players',
+                        playersWaiting: this.waitingPlayers.size,
+                        minPlayers: this.config.minPlayersToStart
+                    });
+                    console.log(`[ARENA ${this.id}] Countdown cancelled - player left waiting room`);
+                }
+
+                // Disconnect the socket to trigger cleanup
+                socket.disconnect();
+            }
         });
 
         // Ping check
@@ -659,6 +946,10 @@ class Arena {
                 this.config.defaultPlayerMass,
                 this.config.minMassLoss
             );
+        } else if (this.state === 'ACTIVE' && this.getPlayerCount() === 0) {
+            // If arena is active but has no players, reset it to WAITING state
+            console.log(`[ARENA ${this.id}] No players remaining, resetting to WAITING state`);
+            this.resetToWaitingState();
         }
 
         this.map.balanceMass(
