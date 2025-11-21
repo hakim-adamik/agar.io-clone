@@ -9,23 +9,46 @@ exports.playerUtils = require('./player');
 
 exports.Map = class {
     constructor(config) {
-        this.food = new exports.foodUtils.FoodManager(config.foodMass, config.foodUniformDisposition);
+        this.food = new exports.foodUtils.FoodManager(config.massUnit, config.foodUniformDisposition);
         this.viruses = new exports.virusUtils.VirusManager(config.virus);
         this.massFood = new exports.massFoodUtils.MassFoodManager();
         this.players = new exports.playerUtils.PlayerManager();
+
+        // Initialize food reserve at 0 - filled only by player stakes and cell decay
+        this.foodReserve = 0;
+
+        // Track last food generation time for fixed frequency generation
+        this.lastFoodGenerationTime = Date.now();
+        this.foodGenerationInterval = config.foodGenerationInterval; // Generate food at fixed intervals
+        this.foodGenerationBatchMass = config.foodGenerationBatchMass; // Max mass per batch
+        this.foodTarget = config.foodTarget; // Target number of food items on map
     }
 
-    balanceMass(foodMass, gameMass, maxFood, maxVirus) {
-        const totalMass = this.food.data.length * foodMass + this.players.getTotalMass();
+    balanceMass(massUnit, maxVirus) {
+        // With the reserve system, food count is naturally regulated by available reserve
+        // Generate food on a fixed 2-second frequency
+        const now = Date.now();
+        const timeSinceLastGeneration = now - this.lastFoodGenerationTime;
 
-        const massDiff = gameMass - totalMass;
-        const foodFreeCapacity = maxFood - this.food.data.length;
-        const foodDiff = Math.min(parseInt(massDiff / foodMass), foodFreeCapacity);
-        if (foodDiff > 0) {
-            this.food.addNew(foodDiff);
-        } else if (foodDiff && foodFreeCapacity !== maxFood) {
-            this.food.removeExcess(-foodDiff);
+        if (timeSinceLastGeneration >= this.foodGenerationInterval && this.foodReserve > 0) {
+            // Generate food in mass batches (not count-based)
+            // Mass to generate is the minimum of: available reserve or configured batch size
+            const massToGenerate = Math.min(this.foodReserve, this.foodGenerationBatchMass);
+
+            if (massToGenerate > 0) {
+                // Determine tier order based on current food count vs target
+                const currentFoodCount = this.food.data.length;
+                const useLargestFirst = currentFoodCount >= this.foodTarget;
+
+                // addNew now takes mass amount and tier order preference
+                const actualMassGenerated = this.food.addNew(massToGenerate, useLargestFirst);
+                this.foodReserve -= actualMassGenerated;
+
+                // Update last generation time
+                this.lastFoodGenerationTime = now;
+            }
         }
+        // Note: Food is added back to reserve immediately when eaten (in arena.js)
 
         const virusesToAdd = maxVirus - this.viruses.data.length;
         if (virusesToAdd > 0) {

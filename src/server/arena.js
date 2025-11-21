@@ -50,7 +50,7 @@ class Arena {
 
         // Constants
         this.INIT_MASS_LOG = util.mathLog(
-            config.minSplitMass,
+            config.minCellMass,
             config.slowBase
         );
     }
@@ -138,9 +138,12 @@ class Arena {
         const currentPlayer = new mapUtils.playerUtils.Player(socket.id, this.config);
 
         socket.on("gotit", async (clientPlayerData) => {
-            console.log(
-                `[ARENA ${this.id}] Player ${clientPlayerData.name} connecting! Arena state: ${this.state}`
-            );
+            console.log(`[ARENA ${this.id}] Player ${clientPlayerData.name} connecting! Arena state: ${this.state}`);
+
+            // Player adds their initial stake as mass to the food reserve
+            const newMass = this.config.entryFee / this.config.scoreUnit;
+            this.map.foodReserve += newMass;
+            console.log(`[ARENA ${this.id}] Added ${Math.round(newMass)} mass to reserve from new player`);
 
             if (!util.validNick(clientPlayerData.name)) {
                 socket.emit("kick", "Invalid username.");
@@ -212,7 +215,6 @@ class Arena {
         }
 
         const WalletRepository = require('./repositories/wallet-repository');
-        const entryFee = this.config.entryFee;
 
         try {
             const wallet = await WalletRepository.getWalletByUserId(socket.userId);
@@ -222,7 +224,7 @@ class Arena {
             }
             const balance = parseFloat(wallet.balance);
             console.log(`[ARENA ${this.id}] User ${socket.userId} has balance $${balance.toFixed(2)}`);
-            return balance >= entryFee;
+            return balance >= this.config.entryFee;
         } catch (error) {
             console.error(`[ARENA ${this.id}] Failed to check balance:`, error);
             return false;
@@ -241,20 +243,19 @@ class Arena {
         }
 
         const WalletRepository = require('./repositories/wallet-repository');
-        const entryFee = this.config.entryFee;
 
         try {
-            await WalletRepository.subtractBalance(socket.userId, entryFee);
+            await WalletRepository.subtractBalance(socket.userId, this.config.entryFee);
 
             // Mark this socket as having paid for this game
             this.paidPlayers.add(socket.id);
 
-            console.log(`[ARENA ${this.id}] Deducted $${entryFee.toFixed(2)} entry fee from user ${socket.userId}`);
+            console.log(`[ARENA ${this.id}] Deducted $${this.config.entryFee.toFixed(2)} entry fee from user ${socket.userId}`);
 
             // Notify client of balance change
             socket.emit('walletUpdate', {
                 type: 'entry_fee',
-                amount: -entryFee,
+                amount: -this.config.entryFee,
                 description: 'Arena entry fee'
             });
 
@@ -264,8 +265,8 @@ class Arena {
 
             // Send a specific event for insufficient funds modal
             socket.emit('insufficientFunds', {
-                required: entryFee,
-                message: `You need $${entryFee.toFixed(2)} to enter the arena. You can add funds from your profile.`
+                required: this.config.entryFee,
+                message: `You need $${this.config.entryFee.toFixed(2)} to enter the arena. You can add funds from your profile.`
             });
 
             return false;
@@ -323,7 +324,7 @@ class Arena {
 
         player.init(
             this.generateSpawnpoint(),
-            this.config.defaultPlayerMass
+            this.config.minCellMass
         );
 
         if (this.map.players.findIndexByID(socket.id) > -1) {
@@ -456,7 +457,7 @@ class Arena {
             // Initialize player position and state
             player.init(
                 this.generateSpawnpoint(),
-                this.config.defaultPlayerMass
+                this.config.minCellMass
             );
 
             // Add to active game
@@ -513,19 +514,23 @@ class Arena {
     setupPlayerEvents(socket, currentPlayer) {
         // Respawn handler - client sends this first to request spawn
         socket.on("respawn", () => {
+            // Return old player mass to reserve before removing
+            if (currentPlayer.massTotal > 0) {
+                this.map.foodReserve += currentPlayer.massTotal;
+            }
+
             // Remove any existing player data
             this.map.players.removePlayerByID(currentPlayer.id);
+
+            // Take spawn mass from food reserve
+            this.map.foodReserve -= this.config.minCellMass;
 
             // IMPORTANT: Reinitialize the player with fresh state
             // This ensures they get new cells and can move
             currentPlayer.init(
                 this.generateSpawnpoint(),
-                this.config.defaultPlayerMass
+                this.config.minCellMass
             );
-
-            // Reset player stats for fresh spawn
-            currentPlayer.cells = [];
-            currentPlayer.massTotal = 0;
 
             // Send welcome with the reinitialized player
             socket.emit("welcome", currentPlayer, {
@@ -543,6 +548,15 @@ class Arena {
 
         // Disconnect handler
         socket.on("disconnect", async () => {
+            // Return player mass to reserve ONLY if this is NOT a successful escape
+            // On successful escape, player keeps their mass (doesn't return to reserve)
+            if (currentPlayer && currentPlayer.massTotal > 0 && !currentPlayer.successfulEscape) {
+                this.map.foodReserve += currentPlayer.massTotal;
+                console.log(`[ARENA ${this.id}] Returned ${Math.round(currentPlayer.massTotal)} mass to reserve on disconnect`);
+            } else if (currentPlayer && currentPlayer.successfulEscape) {
+                console.log(`[ARENA ${this.id}] 🎉 Player ${currentPlayer.name} escaped with ${Math.round(currentPlayer.massTotal)} mass`);
+            }
+
             // Clean up paid player tracking when they disconnect
             this.paidPlayers.delete(socket.id);
 
@@ -662,7 +676,7 @@ class Arena {
         // Eject mass handler (1)
         socket.on("1", () => {
             const minCellMass =
-                this.config.defaultPlayerMass + this.config.fireFood;
+                this.config.minCellMass + this.config.fireFood;
             for (let i = 0; i < currentPlayer.cells.length; i++) {
                 if (currentPlayer.cells[i].mass >= minCellMass) {
                     currentPlayer.changeCellMass(i, -this.config.fireFood);
@@ -680,7 +694,7 @@ class Arena {
         socket.on("2", () => {
             currentPlayer.userSplit(
                 this.config.limitSplit,
-                this.config.minSplitMass
+                this.config.minCellMass
             );
             this.lastActivityAt = Date.now();
         });
@@ -781,6 +795,9 @@ class Arena {
 
                 console.log(`[ARENA ${this.id}] Player ${player.name} escaped successfully with score ${player.getScore()}`);
 
+                // Mark this as a successful escape so disconnect handler doesn't return mass
+                player.successfulEscape = true;
+
                 // Give client a moment to receive the message before disconnecting
                 setTimeout(() => {
                     if (socket.connected) {
@@ -828,7 +845,7 @@ class Arena {
      * Generate spawn point for this arena
      */
     generateSpawnpoint() {
-        const radius = util.massToRadius(this.config.defaultPlayerMass);
+        const radius = util.massToRadius(this.config.minCellMass);
         return getPosition(
             this.config.newPlayerInitialPosition === "farthest",
             radius,
@@ -919,15 +936,23 @@ class Arena {
                 0
             );
 
+            // Add mass from eaten food based on tier mass scaled by massUnit
+            const foodMassGained = eatenFoodIndexes.reduce(
+                (acc, index) => acc + this.map.food.data[index].tier.mass * this.config.massUnit,
+                0
+            );
+            massGained += foodMassGained;
+
+            // Food eaten is NOT returned to reserve (players keep it)
+
             this.map.food.delete(eatenFoodIndexes);
             this.map.massFood.remove(eatenMassIndexes);
-            massGained += eatenFoodIndexes.length * this.config.foodMass;
             currentPlayer.changeCellMass(cellIndex, massGained);
         }
         currentPlayer.virusSplit(
             cellsToSplit,
             this.config.limitSplit,
-            this.config.minSplitMass
+            this.config.minCellMass
         );
     }
 
@@ -997,11 +1022,13 @@ class Arena {
     gameloop() {
         if (this.map.players.data.length > 0) {
             this.calculateLeaderboard();
-            this.map.players.shrinkCells(
+            const massLostToDecay = this.map.players.shrinkCells(
                 this.config.massLossRate,
-                this.config.defaultPlayerMass,
+                this.config.minCellMass,
                 this.config.minMassLoss
             );
+            // Add all decayed mass back to the food reserve
+            this.map.foodReserve += massLostToDecay;
         } else if (this.state === 'ACTIVE' && this.getPlayerCount() === 0) {
             // If arena is active but has no players, reset it to WAITING state
             console.log(`[ARENA ${this.id}] No players remaining, resetting to WAITING state`);
@@ -1009,9 +1036,7 @@ class Arena {
         }
 
         this.map.balanceMass(
-            this.config.foodMass,
-            this.config.gameMass,
-            this.config.maxFood,
+            this.config.massUnit,
             this.config.maxVirus
         );
     }
@@ -1027,7 +1052,9 @@ class Arena {
             this.leaderboardChanged = true;
         } else {
             for (let i = 0; i < this.leaderboard.length; i++) {
-                if (this.leaderboard[i].id !== topPlayers[i].id) {
+                // Check if either the ID or the score has changed
+                if (this.leaderboard[i].id !== topPlayers[i].id ||
+                    this.leaderboard[i].score !== topPlayers[i].score) {
                     this.leaderboard = topPlayers;
                     this.leaderboardChanged = true;
                     break;
@@ -1052,13 +1079,25 @@ class Arena {
                 visibleMass,
                 visibleViruses
             ) => {
+                // Calculate debug stats
+                const foodMassOnMap = this.map.food.data.reduce((sum, food) => sum + food.tier.mass * this.config.massUnit, 0);
+                const massFoodOnMap = this.map.massFood.data.reduce((sum, massFood) => sum + massFood.mass, 0);
+                const playerTotalMass = this.map.players.getTotalMass();
+                const debugStats = {
+                    foodReserve: Math.round(this.map.foodReserve),
+                    foodMassOnMap: Math.round(foodMassOnMap + massFoodOnMap),
+                    foodCount: this.map.food.data.length,
+                    totalMassWithPlayers: Math.round(foodMassOnMap + massFoodOnMap + playerTotalMass)
+                };
+
                 this.sockets[playerData.id].emit(
                     "serverTellPlayerMove",
                     playerData,
                     visiblePlayers,
                     visibleFood,
                     visibleMass,
-                    visibleViruses
+                    visibleViruses,
+                    debugStats
                 );
 
                 if (this.leaderboardChanged) {

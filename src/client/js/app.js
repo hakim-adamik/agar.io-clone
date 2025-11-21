@@ -4,6 +4,7 @@ var Canvas = require("./canvas");
 var global = require("./global");
 var PredictionSystem = require("./prediction");
 var CellAnimations = require("./cell-animations");
+var config = require("../../../config");
 var WaitingRoom = require("./waiting-room");
 
 var playerNameInput = document.getElementById("playerNameInput");
@@ -14,6 +15,19 @@ var debug = function (args) {
         console.log(args);
     }
 };
+
+// Update debug stats display
+function updateDebugStats(stats) {
+    var foodReserveEl = document.getElementById('foodReserve');
+    var foodOnMapEl = document.getElementById('foodOnMap');
+    var foodCountEl = document.getElementById('foodCount');
+    var totalMassEl = document.getElementById('totalMass');
+
+    if (foodReserveEl) foodReserveEl.textContent = stats.foodReserve.toLocaleString();
+    if (foodOnMapEl) foodOnMapEl.textContent = stats.foodMassOnMap.toLocaleString();
+    if (foodCountEl) foodCountEl.textContent = stats.foodCount.toLocaleString();
+    if (totalMassEl) totalMassEl.textContent = stats.totalMassWithPlayers.toLocaleString();
+}
 
 // Detect mobile devices and add class to body for CSS targeting
 // This ensures mobile styles work in both portrait and landscape
@@ -111,6 +125,15 @@ function applyUserPreferences(prefs) {
     // Apply show FPS
     if (prefs.showFps !== undefined) {
         global.showFpsCounter = prefs.showFps === true;
+        // Update DOM elements to match the setting
+        var fpsCounter = document.getElementById("fpsCounter");
+        if (fpsCounter) {
+            fpsCounter.style.display = prefs.showFps ? "block" : "none";
+        }
+        var debugStats = document.getElementById("debugStats");
+        if (debugStats) {
+            debugStats.style.display = prefs.showFps ? "block" : "none";
+        }
     }
 
     // Apply round food
@@ -171,6 +194,15 @@ function applyConfigDefaults(settings) {
 
     if (defaults.showFps !== undefined) {
         global.showFpsCounter = defaults.showFps;
+        // Update DOM elements to match the setting
+        var fpsCounter = document.getElementById("fpsCounter");
+        if (fpsCounter) {
+            fpsCounter.style.display = defaults.showFps ? "block" : "none";
+        }
+        var debugStats = document.getElementById("debugStats");
+        if (debugStats) {
+            debugStats.style.display = defaults.showFps ? "block" : "none";
+        }
     }
 
     if (defaults.soundEnabled !== undefined) {
@@ -437,10 +469,10 @@ function animateScore() {
         displayedScore = targetScore;
     }
 
-    // Format with 2 decimal places, thousand separators, and $ sign
+    // Format with 4 decimal places, thousand separators, and $ sign
     var formattedScore = displayedScore.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4
     });
     scoreValueEl.textContent = formattedScore + '$';
 
@@ -645,6 +677,10 @@ function toggleFpsDisplay() {
     global.showFpsCounter = !global.showFpsCounter;
     if (global.fpsCounter) {
         global.fpsCounter.style.display = global.showFpsCounter ? "block" : "none";
+    }
+    var debugStats = document.getElementById("debugStats");
+    if (debugStats) {
+        debugStats.style.display = global.showFpsCounter ? "block" : "none";
     }
     var showFpsCheckbox = document.getElementById("showFps");
     if (showFpsCheckbox) {
@@ -1131,7 +1167,10 @@ function setupSocket(socket) {
             }
 
             var score = leaderboard[i].score || 0;
-            var displayScore = score.toLocaleString('en-US', { maximumFractionDigits: 0 });
+            var displayScore = score.toLocaleString('en-US', {
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 4
+            });
 
             // Add rank with medals for top 3
             var rank = "";
@@ -1176,7 +1215,7 @@ function setupSocket(socket) {
     // Handle movement.
     socket.on(
         "serverTellPlayerMove",
-        function (playerData, userData, foodsList, massList, virusList) {
+        function (playerData, userData, foodsList, massList, virusList, debugStats) {
 
 
             if (global.playerType == "player") {
@@ -1186,6 +1225,11 @@ function setupSocket(socket) {
                 player.hue = playerData.hue;
                 player.massTotal = playerData.massTotal;
                 player.score = playerData.cells.reduce((sum, cell) => sum + (cell.score || 0), 0);
+
+                // Update debug stats display
+                if (debugStats) {
+                    updateDebugStats(debugStats);
+                }
 
                 // Update prediction system with server data
                 const predictedState = predictionSystem.updatePlayerState(playerData, now);
@@ -1533,7 +1577,7 @@ var predictionSystem = new PredictionSystem();
 
 
 
-// Initialize FPS counter visibility from localStorage
+// Initialize FPS counter and debug stats visibility from localStorage
 (function () {
     global.fpsCounter = fpsCounter;
     try {
@@ -1545,6 +1589,11 @@ var predictionSystem = new PredictionSystem();
         var showFpsCheckbox = document.getElementById("showFps");
         if (showFpsCheckbox) {
             showFpsCheckbox.checked = global.showFpsCounter;
+        }
+        // Also update debug stats visibility to match FPS counter setting
+        var debugStats = document.getElementById("debugStats");
+        if (debugStats) {
+            debugStats.style.display = global.showFpsCounter ? "block" : "none";
         }
     } catch (e) {
         // Ignore localStorage errors
@@ -1680,6 +1729,8 @@ function isEntityVisible(entity, screen, padding = 50) {
 // Throttle socket emissions to reduce network overhead
 var lastSocketEmit = 0;
 var socketEmitInterval = 16; // ~60fps for socket updates (every ~16ms)
+var lastZoom = 1;
+var lastZoomUpdate = 0;
 
 function gameLoop() {
     if (global.gameStart) {
@@ -1698,6 +1749,22 @@ function gameLoop() {
         // This prevents micro-stutters from different parts of the render using slightly different positions
         var frameCameraX = player.x;
         var frameCameraY = player.y;
+
+        // Calculate dynamic zoom based on player's total mass
+        var playerMass = player.massTotal || config.minCellMass || 20;
+        var minCellMass = config.minCellMass || 20;
+        var zoomRatio = config.zoomRatio || 0;
+        // Zoom formula: zoom out as player grows (zoom = (minMass / playerMass) ^ zoomRatio)
+        var zoom = Math.pow(minCellMass / playerMass, zoomRatio);
+
+        // Calculate effective screen dimensions (viewport in world coordinates)
+        // Add 20% margin for server culling to prevent flickering during async updates
+        var effectiveScreenWidth = global.screen.width / zoom;
+        var effectiveScreenHeight = global.screen.height / zoom;
+        var serverMargin = 1.2; // 20% buffer for server
+        var serverScreenWidth = effectiveScreenWidth * serverMargin;
+        var serverScreenHeight = effectiveScreenHeight * serverMargin;
+
         // Update predicted cells in users array for rendering
         for (var i = 0; i < users.length; i++) {
             if (users[i].id === player.id) {
@@ -1717,54 +1784,59 @@ function gameLoop() {
         graph.fillStyle = global.backgroundColor;
         graph.fillRect(0, 0, global.screen.width, global.screen.height);
 
+        // Apply zoom transformation to the canvas
+        graph.save();
+        graph.translate(global.screen.width / 2, global.screen.height / 2);
+        graph.scale(zoom, zoom);
+        graph.translate(-global.screen.width / 2, -global.screen.height / 2);
+
         // Only draw grid if user preference allows it
         if (global.showGrid) {
             // Use cached camera position for consistent grid rendering
             var gridPlayer = { x: frameCameraX, y: frameCameraY };
-            render.drawGrid(global, gridPlayer, global.screen, graph);
+            // Pass zoom and effective dimensions for proper grid rendering
+            render.drawGrid(global, gridPlayer, global.screen, graph, zoom, effectiveScreenWidth, effectiveScreenHeight);
         }
 
-        // Client-side viewport culling for food
+        // Client-side viewport culling uses server dimensions (entities outside won't exist anyway)
         foods.forEach((food) => {
-            // Inline position calculation to avoid object allocation (GC pressure reduction)
-            let posX = food.x - frameCameraX + global.screen.width / 2;
-            let posY = food.y - frameCameraY + global.screen.height / 2;
-            if (
-                isEntityVisible(
-                    { x: posX, y: posY, radius: food.radius },
-                    global.screen
-                )
-            ) {
+            // Check visibility in world coordinates before transformation
+            let worldOffsetX = food.x - frameCameraX;
+            let worldOffsetY = food.y - frameCameraY;
+
+            // Entity is visible if within server screen bounds (which has margin built in)
+            if (Math.abs(worldOffsetX) <= serverScreenWidth / 2 + food.radius &&
+                Math.abs(worldOffsetY) <= serverScreenHeight / 2 + food.radius) {
+                let posX = worldOffsetX + global.screen.width / 2;
+                let posY = worldOffsetY + global.screen.height / 2;
                 render.drawFood({ x: posX, y: posY }, food, graph);
             }
         });
 
         // Client-side viewport culling for fireFood
         fireFood.forEach((fireFood) => {
-            // Inline position calculation to avoid object allocation (GC pressure reduction)
-            let posX = fireFood.x - frameCameraX + global.screen.width / 2;
-            let posY = fireFood.y - frameCameraY + global.screen.height / 2;
-            if (
-                isEntityVisible(
-                    { x: posX, y: posY, radius: fireFood.radius },
-                    global.screen
-                )
-            ) {
+            // Check visibility in world coordinates
+            let worldOffsetX = fireFood.x - frameCameraX;
+            let worldOffsetY = fireFood.y - frameCameraY;
+
+            if (Math.abs(worldOffsetX) <= serverScreenWidth / 2 + fireFood.radius &&
+                Math.abs(worldOffsetY) <= serverScreenHeight / 2 + fireFood.radius) {
+                let posX = worldOffsetX + global.screen.width / 2;
+                let posY = worldOffsetY + global.screen.height / 2;
                 render.drawFireFood({ x: posX, y: posY }, fireFood, playerConfig, graph);
             }
         });
 
         // Client-side viewport culling for viruses
         viruses.forEach((virus) => {
-            // Inline position calculation to avoid object allocation (GC pressure reduction)
-            let posX = virus.x - frameCameraX + global.screen.width / 2;
-            let posY = virus.y - frameCameraY + global.screen.height / 2;
-            if (
-                isEntityVisible(
-                    { x: posX, y: posY, radius: virus.radius },
-                    global.screen
-                )
-            ) {
+            // Check visibility in world coordinates
+            let worldOffsetX = virus.x - frameCameraX;
+            let worldOffsetY = virus.y - frameCameraY;
+
+            if (Math.abs(worldOffsetX) <= serverScreenWidth / 2 + virus.radius &&
+                Math.abs(worldOffsetY) <= serverScreenHeight / 2 + virus.radius) {
+                let posX = worldOffsetX + global.screen.width / 2;
+                let posY = worldOffsetY + global.screen.height / 2;
                 render.drawVirus({ x: posX, y: posY }, virus, graph);
             }
         });
@@ -1788,10 +1860,9 @@ function gameLoop() {
             let borderColor = getHSLColor(users[i].hue, 45);
             let isCurrentPlayer = users[i].id === player.id;
             for (var j = 0; j < users[i].cells.length; j++) {
-                let screenX =
-                    users[i].cells[j].x - frameCameraX + global.screen.width / 2;
-                let screenY =
-                    users[i].cells[j].y - frameCameraY + global.screen.height / 2;
+                // Check visibility in world coordinates first
+                let worldOffsetX = users[i].cells[j].x - frameCameraX;
+                let worldOffsetY = users[i].cells[j].y - frameCameraY;
 
                 // Get animated radius for smooth merge animation
                 let actualRadius = users[i].cells[j].radius;
@@ -1805,16 +1876,10 @@ function gameLoop() {
                 }
 
                 // Client-side viewport culling for cells (use animated radius for visibility check)
-                if (
-                    isEntityVisible(
-                        {
-                            x: screenX,
-                            y: screenY,
-                            radius: animatedRadius,
-                        },
-                        global.screen
-                    )
-                ) {
+                if (Math.abs(worldOffsetX) <= serverScreenWidth / 2 + animatedRadius &&
+                    Math.abs(worldOffsetY) <= serverScreenHeight / 2 + animatedRadius) {
+                    let screenX = worldOffsetX + global.screen.width / 2;
+                    let screenY = worldOffsetY + global.screen.height / 2;
                     cellsToDraw.push({
                         color: color,
                         borderColor: borderColor,
@@ -1843,8 +1908,22 @@ function gameLoop() {
             player
         );
 
-        // Throttle socket emissions instead of every frame
+        // Restore canvas state (undo zoom transformation)
+        graph.restore();
+
+        // Notify server of zoom changes (affects server-side culling)
+        // Send update if zoom changed significantly (>5%) and at least 500ms since last update
         var now = Date.now();
+        if (Math.abs(zoom - lastZoom) / lastZoom > 0.05 && now - lastZoomUpdate > 500) {
+            socket.emit("windowResized", {
+                screenWidth: serverScreenWidth,
+                screenHeight: serverScreenHeight,
+            });
+            lastZoom = zoom;
+            lastZoomUpdate = now;
+        }
+
+        // Throttle socket emissions instead of every frame
         if (now - lastSocketEmit >= socketEmitInterval) {
             socket.emit("0", window.canvas.target); // playerSendTarget movement update
             lastSocketEmit = now;
@@ -2264,8 +2343,8 @@ function displaySimpleWalletResult(netProfit, entryFee, lastScoreBox, lastScoreV
 // Save last score to localStorage
 function saveLastScore(score) {
     try {
-        // Round to 2 decimals for display consistency
-        var preciseScore = Math.round(score * 100) / 100;
+        // Round to 4 decimals for display consistency
+        var preciseScore = Math.round(score * 10000) / 10000;
         localStorage.setItem("lastScore", preciseScore);
     } catch (e) {
         console.log("Could not save last score:", e);
@@ -2287,10 +2366,9 @@ function displayLastScore(isDeath = false) {
             if (lastScore && privyUser && privyUser.dbUserId && wasInPaidArena) {
                 // Show wallet profit/loss: Last Score - Entry Fee
                 var score = parseFloat(lastScore);
-                var entryFee = 1.0; // From config.js
-                var netProfit = score - entryFee;
+                var netProfit = score - config.entryFee;
 
-                displaySimpleWalletResult(netProfit, entryFee, lastScoreBox, lastScoreValue, isDeath);
+                displaySimpleWalletResult(netProfit, config.entryFee, lastScoreBox, lastScoreValue, isDeath);
                 // Clear the flag
                 localStorage.removeItem("wasInPaidArena");
             } else if (lastScore) {

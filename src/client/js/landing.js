@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
                                 <div style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
                                     <i class="fas fa-crown" style="color: #4CAF50; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
-                                    <div style="font-size: 1.75rem; font-weight: bold; color: #4CAF50; line-height: 1;">${(stats.highScore || 0).toLocaleString()}</div>
+                                    <div style="font-size: 1.75rem; font-weight: bold; color: #4CAF50; line-height: 1;">${(stats.highScore || 0).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</div>
                                     <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Best Score</div>
                                 </div>
                                 <div style="background: linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
@@ -573,8 +573,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const username = player.username || 'Anonymous';
             const isCurrentUser = currentUsername && username === currentUsername;
 
-            // Format score with commas
-            const formattedScore = score.toLocaleString();
+            // Format score with commas and 4 decimals
+            const formattedScore = score.toLocaleString('en-US', {
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 4
+            });
 
             // Detect mobile by device capabilities, not screen width
             // This ensures proper detection even in landscape mode
@@ -1228,7 +1231,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
         if (!userData.dbUserId) {
-            walletElement.textContent = '$0.00';
+            walletElement.textContent = '$0.0000';
             window.updateAddFundsButton(0);
             return;
         }
@@ -1249,7 +1252,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (balanceElement) {
                 balanceElement.style.opacity = '0.5';
                 setTimeout(() => {
-                    balanceElement.textContent = `$${balance.toFixed(2)}`;
+                    balanceElement.textContent = `$${balance.toFixed(4)}`;
                     balanceElement.style.opacity = '1';
                 }, 200);
             }

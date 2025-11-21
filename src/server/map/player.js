@@ -27,15 +27,11 @@ class Cell {
 
     setMass(mass) {
         this.mass = mass;
-        this.recalculateRadius();
+        this.radius = util.massToRadius(this.mass);
     }
 
     addMass(mass) {
         this.setMass(this.mass + mass);
-    }
-
-    recalculateRadius() {
-        this.radius = util.massToRadius(this.mass);
     }
 
     toCircle() {
@@ -133,10 +129,10 @@ exports.Player = class {
     }
 
     /* Initalizes things that change with every respawn */
-    init(position, defaultPlayerMass) {
-        this.cells = [new Cell(position.x, position.y, defaultPlayerMass, this.config.minSpeed, this.config)];
-        this.massTotal = defaultPlayerMass;
-        this.defaultPlayerMass = defaultPlayerMass;
+    init(position, minCellMass) {
+        this.cells = [new Cell(position.x, position.y, minCellMass, this.config.minSpeed, this.config)];
+        this.massTotal = minCellMass;
+        this.minCellMass = minCellMass;
         this.x = position.x;
         this.y = position.y;
         this.target = {
@@ -145,9 +141,10 @@ exports.Player = class {
         };
     }
 
-    /* Calculate score for a specific cell: mass - (defaultPlayerMass / number of cells) */
+    /* Calculate score for a specific cell: mass - (minCellMass / number of cells) */
     getCellScore(cell) {
-        return cell.mass - (this.defaultPlayerMass / this.cells.length);
+        const massScore = cell.mass - (this.minCellMass / this.cells.length);
+        return massScore * this.config.scoreUnit;
     }
 
     /* Calculate player's total score (sum of all cell scores) */
@@ -174,18 +171,21 @@ exports.Player = class {
         }
     }
 
-    loseMassIfNeeded(massLossRate, defaultPlayerMass, minMassLoss) {
+    loseMassIfNeeded(massLossRate, minCellMass) {
         // Safety check: ensure cells array exists
         if (!this.cells) {
-            return;
+            return 0;
         }
 
+        let totalMassLost = 0;
         for (let i in this.cells) {
-            if (this.cells[i].mass * (1 - (massLossRate / 1000)) > defaultPlayerMass && this.massTotal > minMassLoss) {
+            if (this.cells[i].mass * (1 - (massLossRate / 1000)) > minCellMass) {
                 var massLoss = this.cells[i].mass * (massLossRate / 1000);
                 this.changeCellMass(i, -massLoss);
+                totalMassLost += massLoss;
             }
         }
+        return totalMassLost;
     }
 
     changeCellMass(cellIndex, massDifference) {
@@ -202,11 +202,11 @@ exports.Player = class {
 
     // Splits a cell into multiple cells with identical mass
     // Creates n-1 new cells, and lowers the mass of the original cell
-    // If the resulting cells would be smaller than minSplitMass, creates fewer and bigger cells.
+    // If the resulting cells would be smaller than minCellMass, creates fewer and bigger cells.
     // splitDirection is optional {x, y} for user-initiated splits towards cursor
-    splitCell(cellIndex, maxRequestedPieces, minSplitMass, splitDirection = null) {
+    splitCell(cellIndex, maxRequestedPieces, minCellMass, splitDirection = null) {
         let cellToSplit = this.cells[cellIndex];
-        let maxAllowedPieces = Math.floor(cellToSplit.mass / minSplitMass); // If we split the cell ino more pieces, they will be too small.
+        let maxAllowedPieces = Math.floor(cellToSplit.mass / minCellMass); // If we split the cell ino more pieces, they will be too small.
         let piecesToCreate = Math.min(maxAllowedPieces, maxRequestedPieces);
 
         if (piecesToCreate <= 1) {
@@ -263,7 +263,7 @@ exports.Player = class {
 
     // Performs a split resulting from colliding with a virus.
     // Creates multiple small cells and one large cell with remaining mass
-    virusSplit(cellIndexes, maxCells, minSplitMass) {
+    virusSplit(cellIndexes, maxCells, minCellMass) {
         // Safety check: ensure cells array exists
         if (!this.cells || this.cells.length === 0) {
             return;
@@ -275,7 +275,7 @@ exports.Player = class {
 
             // Calculate how many cells we can create
             let maxRequestedPieces = maxCells - this.cells.length + 1;
-            let maxAllowedPieces = Math.floor(cellToSplit.mass / minSplitMass);
+            let maxAllowedPieces = Math.floor(cellToSplit.mass / minCellMass);
             let piecesToCreate = Math.min(maxAllowedPieces, maxRequestedPieces);
 
             if (piecesToCreate <= 1) {
@@ -283,14 +283,14 @@ exports.Player = class {
             }
 
             // Small cells get the minimum mass, large cell keeps the rest
-            let smallCellMass = minSplitMass;
+            let smallCellMass = minCellMass;
             let numberOfSmallCells = piecesToCreate - 1;
             let largeCellMass = cellToSplit.mass - (smallCellMass * numberOfSmallCells);
 
             // If large cell would be too small, adjust
-            if (largeCellMass < minSplitMass) {
+            if (largeCellMass < minCellMass) {
                 // Reduce number of small cells
-                numberOfSmallCells = Math.floor((cellToSplit.mass - minSplitMass) / minSplitMass);
+                numberOfSmallCells = Math.floor((cellToSplit.mass - minCellMass) / minCellMass);
                 largeCellMass = cellToSplit.mass - (smallCellMass * numberOfSmallCells);
             }
 
@@ -307,8 +307,9 @@ exports.Player = class {
 
             // Explosion speed proportional to parent cell's mass
             // Larger cells need faster explosion to clear their radius
-            let massScale = Math.sqrt(cellToSplit.mass / minSplitMass); // Square root for more gradual scaling
-            let explosionSpeed = this.config.splitCellSpeed * massScale * 0.15;
+            // Use power of 0.3 for slower scaling with large cells
+            let massScale = Math.pow(cellToSplit.mass / minCellMass, 0.40);
+            let explosionSpeed = this.config.splitCellSpeed * massScale * 0.2;
 
             // Create small cells that explode away in all directions
             for (let i = 0; i < numberOfSmallCells; i++) {
@@ -342,7 +343,7 @@ exports.Player = class {
 
     // Performs a split initiated by the player.
     // Tries to split every cell in half.
-    userSplit(maxCells, minSplitMass) {
+    userSplit(maxCells, minCellMass) {
         // Prevent concurrent split execution (critical section)
         if (this.isSplitting) {
             return; // Already processing a split
@@ -390,7 +391,7 @@ exports.Player = class {
                 y: this.y - cell.y + this.target.y
             };
 
-            this.splitCell(i, 2, minSplitMass, splitDirection);
+            this.splitCell(i, 2, minCellMass, splitDirection);
         }
 
         // Clear flag after split operations complete
@@ -592,10 +593,12 @@ exports.PlayerManager = class {
         this.data.splice(index, 1);
     }
 
-    shrinkCells(massLossRate, defaultPlayerMass, minMassLoss) {
+    shrinkCells(massLossRate, minCellMass) {
+        let totalMassLost = 0;
         for (let player of this.data) {
-            player.loseMassIfNeeded(massLossRate, defaultPlayerMass, minMassLoss);
+            totalMassLost += player.loseMassIfNeeded(massLossRate, minCellMass);
         }
+        return totalMassLost;
     }
 
     removeCell(playerIndex, cellIndex) {
@@ -628,7 +631,7 @@ exports.PlayerManager = class {
             topPlayers.push({
                 id: this.data[i].id,
                 name: this.data[i].name,
-                score: Math.round(score * 100) / 100 // Round to 2 decimals for display
+                score: Math.round(score * 10000) / 10000 // Round to 4 decimals for display
             });
         }
         return topPlayers;

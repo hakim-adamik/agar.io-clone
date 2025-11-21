@@ -2,11 +2,12 @@ module.exports = {
     host: "0.0.0.0",
     port: (typeof process !== 'undefined' && process.env && process.env.PORT) ? process.env.PORT : 3000,
     logpath: "logger.php",
-    foodMass: 1,
+    foodTarget: 1000, // Target nb of food on the map
+    foodGenerationInterval: 2000, // Generate food from reserve every 2 seconds (in milliseconds)
+    foodGenerationBatchMass: 3000, // Maximum mass of food to generate per batch
     fireFood: 20,
     limitSplit: 16,
-    defaultPlayerMass: 20,
-    minSplitMass: 20,
+    minCellMass: 20,
     virus: {
         fill: "#33ff33",
         stroke: "#19D119",
@@ -15,13 +16,10 @@ module.exports = {
             from: 100,
             to: 150,
         },
-        splitMass: 180,
         uniformDisposition: false,
     },
     gameWidth: 5000,
     gameHeight: 5000,
-    gameMass: 20000,
-    maxFood: 1000,
     maxVirus: 50,
     slowBase: 20,
     networkUpdateFactor: 60,
@@ -39,9 +37,6 @@ module.exports = {
     minPlayersToStart: 2, // Minimum players required to start an arena
     waitingRoomCountdown: 3000, // Countdown duration when minimum players reached (3 seconds)
 
-    // Game economy configuration
-    entryFee: 1.0, // Entry fee in dollars to join a game (0 = free to play)
-
     // Waiting room configuration
     minPlayersToStart: 2, // Minimum players required to start an arena
     waitingRoomCountdown: 3000, // Countdown duration when minimum players reached (3 seconds)
@@ -57,9 +52,17 @@ module.exports = {
     splitControlDelay: 600, // Time in ms before split cells respond to cursor (maintains split momentum)
 
     massLossRate: 1,
-    minMassLoss: 50,
     mergeTimeBase: 1000, // Base time in milliseconds before cells can merge after split
-    mergeTimeRate: 10, // Time increase before merge, per unit of cell mass (mergeTime = base + mass * rate)
+    mergeTimeRate: 5, // Time increase before merge, per unit of cell mass (mergeTime = base + mass * rate)
+
+    massUnit: 1,
+
+    // Score calculation
+    entryFee: 1.0, // Entry fee in dollars to join a game (0 = free to play)
+    scoreUnit: 0.001, // Factor to convert mass to score (score = mass * scoreUnit)
+
+    // Camera zoom configuration
+    zoomRatio: 0.04, // How much to zoom out as player grows (0 = no zoom, 0.2 = moderate zoom out)
 
     // Client-side prediction configuration
     predictionEnabled: true,

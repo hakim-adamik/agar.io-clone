@@ -84,13 +84,13 @@ exports.displayLastScore = function(isDeath = false) {
                 } else {
                     // Normal display
                     if (lastScore > 0) {
-                        lastScoreValue.textContent = `+$${lastScore.toFixed(2)}`; // Plus sign for positive
+                        lastScoreValue.textContent = `+$${lastScore.toFixed(4)}`; // Plus sign for positive
                         lastScoreValue.style.color = "#27ae60"; // Green for profit
                     } else if (lastScore < 0) {
-                        lastScoreValue.textContent = `-$${Math.abs(lastScore).toFixed(2)}`; // Already has negative
+                        lastScoreValue.textContent = `-$${Math.abs(lastScore).toFixed(4)}`; // Already has negative
                         lastScoreValue.style.color = "#ff4757"; // Red for loss
                     } else {
-                        lastScoreValue.textContent = "$0.00";
+                        lastScoreValue.textContent = "$0.0000";
                         lastScoreValue.style.color = "";
                     }
 
