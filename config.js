@@ -42,6 +42,10 @@ module.exports = {
     // Game economy configuration
     entryFee: 1.0, // Entry fee in dollars to join a game (0 = free to play)
 
+    // Waiting room configuration
+    minPlayersToStart: 2, // Minimum players required to start an arena
+    waitingRoomCountdown: 3000, // Countdown duration when minimum players reached (3 seconds)
+
     // Cell movement physics
     minSpeed: 6.5, // Base movement speed for cells (reduced from 6.25 to slow down convergence)
     splitCellSpeed: 15, // Initial speed when a cell splits
