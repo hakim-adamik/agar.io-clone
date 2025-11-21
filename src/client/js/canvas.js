@@ -131,6 +131,10 @@ class Canvas {
     // Key input callback functions.
     keyInput(event) {
     	var key = event.which || event.keyCode;
+
+    	// Don't process game inputs if in waiting room
+    	if (window.inWaitingRoom) return;
+
     	if (key === global.KEY_FIREFOOD && this.parent.reenviar) {
             if (global.soundEnabled) {
                 try {

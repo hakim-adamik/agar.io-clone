@@ -121,13 +121,11 @@ exports.Player = class {
         this.id = id;
         this.hue = Math.round(Math.random() * 360);
         this.name = null;
-        this.admin = false;
         this.screenWidth = null;
         this.screenHeight = null;
         this.config = config; // Store config for all settings
         this.lastSplitTime = 0; // Track last split to prevent spam
         this.isSplitting = false; // Flag to prevent concurrent splits
-        this.setLastHeartbeat();
     }
 
     /* Initalizes things that change with every respawn */
@@ -162,11 +160,6 @@ exports.Player = class {
         this.name = playerData.name;
         this.screenWidth = playerData.screenWidth;
         this.screenHeight = playerData.screenHeight;
-        this.setLastHeartbeat();
-    }
-
-    setLastHeartbeat() {
-        this.lastHeartbeat = Date.now();
     }
 
     setMergeTimer() {

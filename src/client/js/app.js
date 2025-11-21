@@ -5,6 +5,7 @@ var global = require("./global");
 var PredictionSystem = require("./prediction");
 var CellAnimations = require("./cell-animations");
 var config = require("../../../config");
+var WaitingRoom = require("./waiting-room");
 
 var playerNameInput = document.getElementById("playerNameInput");
 var socket;
@@ -35,9 +36,9 @@ if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ||
     navigator.maxTouchPoints > 0) {
     global.mobile = true;
     document.body.classList.add('mobile-device');
-    console.log('Mobile device detected - UI optimized for touch');
+    // Mobile device detected - UI optimized for touch
 } else {
-    console.log('Desktop device detected - UI optimized for mouse');
+    // Desktop device detected - UI optimized for mouse
 }
 
 function generateGuestName() {
@@ -62,7 +63,7 @@ function applyDefaultGameSettings() {
     // Try to load user preferences from server if authenticated
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
-        console.log('Loading preferences for user:', privyUser.dbUserId);
+        // Loading preferences for user
         loadUserPreferences(privyUser.dbUserId);
     } else {
         // Fall back to default settings if not authenticated
@@ -88,7 +89,7 @@ function loadUserPreferences(userId) {
 
 // Apply user preferences from server
 function applyUserPreferences(prefs) {
-    console.log("Applying user preferences:", prefs);
+    // Applying user preferences
 
     var DARK = "#111111";
     var LIGHT = "#f2fbff";
@@ -225,6 +226,11 @@ function syncSettingsCheckboxes() {
 }
 
 function startGame(type) {
+    // Reset waiting room state when starting a new game
+    // This ensures clean state for each game attempt
+    window.inWaitingRoom = false;
+    window.countdownActive = false;
+
     // Auto-generate guest name if empty
     if (!playerNameInput.value) {
         playerNameInput.value = generateGuestName();
@@ -239,8 +245,8 @@ function startGame(type) {
     global.screen.height = window.innerHeight;
 
 
-    // Function to set up seamless background music
-    function setupBackgroundMusic() {
+    // Function to set up seamless background music (made global for socket events)
+    window.setupBackgroundMusic = function() {
         try {
             const backgroundMusic = document.getElementById('background_music');
             if (backgroundMusic && global.musicEnabled) {
@@ -260,7 +266,11 @@ function startGame(type) {
 
                 // Add seamless looping event listener to prevent gaps
                 backgroundMusic.addEventListener('ended', window.musicLoopHandler);
-                backgroundMusic.play().catch(console.log);
+
+                // Don't play if in waiting room
+                if (!window.inWaitingRoom) {
+                    backgroundMusic.play().catch(console.log);
+                }
             }
         } catch (e) {
             console.log('Background music not available:', e);
@@ -281,15 +291,13 @@ function startGame(type) {
             document.getElementById("gameAreaWrapper").style.opacity = 1;
         }, 50);
 
-            // Start background music if enabled (after preferences are loaded)
-            setupBackgroundMusic();
+            // Don't start music here - will start when game actually begins
     } else {
         // Fallback for old flow
         document.getElementById("startMenuWrapper").style.maxHeight = "0px";
         document.getElementById("gameAreaWrapper").style.opacity = 1;
 
-            // Start background music (fallback flow) if enabled
-            setupBackgroundMusic();
+            // Don't start music here - will start when game actually begins
         }
 
         // Show the player score display when game starts
@@ -300,11 +308,11 @@ function startGame(type) {
 
         // ALWAYS create a new socket connection when starting the game
         // Even if socket exists, we need a fresh connection after death
-        console.log("[Socket] Current socket state:", socket ? "exists" : "null");
+        // Check current socket state
 
         // Clean up any existing socket first
         if (socket) {
-            console.log("[Socket] Cleaning up existing socket before creating new one");
+            // Cleaning up existing socket before creating new one
             socket.disconnect();
             socket = null;
             window.canvas.socket = null;
@@ -329,6 +337,7 @@ function startGame(type) {
             type: type,
             arenaId: global.arenaId || null,
             userId: userData?.dbUserId || null,
+            privyId: userData?.id || null,  // Privy ID is stored as 'id' in userData
             playerName:
                 playerNameInput.value ||
                 userData?.username ||
@@ -343,7 +352,7 @@ function startGame(type) {
 
             // Clean up any existing socket connection
             if (socket) {
-                console.log("[Socket] Cleaning up previous connection");
+                // Cleaning up previous connection
                 socket.disconnect();
                 socket = null;
                 window.canvas.socket = null;
@@ -385,10 +394,10 @@ function startGame(type) {
     // Load user preferences when starting the game
     var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
     if (privyUser && privyUser.dbUserId) {
-        console.log('Loading user preferences for game start, userId:', privyUser.dbUserId);
+        // Loading user preferences for game start
         loadUserPreferences(privyUser.dbUserId).then(continueGameStart);
     } else {
-        console.log('No authenticated user, applying default settings');
+        // No authenticated user, applying default settings
         applyConfigDefaults();
         continueGameStart();
     }
@@ -455,6 +464,35 @@ function animateScore() {
     } else {
         scoreAnimationFrame = null;
     }
+}
+
+// Leave waiting room function (must be global for button onclick)
+window.leaveWaitingRoom = leaveWaitingRoom;
+
+// Leave waiting room function
+function leaveWaitingRoom() {
+    // Leaving waiting room
+
+    // Tell server we're leaving the waiting room
+    if (socket) {
+        socket.emit('leaveWaitingRoom');
+    }
+
+    // Don't reset inWaitingRoom flag here - let the server events control it
+    // This prevents music from playing if user quickly re-enters waiting room
+    window.countdownActive = false;
+
+    // Hide UI
+    WaitingRoom.hideWaitingRoomUI();
+    WaitingRoom.hideCountdownUI();
+
+    // Return to landing page
+    cleanupGame();
+
+    // Now reset the waiting room flag after cleanup
+    window.inWaitingRoom = false;
+
+    returnToLanding("You left the waiting room");
 }
 
 // Setup leaderboard toggle for all devices
@@ -719,17 +757,28 @@ var graph = c.getContext("2d");
                 feedBtn.addEventListener(eventType, function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Feed button pressed - emitting event 1 (eject mass)');
+
+                    // Play eject mass sound directly (like escape button does)
                     if (global.soundEnabled) {
-                        playSoundEffect('eject_mass_sound');
+                        try {
+                            const ejectSound = document.getElementById('eject_mass_sound');
+                            if (ejectSound) {
+                                ejectSound.volume = 0.5;
+                                ejectSound.currentTime = 0;
+                                ejectSound.play().catch(function(err) {
+                                    console.log('Eject sound playback failed:', err);
+                                });
+                            }
+                        } catch (soundError) {
+                            console.log('Sound error:', soundError);
+                        }
                     }
+
                     if (socket) {
                         socket.emit("1");
-                        window.canvas.reenviar = false;
                     }
                 }, {passive: false});
             });
-            console.log('Feed button handler attached');
         } else {
             console.warn('Feed button not found!');
         }
@@ -741,7 +790,7 @@ var graph = c.getContext("2d");
                 splitBtn.addEventListener(eventType, function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Split button pressed - emitting event 2 (split)');
+                    // Split button pressed - emitting event 2 (split)
                     if (global.soundEnabled) {
                         document.getElementById('split_cell').play();
                     }
@@ -751,7 +800,7 @@ var graph = c.getContext("2d");
                     }
                 }, {passive: false});
             });
-            console.log('Split button handler attached');
+            // Split button handler attached
         }
 
         // Exit button
@@ -761,13 +810,28 @@ var graph = c.getContext("2d");
                 exitBtn.addEventListener(eventType, function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Exit button pressed');
+                    // Exit button pressed
                     if (global.gameStart) {
+                        // Play escape sound
+                        if (global.soundEnabled) {
+                            try {
+                                const escapeSound = document.getElementById('escape_sound');
+                                if (escapeSound) {
+                                    escapeSound.volume = 0.5;
+                                    escapeSound.currentTime = 0;
+                                    escapeSound.play().catch(function(err) {
+                                        console.log('Escape sound playback failed:', err);
+                                    });
+                                }
+                            } catch (err) {
+                                console.log('Escape sound not available:', err);
+                            }
+                        }
                         exitGame();
                     }
                 }, {passive: false});
             });
-            console.log('Exit button handler attached');
+            // Exit button handler attached
         }
     }
 })();
@@ -898,15 +962,40 @@ function handleDisconnect() {
 function setupSocket(socket) {
     // Connection event handlers for better user feedback
     socket.on("connect", function() {
-        console.log("[Socket] Connected successfully");
+        // Socket connected successfully
         // Hide any connection error messages
         if (global.connectionErrorShown) {
             global.connectionErrorShown = false;
         }
     });
 
+    // Handle wallet updates
+    socket.on("walletUpdate", function(data) {
+        console.log("Wallet update received:", data);
+
+        // Show wallet update notification
+        showWalletNotification(data);
+
+        // Update wallet balance display if user is logged in
+        if (window.loadWalletBalance) {
+            window.loadWalletBalance();
+        }
+    });
+
+    // Handle insufficient funds
+    socket.on("insufficientFunds", function(data) {
+        console.log("Insufficient funds:", data);
+
+        // Stop the game immediately to prevent broken state
+        global.gameStart = false;
+        global.disconnectReason = "insufficient_funds";
+
+        // Return to landing page with modal
+        window.returnToLandingWithInsufficientFunds(data);
+    });
+
     socket.on("reconnect", function(attemptNumber) {
-        console.log("[Socket] Reconnected after " + attemptNumber + " attempts");
+        // Reconnected after attempts
         // Optionally show success message briefly
         if (global.gameStart) {
             // Reset animations on reconnect to ensure clean state
@@ -917,7 +1006,7 @@ function setupSocket(socket) {
     });
 
     socket.on("reconnect_attempt", function(attemptNumber) {
-        console.log("[Socket] Reconnection attempt #" + attemptNumber);
+        // Reconnection attempt
         if (!global.connectionErrorShown && global.gameStart) {
             render.drawErrorMessage("Reconnecting...", graph, global.screen);
             global.connectionErrorShown = true;
@@ -925,7 +1014,7 @@ function setupSocket(socket) {
     });
 
     socket.on("reconnect_failed", function() {
-        console.log("[Socket] Reconnection failed after all attempts");
+        // Reconnection failed after all attempts
         render.drawErrorMessage("Connection Lost - Please Refresh", graph, global.screen);
     });
 
@@ -945,13 +1034,13 @@ function setupSocket(socket) {
     });
 
     socket.on("disconnect", function(reason) {
-        console.log("[Socket] Disconnected:", reason);
+        // Socket disconnected
         // Only show disconnect for unexpected disconnects (not user-initiated)
         if (reason === "io server disconnect" || reason === "ping timeout") {
             handleDisconnect();
         } else if (reason === "transport close" || reason === "transport error") {
             // Let automatic reconnection handle these
-            console.log("[Socket] Connection issue, will attempt reconnection");
+            // Connection issue, will attempt reconnection
         }
     });
 
@@ -966,11 +1055,23 @@ function setupSocket(socket) {
         socket.emit("gotit", player);
         global.gameStart = true;
 
-        // Store arena ID for multi-arena support
+        // Store arena info for multi-arena support
         if (gameSizes.arenaId) {
             global.arenaId = gameSizes.arenaId;
-            console.log(`[CLIENT] Joined arena: ${gameSizes.arenaId}`);
+            // Set flag if this is a PAID arena for wallet calculation
+            if (gameSizes.arenaType === 'PAID') {
+                localStorage.setItem("wasInPaidArena", "true");
+            }
+            // Joined arena
         }
+
+        // Start music only if not flagged for waiting room (direct spawn into active game)
+        // We check a small delay to see if waitingRoom event comes immediately after
+        setTimeout(function() {
+            if (!window.inWaitingRoom && global.gameStart) {
+                window.setupBackgroundMusic();
+            }
+        }, 100);
 
         // Reset cell animations for new game session
         cellAnimations.reset();
@@ -1001,7 +1102,7 @@ function setupSocket(socket) {
 
     socket.on("playerEaten", (data) => {
         // Play player eaten sound when current player eats another player
-        console.log(`🍽️ Player eaten: ${data.eatenPlayerName} (+${data.massGained} mass)`);
+        // Player eaten
 
         if (global.soundEnabled) {
             try {
@@ -1192,29 +1293,10 @@ function setupSocket(socket) {
 
     // Death.
     socket.on("RIP", function () {
-        // Save last score before death
-        if (player && player.score !== undefined) {
-            saveLastScore(player.score);
-        }
+        // Use unified exit handler for death
+        handleGameExit('death');
 
-        global.gameStart = false;
-
-        // Clear game state to prevent issues on quick replay
-        player = null;
-        users = [];
-        leaderboard = [];
-        target = {
-            x: global.playerX,
-            y: global.playerY
-        };
-        foods = [];
-        viruses = [];
-        fireFood = [];
-
-        // Clear arena ID to avoid conflicts - server will assign the appropriate arena
-        global.arenaId = null;
-
-        // Stop background music when player dies
+        // Stop background music when player dies (already handled in cleanupGame but keep for safety)
         try {
             const backgroundMusic = document.getElementById('background_music');
             if (backgroundMusic) {
@@ -1303,34 +1385,27 @@ function setupSocket(socket) {
     });
 
     socket.on("kick", function (reason) {
-        global.gameStart = false;
-        global.kicked = true;
-        if (reason !== "") {
-            render.drawErrorMessage(
-                "You were kicked for: " + reason,
-                graph,
-                global.screen
-            );
-        } else {
-            render.drawErrorMessage("You were kicked!", graph, global.screen);
-        }
+        let userMessage = reason;
+
+        // Use unified exit handler instead of showing ugly canvas message
+        handleGameExit('kick', userMessage);
         socket.close();
     });
 
     // Escape event handlers (server-authoritative)
     socket.on("escapeStarted", function (data) {
-        console.log("Escape started, countdown:", data.countdown);
+        // Escape started
         exitCountdownActive = true;
         exitCountdownValue = data.countdown;
     });
 
     socket.on("escapeUpdate", function (data) {
-        console.log("Escape countdown update:", data.countdown);
+        // Escape countdown update
         exitCountdownValue = data.countdown;
     });
 
     socket.on("escapeComplete", function () {
-        console.log("Escape complete");
+        // Escape complete
         exitCountdownActive = false;
         exitCountdownValue = 0;
 
@@ -1350,13 +1425,12 @@ function setupSocket(socket) {
             }
         }
 
-        // Cleanup and return to landing page
-        cleanupGame();
-        returnToLanding();
+        // Use unified exit handler for successful escape
+        handleGameExit('escape');
     });
 
     socket.on("escapeCancelled", function () {
-        console.log("Escape cancelled (player died during countdown)");
+        // Escape cancelled (player died during countdown)
         exitCountdownActive = false;
         exitCountdownValue = 4;
 
@@ -1370,6 +1444,56 @@ function setupSocket(socket) {
         } catch (e) {
             console.log('Error stopping escape sound:', e);
         }
+    });
+
+    // Waiting room event handlers
+    socket.on("waitingRoom", function (data) {
+        // Entered waiting room
+        window.inWaitingRoom = true;
+        window.waitingRoomData = data;
+
+        // Show waiting room UI
+        WaitingRoom.showWaitingRoomUI(data);
+    });
+
+    socket.on("waitingRoomUpdate", function (data) {
+        // Waiting room update
+        WaitingRoom.updateWaitingRoomUI(data);
+    });
+
+    socket.on("countdownStart", function (data) {
+        // Countdown started
+        window.countdownActive = true;
+        WaitingRoom.showCountdownUI(data.seconds);
+    });
+
+    socket.on("countdownUpdate", function (data) {
+        WaitingRoom.updateCountdownUI(data.seconds);
+    });
+
+    socket.on("countdownCancelled", function (data) {
+        // Countdown cancelled
+        window.countdownActive = false;
+        WaitingRoom.hideCountdownUI();
+        WaitingRoom.showWaitingRoomUI(window.waitingRoomData);
+    });
+
+    socket.on("gameStart", function (data) {
+        // Game starting
+        window.inWaitingRoom = false;
+        window.countdownActive = false;
+        WaitingRoom.hideWaitingRoomUI();
+        WaitingRoom.hideCountdownUI();
+
+        // Start background music now that game is actually starting
+        window.setupBackgroundMusic();
+
+        // Request spawn
+        socket.emit("respawn");
+    });
+
+    socket.on("arenaStarted", function (data) {
+        // Arena has started
     });
 }
 
@@ -1774,7 +1898,7 @@ function gameLoop() {
 
         // Throttle socket emissions instead of every frame
         if (now - lastSocketEmit >= socketEmitInterval) {
-            socket.emit("0", window.canvas.target); // playerSendTarget "Heartbeat".
+            socket.emit("0", window.canvas.target); // playerSendTarget movement update
             lastSocketEmit = now;
         }
     }
@@ -1823,7 +1947,7 @@ function exitGame() {
     // Send escape request to server
     socket.emit("escapeRequest");
 
-    console.log("Escape request sent to server");
+    // Escape request sent to server
 }
 
 function cleanupGame() {
@@ -1891,7 +2015,39 @@ function cleanupGame() {
     };
 }
 
-function returnToLanding() {
+/**
+ * Unified game exit handler for all exit scenarios
+ * @param {string} reason - The reason for exiting ('death', 'escape', 'kick', 'disconnect')
+ * @param {string} message - Optional message to display to the user
+ */
+function handleGameExit(reason, message) {
+    // Save last score if applicable
+    if (player && player.score !== undefined) {
+        saveLastScore(player.score);
+    }
+
+    // Cleanup game
+    cleanupGame();
+
+    // Clear game state
+    global.gameStart = false;
+    player = null;
+    users = [];
+    leaderboard = [];
+    target = {
+        x: global.playerX,
+        y: global.playerY
+    };
+    foods = [];
+    viruses = [];
+    fireFood = [];
+    global.arenaId = null;
+
+    // Return to landing page
+    returnToLanding(reason, message);
+}
+
+function returnToLanding(exitReason, exitMessage) {
     var landingView = document.getElementById("landingView");
     var gameView = document.getElementById("gameView");
 
@@ -1906,9 +2062,147 @@ function returnToLanding() {
         // Display last score on landing page
         displayLastScore();
 
+        // Display exit message if provided
+        if (exitMessage) {
+            displayExitMessage(exitReason, exitMessage);
+        }
+
         // Reset player name input if needed
         playerNameInput.value = "";
     }
+}
+
+/**
+ * Return to landing page with insufficient funds modal
+ */
+window.returnToLandingWithInsufficientFunds = function(data) {
+    // First cleanup and return to landing
+    cleanupGame();
+
+    // Clear game state
+    global.gameStart = false;
+    player = null;
+    users = [];
+    leaderboard = [];
+    target = {
+        x: global.playerX,
+        y: global.playerY
+    };
+    foods = [];
+    viruses = [];
+    fireFood = [];
+    global.arenaId = null;
+
+    var landingView = document.getElementById("landingView");
+    var gameView = document.getElementById("gameView");
+
+    if (landingView && gameView) {
+        // Hide game view
+        gameView.style.display = "none";
+        document.getElementById("gameAreaWrapper").style.opacity = 0;
+
+        // Show landing view
+        landingView.style.display = "block";
+
+        // Reset player name input if needed
+        playerNameInput.value = "";
+
+        // Show the insufficient funds modal
+        showInsufficientFundsModal(data);
+    }
+};
+
+/**
+ * Show insufficient funds modal
+ */
+function showInsufficientFundsModal(data) {
+    // Create modal content
+    const modalHTML = `
+        <div class="modal show" id="insufficientFundsModal" style="z-index: 10000;">
+            <div class="modal-content">
+                <h2 style="color: #ff4444; margin-bottom: 20px;">💰 Insufficient Funds</h2>
+                <div style="margin: 20px 0; font-size: 18px; line-height: 1.6;">
+                    <p style="margin-bottom: 15px;">You need <strong>$${data.required.toFixed(2)}</strong> to enter the arena.</p>
+                    <p style="color: #888; margin-bottom: 20px;">Each game requires a $${data.required.toFixed(2)} entry fee. Win by escaping to earn your score as profit!</p>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 30px;">
+                    <button class="modal-button" onclick="
+                        document.getElementById('insufficientFundsModal').remove();
+                        // Open profile modal to add funds
+                        document.querySelector('[data-section=\\'profile\\']').click();
+                    " style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        Add Funds
+                    </button>
+                    <button class="modal-button secondary" onclick="
+                        document.getElementById('insufficientFundsModal').remove();
+                    " style="background: #444;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Add modal to page
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHTML;
+    document.body.appendChild(modalContainer.firstElementChild);
+
+    // Play error sound if available
+    try {
+        playErrorSound();
+    } catch(e) {
+        // Sound might not be available
+    }
+}
+
+/**
+ * Display exit reason message on the landing page
+ */
+function displayExitMessage(reason, message) {
+    // Always use the fixed exit message element
+    const exitMessageEl = document.getElementById('exitMessage');
+    if (!exitMessageEl) {
+        console.warn('Exit message element not found');
+        return;
+    }
+
+    // Style and show the message based on reason
+    let messageHTML = '';
+    let messageClass = 'exit-message ';
+
+    switch(reason) {
+        case 'kick':
+            messageClass += 'exit-kick';
+            messageHTML = '⚠️ ' + (message || 'You were kicked from the game');
+            break;
+        case 'death':
+            messageClass += 'exit-death';
+            messageHTML = '💀 You were eaten! Better luck next time!';
+            break;
+        case 'escape':
+            messageClass += 'exit-success';
+            messageHTML = '🏆 Successfully escaped the arena!';
+            break;
+        case 'disconnect':
+            messageClass += 'exit-disconnect';
+            messageHTML = '🔌 ' + (message || 'Connection lost');
+            break;
+        default:
+            messageClass += 'exit-generic';
+            messageHTML = message || 'Game ended';
+    }
+
+    exitMessageEl.className = messageClass;
+    exitMessageEl.innerHTML = messageHTML;
+    exitMessageEl.style.display = 'flex';  // Use flex for proper centering
+
+    // Auto-hide the message after 5 seconds
+    setTimeout(function() {
+        if (exitMessageEl) {
+            exitMessageEl.style.display = 'none';
+        }
+    }, 5000);
 }
 
 /**
@@ -1942,9 +2236,80 @@ function requestMobileFullscreen() {
             window.scrollTo(0, 1);
         }, 100);
 
-        console.log('Fullscreen requested for mobile');
+        // Fullscreen requested for mobile
     } catch (e) {
         console.log('Could not request fullscreen:', e);
+    }
+}
+
+
+function displaySimpleWalletResult(netProfit, entryFee, lastScoreBox, lastScoreValue, isDeath) {
+    try {
+        if (isDeath) {
+            // Player died - they lost their entry fee
+            lastScoreValue.style.display = "none";
+
+            const lastScoreLabel = lastScoreBox.querySelector('span:first-child');
+            if (lastScoreLabel) {
+                lastScoreLabel.textContent = `You lost $${entryFee.toFixed(2)}! Try again!`;
+                lastScoreLabel.style.color = "#ff4757"; // Red for loss
+                lastScoreLabel.style.fontSize = "1.1rem";
+                lastScoreLabel.style.fontWeight = "bold";
+            }
+        } else {
+            // Player escaped - show wallet profit/loss
+            const lastScoreLabel = lastScoreBox.querySelector('span:first-child');
+
+            if (netProfit > 0) {
+                // Profit
+                lastScoreValue.textContent = `+$${netProfit.toFixed(2)}`;
+                lastScoreValue.style.color = "#27ae60"; // Green
+                if (lastScoreLabel) {
+                    lastScoreLabel.textContent = "Wallet Profit";
+                    lastScoreLabel.style.color = "#27ae60";
+                }
+            } else if (netProfit < 0) {
+                // Loss
+                lastScoreValue.textContent = `-$${Math.abs(netProfit).toFixed(2)}`;
+                lastScoreValue.style.color = "#ff4757"; // Red
+                if (lastScoreLabel) {
+                    lastScoreLabel.textContent = "Wallet Loss";
+                    lastScoreLabel.style.color = "#ff4757";
+                }
+            } else {
+                // Break even
+                lastScoreValue.textContent = "$0.00";
+                lastScoreValue.style.color = "#888";
+                if (lastScoreLabel) {
+                    lastScoreLabel.textContent = "Broke Even";
+                    lastScoreLabel.style.color = "#888";
+                }
+            }
+
+            // Reset styling
+            lastScoreValue.style.display = "";
+            if (lastScoreLabel) {
+                lastScoreLabel.style.fontSize = "";
+                lastScoreLabel.style.fontWeight = "";
+            }
+        }
+
+        // Remove any encouraging messages
+        const encourageMsg = lastScoreBox.querySelector('.encourage-message');
+        if (encourageMsg) {
+            encourageMsg.remove();
+        }
+
+        lastScoreBox.style.display = "flex";
+
+        console.log("Simple wallet result displayed:", {
+            netProfit: netProfit,
+            entryFee: entryFee,
+            isDeath: isDeath
+        });
+
+    } catch (e) {
+        console.log("Could not display simple wallet result:", e);
     }
 }
 
@@ -1967,7 +2332,19 @@ function displayLastScore(isDeath = false) {
         var lastScoreValue = document.getElementById("lastScoreValue");
 
         if (lastScoreValue && lastScoreBox) {
-            if (lastScore) {
+            // Check if this was a PAID game for authenticated user
+            var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
+            var wasInPaidArena = localStorage.getItem("wasInPaidArena") === "true";
+
+            if (lastScore && privyUser && privyUser.dbUserId && wasInPaidArena) {
+                // Show wallet profit/loss: Last Score - Entry Fee
+                var score = parseFloat(lastScore);
+                var netProfit = score - config.entryFee;
+
+                displaySimpleWalletResult(netProfit, config.entryFee, lastScoreBox, lastScoreValue, isDeath);
+                // Clear the flag
+                localStorage.removeItem("wasInPaidArena");
+            } else if (lastScore) {
                 if (isDeath) {
                     // Death: Show encouraging message without amount
                     lastScoreValue.style.display = "none"; // Hide the score value
@@ -2024,8 +2401,8 @@ function displayLastScore(isDeath = false) {
 
 // Initialize exit functionality - Keyboard ESC key trigger
 document.addEventListener("keydown", function (event) {
-    // Check if ESC key is pressed and game is active
-    if (event.key === "Escape" && global.gameStart) {
+    // Check if ESC key is pressed and game is active (and not in waiting room)
+    if (event.key === "Escape" && global.gameStart && !window.inWaitingRoom) {
         event.preventDefault();
         // Play escape sound directly (helper function not in global scope)
         if (global.soundEnabled) {
@@ -2158,6 +2535,89 @@ if (document.readyState === "loading") {
         }
     }
 })();
+
+/**
+ * Show wallet update notification
+ */
+function showWalletNotification(data) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: linear-gradient(135deg, #0f1922, #1a2332);
+        border: 2px solid ${data.amount > 0 ? '#4acfa0' : '#ff6b6b'};
+        border-radius: 10px;
+        padding: 15px 20px;
+        color: white;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: 16px;
+        z-index: 10000;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        animation: slideInRight 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    `;
+
+    // Add animation keyframes if not already present
+    if (!document.getElementById('walletAnimations')) {
+        const style = document.createElement('style');
+        style.id = 'walletAnimations';
+        style.textContent = `
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Create icon based on type
+    const icon = document.createElement('span');
+    icon.style.fontSize = '24px';
+    if (data.type === 'entry_fee') {
+        icon.textContent = '💰';
+    } else if (data.type === 'escape_reward') {
+        icon.textContent = '🏆';
+    } else {
+        icon.textContent = data.amount > 0 ? '📈' : '📉';
+    }
+
+    // Create text content
+    const text = document.createElement('div');
+    const amountColor = data.amount > 0 ? '#4acfa0' : '#ff6b6b';
+    const amountPrefix = data.amount > 0 ? '+' : '';
+    text.innerHTML = `
+        <div style="font-weight: bold; margin-bottom: 5px;">Wallet Update</div>
+        <div style="color: ${amountColor}; font-size: 20px; font-weight: bold;">
+            ${amountPrefix}$${Math.abs(data.amount).toFixed(2)}
+        </div>
+        <div style="font-size: 12px; opacity: 0.8; margin-top: 3px;">
+            ${data.description || ''}
+        </div>
+    `;
+
+    notification.appendChild(icon);
+    notification.appendChild(text);
+    document.body.appendChild(notification);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        notification.style.transition = 'opacity 0.3s ease';
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 5000);
+}
 
 // Export functions to global scope for landing page integration
 window.startGame = startGame;

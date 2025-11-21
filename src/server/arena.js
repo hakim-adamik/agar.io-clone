@@ -19,12 +19,21 @@ const SessionRepository = require("./repositories/session-repository");
 const Vector = SAT.Vector;
 
 class Arena {
-    constructor(arenaId, config, io) {
+    constructor(arenaId, config, io, arenaType = 'FREE') {
         this.id = arenaId;
         this.config = config;
         this.io = io;  // Store io instance for room broadcasting
+        this.arenaType = arenaType; // 'PAID' for authenticated users, 'FREE' for guests/bots
         this.createdAt = Date.now();
         this.lastActivityAt = Date.now();
+
+        console.log(`[ARENA ${this.id}] Created as ${arenaType} arena`);
+
+        // Arena state management
+        this.state = 'WAITING'; // WAITING, STARTING, ACTIVE, CLOSING
+        this.waitingPlayers = new Map(); // socketId -> {socket, player, ready}
+        this.countdownTimer = null; // Timer for countdown when starting
+        this.paidPlayers = new Set(); // Track socketIds who have paid for current game
 
         // Game state (isolated per arena)
         this.map = new mapUtils.Map(config);
@@ -64,13 +73,33 @@ class Arena {
      * Check if arena is empty
      */
     isEmpty() {
-        return this.getPlayerCount() === 0 && this.spectators.length === 0;
+        return this.getPlayerCount() === 0 && this.spectators.length === 0 && this.waitingPlayers.size === 0;
     }
 
     /**
-     * Start arena game loops
+     * Get waiting player count
+     */
+    getWaitingPlayerCount() {
+        return this.waitingPlayers.size;
+    }
+
+    /**
+     * Check if we have minimum players to start
+     */
+    hasMinimumPlayers() {
+        return this.waitingPlayers.size >= this.config.minPlayersToStart;
+    }
+
+
+    /**
+     * Start arena game loops (only called when transitioning from WAITING to ACTIVE)
      */
     start() {
+        if (this.state !== 'WAITING' && this.state !== 'STARTING') {
+            console.log(`[ARENA ${this.id}] Cannot start - already in state: ${this.state}`);
+            return;
+        }
+
         // Game tick (physics, collisions) - 60 FPS
         this.tickInterval = setInterval(() => {
             this.tickGame();
@@ -86,7 +115,8 @@ class Arena {
             this.sendUpdates();
         }, 1000 / this.config.networkUpdateFactor);
 
-        console.log(`[ARENA ${this.id}] Started game loops`);
+        this.state = 'ACTIVE';
+        console.log(`[ARENA ${this.id}] Started game loops - Arena is now ACTIVE`);
     }
 
     /**
@@ -96,6 +126,7 @@ class Arena {
         if (this.tickInterval) clearInterval(this.tickInterval);
         if (this.gameloopInterval) clearInterval(this.gameloopInterval);
         if (this.updateInterval) clearInterval(this.updateInterval);
+        if (this.countdownTimer) clearInterval(this.countdownTimer);
 
         console.log(`[ARENA ${this.id}] Stopped game loops`);
     }
@@ -106,34 +137,13 @@ class Arena {
     addPlayer(socket) {
         const currentPlayer = new mapUtils.playerUtils.Player(socket.id, this.config);
 
-        // Initialize heartbeat immediately to prevent premature disconnect
-        currentPlayer.setLastHeartbeat();
-
-        socket.on("gotit", (clientPlayerData) => {
-            console.log(
-                `[ARENA ${this.id}] Player ${clientPlayerData.name} connecting!`
-            );
+        socket.on("gotit", async (clientPlayerData) => {
+            console.log(`[ARENA ${this.id}] Player ${clientPlayerData.name} connecting! Arena state: ${this.state}`);
 
             // Player adds their initial stake as mass to the food reserve
-            const stakeAsMass = this.config.initialStake / this.config.scoreUnit;
-            this.map.foodReserve += stakeAsMass;
-            console.log(`[ARENA ${this.id}] Added ${Math.round(stakeAsMass)} mass to reserve from new player`);
-
-            currentPlayer.init(
-                this.generateSpawnpoint(),
-                this.config.minCellMass
-            );
-
-            // Reset heartbeat after init
-            currentPlayer.setLastHeartbeat();
-
-            if (this.map.players.findIndexByID(socket.id) > -1) {
-                console.log(
-                    `[ARENA ${this.id}] Player ID already connected, kicking.`
-                );
-                socket.disconnect();
-                return;
-            }
+            const newMass = this.config.entryFee / this.config.scoreUnit;
+            this.map.foodReserve += newMass;
+            console.log(`[ARENA ${this.id}] Added ${Math.round(newMass)} mass to reserve from new player`);
 
             if (!util.validNick(clientPlayerData.name)) {
                 socket.emit("kick", "Invalid username.");
@@ -141,15 +151,45 @@ class Arena {
                 return;
             }
 
-            this.sockets[socket.id] = socket;
             const sanitizedName = clientPlayerData.name.replace(
                 /(<([^>]+)>)/gi,
                 ""
             );
             clientPlayerData.name = sanitizedName;
-
             currentPlayer.clientProvidedData(clientPlayerData);
-            this.map.players.pushNew(currentPlayer);
+
+            // Only check balance in PAID arenas for authenticated users
+            // Skip check if player already paid (they're respawning after gameStart)
+            if (this.arenaType === 'PAID' && socket.userId && !this.paidPlayers.has(socket.id)) {
+                const canAfford = await this.canAffordEntry(socket);
+
+                if (!canAfford) {
+                    // User can't afford entry - send insufficient funds event and return
+                    console.log(`[ARENA ${this.id}] User ${socket.userId} cannot afford entry fee in PAID arena`);
+
+                    socket.emit('insufficientFunds', {
+                        required: this.config.entryFee,
+                        message: `You need $${this.config.entryFee.toFixed(2)} to enter the paid arena. You can add funds from your profile.`
+                    });
+
+                    // Important: Don't add them to any game state
+                    return;
+                }
+            }
+
+            // User can afford entry - proceed with joining
+            // If arena is WAITING, add player to waiting room
+            if (this.state === 'WAITING') {
+                this.addPlayerToWaitingRoom(socket, currentPlayer);
+            }
+            // If arena is ACTIVE, add player directly to game
+            else if (this.state === 'ACTIVE') {
+                this.addPlayerToActiveGame(socket, currentPlayer);
+            }
+            // If arena is STARTING, add to waiting room (they'll spawn with others)
+            else if (this.state === 'STARTING') {
+                this.addPlayerToWaitingRoom(socket, currentPlayer);
+            }
 
             // Broadcast only to THIS arena
             this.broadcastToArena("playerJoin", { name: currentPlayer.name });
@@ -161,6 +201,311 @@ class Arena {
         });
 
         this.setupPlayerEvents(socket, currentPlayer);
+    }
+
+    /**
+     * Check if user has sufficient balance to enter the game
+     * @param {Object} socket - The socket object with userId
+     * @returns {Promise<boolean>} - true if user can afford entry, false otherwise
+     */
+    async canAffordEntry(socket) {
+        // Guest users can always enter
+        if (!socket.userId) {
+            return true;
+        }
+
+        const WalletRepository = require('./repositories/wallet-repository');
+
+        try {
+            const wallet = await WalletRepository.getWalletByUserId(socket.userId);
+            if (!wallet) {
+                console.log(`[ARENA ${this.id}] No wallet found for user ${socket.userId}`);
+                return false;
+            }
+            const balance = parseFloat(wallet.balance);
+            console.log(`[ARENA ${this.id}] User ${socket.userId} has balance $${balance.toFixed(2)}`);
+            return balance >= this.config.entryFee;
+        } catch (error) {
+            console.error(`[ARENA ${this.id}] Failed to check balance:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Centralized function to deduct entry fee from a user's wallet
+     * @param {Object} socket - The socket object with userId
+     * @returns {Promise<boolean>} - true if fee was successfully deducted, false otherwise
+     */
+    async deductEntryFee(socket) {
+        // Only charge in PAID arenas for logged-in users
+        if (this.arenaType !== 'PAID' || !socket.userId) {
+            return true; // FREE arena or guest users play for free
+        }
+
+        const WalletRepository = require('./repositories/wallet-repository');
+
+        try {
+            await WalletRepository.subtractBalance(socket.userId, this.config.entryFee);
+
+            // Mark this socket as having paid for this game
+            this.paidPlayers.add(socket.id);
+
+            console.log(`[ARENA ${this.id}] Deducted $${this.config.entryFee.toFixed(2)} entry fee from user ${socket.userId}`);
+
+            // Notify client of balance change
+            socket.emit('walletUpdate', {
+                type: 'entry_fee',
+                amount: -this.config.entryFee,
+                description: 'Arena entry fee'
+            });
+
+            return true;
+        } catch (error) {
+            console.error(`[ARENA ${this.id}] Failed to deduct entry fee:`, error);
+
+            // Send a specific event for insufficient funds modal
+            socket.emit('insufficientFunds', {
+                required: this.config.entryFee,
+                message: `You need $${this.config.entryFee.toFixed(2)} to enter the arena. You can add funds from your profile.`
+            });
+
+            return false;
+        }
+    }
+
+    /**
+     * Add player to waiting room
+     */
+    addPlayerToWaitingRoom(socket, player) {
+        // Add to waiting players
+        this.waitingPlayers.set(socket.id, {
+            socket: socket,
+            player: player,
+            ready: false
+        });
+
+        // Send waiting room status to player
+        socket.emit('waitingRoom', {
+            arenaId: this.id,
+            playersWaiting: this.waitingPlayers.size,
+            minPlayers: this.config.minPlayersToStart
+        });
+
+        // If countdown is already in progress, notify the new player
+        if (this.state === 'STARTING' && this.currentCountdown !== undefined) {
+            socket.emit('countdownStart', {
+                seconds: this.currentCountdown
+            });
+        }
+
+        // Update all waiting players
+        this.updateWaitingRoom();
+
+        console.log(`[ARENA ${this.id}] Player added to waiting room. Waiting: ${this.waitingPlayers.size}/${this.config.minPlayersToStart}`);
+
+        // Check if we can start the game
+        this.checkStartConditions();
+    }
+
+    /**
+     * Add player to active game
+     */
+    async addPlayerToActiveGame(socket, player) {
+        // Only deduct fee if player is joining DIRECTLY to active game
+        // NOT if they're transitioning from waiting room (already paid)
+        if (!this.paidPlayers.has(socket.id)) {
+            const feeDeducted = await this.deductEntryFee(socket);
+
+            if (!feeDeducted && socket.userId) {
+                console.log(`[ARENA ${this.id}] User ${socket.userId} cannot join active game - fee deduction failed`);
+                return;
+            }
+        }
+
+        player.init(
+            this.generateSpawnpoint(),
+            this.config.minCellMass
+        );
+
+        if (this.map.players.findIndexByID(socket.id) > -1) {
+            console.log(
+                `[ARENA ${this.id}] Player ID already connected, kicking.`
+            );
+            socket.disconnect();
+            return;
+        }
+
+        this.sockets[socket.id] = socket;
+        this.map.players.pushNew(player);
+
+        console.log(`[ARENA ${this.id}] Player spawned directly in active arena`);
+    }
+
+    /**
+     * Check if we can start the arena
+     */
+    checkStartConditions() {
+        if (this.state !== 'WAITING') return;
+
+        // Check if we have minimum players
+        if (this.hasMinimumPlayers()) {
+            this.startCountdown();
+        }
+    }
+
+    /**
+     * Start countdown to game start
+     */
+    startCountdown() {
+        if (this.state !== 'WAITING') return;
+
+        this.state = 'STARTING';
+        console.log(`[ARENA ${this.id}] Starting countdown...`);
+
+        let countdown = this.config.waitingRoomCountdown / 1000; // Convert to seconds
+        this.currentCountdown = countdown; // Track current countdown for late joiners
+
+        // Send countdown start to all waiting players
+        this.broadcastToWaitingRoom('countdownStart', {
+            seconds: countdown
+        });
+
+        // Update countdown every second
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            this.currentCountdown = countdown; // Update tracked countdown
+
+            if (countdown > 0) {
+                this.broadcastToWaitingRoom('countdownUpdate', {
+                    seconds: countdown
+                });
+            } else {
+                clearInterval(countdownInterval);
+                this.currentCountdown = undefined; // Clear countdown tracking
+                this.startGame();
+            }
+        }, 1000);
+
+        this.countdownTimer = countdownInterval;
+    }
+
+    /**
+     * Reset arena to waiting state when all players leave
+     */
+    resetToWaitingState() {
+        // Stop game loops
+        if (this.tickInterval) {
+            clearInterval(this.tickInterval);
+            this.tickInterval = null;
+        }
+        if (this.gameloopInterval) {
+            clearInterval(this.gameloopInterval);
+            this.gameloopInterval = null;
+        }
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
+
+        // Reset state
+        this.state = 'WAITING';
+        this.currentCountdown = undefined; // Clear any countdown tracking
+        this.waitingPlayers.clear();
+
+        // Clear the map
+        this.map = new mapUtils.Map(this.config);
+
+        console.log(`[ARENA ${this.id}] Reset to WAITING state`);
+    }
+
+    /**
+     * Start the game for all waiting players
+     */
+    async startGame() {
+        console.log(`[ARENA ${this.id}] Starting game with ${this.waitingPlayers.size} players`);
+
+        // Start game loops
+        this.start();
+
+        // Process each waiting player
+        const playersToSpawn = [];
+
+        for (const [socketId, waitingPlayer] of this.waitingPlayers) {
+            const { socket, player } = waitingPlayer;
+
+            // Deduct entry fee when game actually starts
+            const feeDeducted = await this.deductEntryFee(socket);
+
+            if (!feeDeducted && socket.userId) {
+                // Logged-in user couldn't pay - don't let them enter
+                console.log(`[ARENA ${this.id}] User ${socket.userId} cannot enter game - insufficient funds`);
+
+                // Notify them they couldn't enter
+                socket.emit('serverMSG', '❌ Game started but you have insufficient funds to enter. Spectating instead.');
+
+                // Skip this player - they won't spawn
+                continue;
+            }
+
+            // Player can enter - add them to spawn list
+            playersToSpawn.push({ socket, player });
+        }
+
+        // Now spawn all players who successfully paid
+        for (const { socket, player } of playersToSpawn) {
+
+            // Initialize player position and state
+            player.init(
+                this.generateSpawnpoint(),
+                this.config.minCellMass
+            );
+
+            // Add to active game
+            this.sockets[socket.id] = socket;
+            this.map.players.pushNew(player);
+
+            // Send game start signal to player
+            socket.emit('gameStart', {
+                arenaId: this.id,
+                gameWidth: this.config.gameWidth,
+                gameHeight: this.config.gameHeight
+            });
+        }
+
+        // Clear waiting room
+        this.waitingPlayers.clear();
+
+        // Broadcast game started
+        this.broadcastToArena('arenaStarted', {
+            playerCount: this.map.players.data.length
+        });
+
+        console.log(`[ARENA ${this.id}] Game started successfully`);
+    }
+
+    /**
+     * Update waiting room status for all waiting players
+     */
+    updateWaitingRoom() {
+        const status = {
+            playersWaiting: this.waitingPlayers.size,
+            minPlayers: this.config.minPlayersToStart,
+            players: Array.from(this.waitingPlayers.values()).map(p => ({
+                name: p.player.name,
+                ready: p.ready
+            }))
+        };
+
+        this.broadcastToWaitingRoom('waitingRoomUpdate', status);
+    }
+
+    /**
+     * Broadcast to waiting room players
+     */
+    broadcastToWaitingRoom(event, data) {
+        for (const [socketId, waitingPlayer] of this.waitingPlayers) {
+            waitingPlayer.socket.emit(event, data);
+        }
     }
 
     /**
@@ -187,15 +532,12 @@ class Arena {
                 this.config.minCellMass
             );
 
-            // Reset player stats for fresh spawn
-            currentPlayer.cells = [];
-            currentPlayer.massTotal = 0;
-
             // Send welcome with the reinitialized player
             socket.emit("welcome", currentPlayer, {
                 width: this.config.gameWidth,
                 height: this.config.gameHeight,
                 arenaId: this.id,
+                arenaType: this.arenaType,
             });
 
             console.log(
@@ -213,6 +555,38 @@ class Arena {
                 console.log(`[ARENA ${this.id}] Returned ${Math.round(currentPlayer.massTotal)} mass to reserve on disconnect`);
             } else if (currentPlayer && currentPlayer.successfulEscape) {
                 console.log(`[ARENA ${this.id}] 🎉 Player ${currentPlayer.name} escaped with ${Math.round(currentPlayer.massTotal)} mass`);
+            }
+
+            // Clean up paid player tracking when they disconnect
+            this.paidPlayers.delete(socket.id);
+
+            // Check if player is in waiting room
+            if (this.waitingPlayers.has(socket.id)) {
+                this.waitingPlayers.delete(socket.id);
+                console.log(
+                    `[ARENA ${this.id}] Player ${currentPlayer.name} left waiting room. Remaining: ${this.waitingPlayers.size}`
+                );
+
+                // Update waiting room
+                this.updateWaitingRoom();
+
+                // If we're in countdown and drop below minimum, cancel countdown
+                if (this.state === 'STARTING' && !this.hasMinimumPlayers()) {
+                    if (this.countdownTimer) {
+                        clearInterval(this.countdownTimer);
+                        this.countdownTimer = null;
+                    }
+                    this.state = 'WAITING';
+                    this.broadcastToWaitingRoom('countdownCancelled', {
+                        reason: 'Not enough players',
+                        playersWaiting: this.waitingPlayers.size,
+                        minPlayers: this.config.minPlayersToStart
+                    });
+                    console.log(`[ARENA ${this.id}] Countdown cancelled - not enough players`);
+                }
+
+                this.lastActivityAt = Date.now();
+                return;
             }
 
             // Clear any active escape timer
@@ -241,12 +615,43 @@ class Arena {
             this.map.players.removePlayerByID(currentPlayer.id);
             delete this.sockets[socket.id];
             console.log(
-                `[ARENA ${this.id}] User ${currentPlayer.name} disconnected`
+                `[ARENA ${this.id}] User ${currentPlayer.name} disconnected from active game`
             );
             this.broadcastToArena("playerDisconnect", {
                 name: currentPlayer.name,
             });
             this.lastActivityAt = Date.now();
+        });
+
+        // Leave waiting room handler
+        socket.on("leaveWaitingRoom", () => {
+            if (this.waitingPlayers.has(socket.id)) {
+                this.waitingPlayers.delete(socket.id);
+                console.log(
+                    `[ARENA ${this.id}] Player ${currentPlayer.name} left waiting room by choice. Remaining: ${this.waitingPlayers.size}`
+                );
+
+                // Update waiting room
+                this.updateWaitingRoom();
+
+                // If we're in countdown and drop below minimum, cancel countdown
+                if (this.state === 'STARTING' && !this.hasMinimumPlayers()) {
+                    if (this.countdownTimer) {
+                        clearInterval(this.countdownTimer);
+                        this.countdownTimer = null;
+                    }
+                    this.state = 'WAITING';
+                    this.broadcastToWaitingRoom('countdownCancelled', {
+                        reason: 'Not enough players',
+                        playersWaiting: this.waitingPlayers.size,
+                        minPlayers: this.config.minPlayersToStart
+                    });
+                    console.log(`[ARENA ${this.id}] Countdown cancelled - player left waiting room`);
+                }
+
+                // Disconnect the socket to trigger cleanup
+                socket.disconnect();
+            }
         });
 
         // Ping check
@@ -262,7 +667,6 @@ class Arena {
 
         // Movement handler (0)
         socket.on("0", (target) => {
-            currentPlayer.lastHeartbeat = new Date().getTime();
             if (target.x !== currentPlayer.x || target.y !== currentPlayer.y) {
                 currentPlayer.target = target;
             }
@@ -300,86 +704,6 @@ class Arena {
             this.handleEscapeRequest(socket, currentPlayer);
         });
 
-        // Admin commands
-        this.setupAdminEvents(socket, currentPlayer);
-    }
-
-
-    /**
-     * Setup admin command handlers
-     */
-    setupAdminEvents(socket, currentPlayer) {
-        socket.on("pass", async (data) => {
-            const password = data[0];
-            if (password === this.config.adminPass) {
-                console.log(
-                    `[ARENA ${this.id}] ${currentPlayer.name} logged in as admin`
-                );
-                socket.emit("serverMSG", "Welcome back " + currentPlayer.name);
-                this.broadcastToArena(
-                    "serverMSG",
-                    currentPlayer.name + " just logged in as an admin."
-                );
-                currentPlayer.admin = true;
-            } else {
-                console.log(
-                    `[ARENA ${this.id}] ${currentPlayer.name} failed admin login`
-                );
-                socket.emit("serverMSG", "Password incorrect, attempt logged.");
-
-                loggingRepository
-                    .logFailedLoginAttempt(
-                        currentPlayer.name,
-                        currentPlayer.ipAddress
-                    )
-                    .catch((err) =>
-                        console.error("Error logging failed login", err)
-                    );
-            }
-        });
-
-        socket.on("kick", (data) => {
-            if (!currentPlayer.admin) {
-                socket.emit(
-                    "serverMSG",
-                    "You are not permitted to use this command."
-                );
-                return;
-            }
-
-            var reason = "";
-            var worked = false;
-            for (let playerIndex in this.map.players.data) {
-                let player = this.map.players.data[playerIndex];
-                if (player.name === data[0] && !player.admin && !worked) {
-                    if (data.length > 1) {
-                        for (var f = 1; f < data.length; f++) {
-                            reason +=
-                                f === data.length ? data[f] : data[f] + " ";
-                        }
-                    }
-                    console.log(
-                        `[ARENA ${this.id}] ${player.name} kicked by ${
-                            currentPlayer.name
-                        }${reason ? " for " + reason : ""}`
-                    );
-                    socket.emit(
-                        "serverMSG",
-                        `User ${player.name} was kicked by ${currentPlayer.name}`
-                    );
-                    this.sockets[player.id].emit("kick", reason);
-                    this.sockets[player.id].disconnect();
-                    this.map.players.removePlayerByIndex(playerIndex);
-                    worked = true;
-                }
-            }
-            if (!worked) {
-                socket.emit(
-                    "serverMSG",
-                    "Could not locate user or user is an admin."
-                );
-            }
-        });
     }
 
     /**
@@ -438,13 +762,38 @@ class Arena {
                 // Send countdown update to client
                 socket.emit("escapeUpdate", { countdown });
             } else {
-                // Countdown complete, disconnect player
+                // Countdown complete, handle escape rewards
                 this.clearEscapeTimer(player.id);
+
+                // Credit wallet ONLY in PAID arenas for logged-in users
+                if (this.arenaType === 'PAID' && socket.userId) {
+                    const WalletRepository = require('./repositories/wallet-repository');
+
+                    // Calculate score to add to wallet
+                    const scoreToAdd = player.getScore() || 0;
+
+                    if (scoreToAdd > 0) {
+                        WalletRepository.addBalance(socket.userId, scoreToAdd)
+                            .then(updatedWallet => {
+                                console.log(`[ARENA ${this.id}] Added $${scoreToAdd.toFixed(2)} to user ${socket.userId} wallet (escape reward)`);
+
+                                // Notify client of balance change
+                                socket.emit('walletUpdate', {
+                                    type: 'escape_reward',
+                                    amount: scoreToAdd,
+                                    description: `Escape reward: $${scoreToAdd.toFixed(2)}`
+                                });
+                            })
+                            .catch(error => {
+                                console.error(`[ARENA ${this.id}] Failed to add escape reward:`, error);
+                            });
+                    }
+                }
 
                 // Notify client that escape is complete
                 socket.emit("escapeComplete");
 
-                console.log(`[ARENA ${this.id}] Player ${player.name} escaped successfully`);
+                console.log(`[ARENA ${this.id}] Player ${player.name} escaped successfully with score ${player.getScore()}`);
 
                 // Mark this as a successful escape so disconnect handler doesn't return mass
                 player.successfulEscape = true;
@@ -523,21 +872,6 @@ class Arena {
      * Tick a single player (physics, eating, collisions)
      */
     tickPlayer(currentPlayer) {
-        // Check heartbeat
-        if (
-            currentPlayer.lastHeartbeat <
-            new Date().getTime() - this.config.maxHeartbeatInterval
-        ) {
-            this.sockets[currentPlayer.id].emit(
-                "kick",
-                "Last heartbeat received over " +
-                    this.config.maxHeartbeatInterval +
-                    " ago."
-            );
-            this.sockets[currentPlayer.id].disconnect();
-            return;
-        }
-
         // Move player
         currentPlayer.move(
             this.config.slowBase,
@@ -695,6 +1029,10 @@ class Arena {
             );
             // Add all decayed mass back to the food reserve
             this.map.foodReserve += massLostToDecay;
+        } else if (this.state === 'ACTIVE' && this.getPlayerCount() === 0) {
+            // If arena is active but has no players, reset it to WAITING state
+            console.log(`[ARENA ${this.id}] No players remaining, resetting to WAITING state`);
+            this.resetToWaitingState();
         }
 
         this.map.balanceMass(

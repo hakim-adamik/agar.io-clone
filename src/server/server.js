@@ -502,15 +502,19 @@ const addPlayerToArena = async (socket) => {
     // Check if player is respawning (has preferred arena)
     const preferredArenaId = socket.handshake.query.arenaId || null;
     const userId = socket.handshake.query.userId || null;
+    const privyId = socket.handshake.query.privyId || null;
     const playerName = socket.handshake.query.playerName || `Guest_${Math.floor(Math.random() * 10000)}`;
 
-    // Find or create arena (can be the same arena after death - that's fine!)
-    const arena = arenaManager.findAvailableArena(preferredArenaId);
+    // Store user info on socket for arena type determination
+    socket.userId = userId ? parseInt(userId) : null;
+    socket.privyId = privyId;
+    socket.playerName = playerName;
+
+    // Find or create arena (pass socket to determine paid vs free)
+    const arena = arenaManager.findAvailableArena(preferredArenaId, socket);
 
     // Store arena ID on socket BEFORE joining room
     socket.arenaId = arena.id;
-    socket.userId = userId ? parseInt(userId) : null;
-    socket.playerName = playerName;
 
     // TODO: Fix session tracking - temporarily disabled to fix black screen issue
     // Session creation works but causes immediate disconnects for logged-in users
