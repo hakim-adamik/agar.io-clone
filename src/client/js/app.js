@@ -1324,11 +1324,7 @@ function setupSocket(socket) {
     });
 
     socket.on("kick", function (reason) {
-        // Clean up the kick reason message to be more user-friendly
         let userMessage = reason;
-        if (reason && reason.includes("Last heartbeat received over")) {
-            userMessage = "You were disconnected due to inactivity";
-        }
 
         // Use unified exit handler instead of showing ugly canvas message
         handleGameExit('kick', userMessage);
@@ -1811,7 +1807,7 @@ function gameLoop() {
         // Throttle socket emissions instead of every frame
         var now = Date.now();
         if (now - lastSocketEmit >= socketEmitInterval) {
-            socket.emit("0", window.canvas.target); // playerSendTarget "Heartbeat".
+            socket.emit("0", window.canvas.target); // playerSendTarget movement update
             lastSocketEmit = now;
         }
     }
@@ -2003,7 +1999,7 @@ function displayExitMessage(reason, message) {
     switch(reason) {
         case 'kick':
             messageClass += 'exit-kick';
-            messageHTML = '⚠️ ' + (message || 'You were disconnected due to inactivity');
+            messageHTML = '⚠️ ' + (message || 'You were kicked from the game');
             break;
         case 'death':
             messageClass += 'exit-death';

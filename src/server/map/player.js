@@ -131,7 +131,6 @@ exports.Player = class {
         this.config = config; // Store config for all settings
         this.lastSplitTime = 0; // Track last split to prevent spam
         this.isSplitting = false; // Flag to prevent concurrent splits
-        this.setLastHeartbeat();
     }
 
     /* Initalizes things that change with every respawn */
@@ -165,11 +164,6 @@ exports.Player = class {
         this.name = playerData.name;
         this.screenWidth = playerData.screenWidth;
         this.screenHeight = playerData.screenHeight;
-        this.setLastHeartbeat();
-    }
-
-    setLastHeartbeat() {
-        this.lastHeartbeat = Date.now();
     }
 
     setMergeTimer() {

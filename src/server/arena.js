@@ -133,9 +133,6 @@ class Arena {
     addPlayer(socket) {
         const currentPlayer = new mapUtils.playerUtils.Player(socket.id, this.config);
 
-        // Initialize heartbeat immediately to prevent premature disconnect
-        currentPlayer.setLastHeartbeat();
-
         socket.on("gotit", (clientPlayerData) => {
             console.log(
                 `[ARENA ${this.id}] Player ${clientPlayerData.name} connecting! Arena state: ${this.state}`
@@ -526,7 +523,6 @@ class Arena {
 
         // Movement handler (0)
         socket.on("0", (target) => {
-            currentPlayer.lastHeartbeat = new Date().getTime();
             if (target.x !== currentPlayer.x || target.y !== currentPlayer.y) {
                 currentPlayer.target = target;
             }
@@ -784,21 +780,6 @@ class Arena {
      * Tick a single player (physics, eating, collisions)
      */
     tickPlayer(currentPlayer) {
-        // Check heartbeat
-        if (
-            currentPlayer.lastHeartbeat <
-            new Date().getTime() - this.config.maxHeartbeatInterval
-        ) {
-            this.sockets[currentPlayer.id].emit(
-                "kick",
-                "Last heartbeat received over " +
-                    this.config.maxHeartbeatInterval +
-                    " ago."
-            );
-            this.sockets[currentPlayer.id].disconnect();
-            return;
-        }
-
         // Move player
         currentPlayer.move(
             this.config.slowBase,
