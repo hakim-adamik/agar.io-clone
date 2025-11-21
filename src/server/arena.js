@@ -219,6 +219,9 @@ class Arena {
             this.config.defaultPlayerMass
         );
 
+        // Reset heartbeat after init
+        player.setLastHeartbeat();
+
         if (this.map.players.findIndexByID(socket.id) > -1) {
             console.log(
                 `[ARENA ${this.id}] Player ID already connected, kicking.`
@@ -328,6 +331,7 @@ class Arena {
                 this.generateSpawnpoint(),
                 this.config.defaultPlayerMass
             );
+            player.setLastHeartbeat();
 
             // Add to active game
             this.sockets[socketId] = socket;
