@@ -22,15 +22,13 @@ class WalletRepository {
                 return result.rows[0];
             }
 
-            // Create new wallet with default balance ($1.000000)
+            // Create new wallet with default balance ($0.000000)
             const insertResult = await pool.query(
                 `INSERT INTO wallet_balances (user_id, privy_id, balance, created_at, updated_at)
                  VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                  RETURNING *`,
-                [userId, privyId, 1.000000]
+                [userId, privyId, 0.000000]
             );
-
-            console.log(`[WalletRepository] Created wallet for user ${userId} with $1.000000 starting balance`);
             return insertResult.rows[0];
         } catch (error) {
             console.error('[WalletRepository] Error in getOrCreateWallet:', error);

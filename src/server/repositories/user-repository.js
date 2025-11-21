@@ -4,6 +4,7 @@
 const pool = require('../sql');
 const StatsRepository = require('./stats-repository');
 const PreferencesRepository = require('./preferences-repository');
+const WalletRepository = require('./wallet-repository');
 
 class UserRepository {
     /**
@@ -60,6 +61,14 @@ class UserRepository {
                 } catch (prefsError) {
                     console.error(`[UserRepository] Failed to initialize preferences for user ${newUser.id}:`, prefsError);
                     // Don't fail user creation if preferences initialization fails
+                }
+
+                // Initialize wallet for new user with $0 default balance
+                try {
+                    await WalletRepository.getOrCreateWallet(newUser.id, privyId);
+                } catch (walletError) {
+                    console.error(`[UserRepository] Failed to initialize wallet for user ${newUser.id}:`, walletError);
+                    // Don't fail user creation if wallet initialization fails
                 }
 
                 return newUser;
