@@ -35,7 +35,6 @@ const mockConfig = {
         splitMass: 180,
         uniformDisposition: false,
     },
-    adminPass: "TEST",
     sqlinfo: { fileName: "test.db" },
 
     // Multi-arena config

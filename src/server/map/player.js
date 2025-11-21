@@ -125,7 +125,6 @@ exports.Player = class {
         this.id = id;
         this.hue = Math.round(Math.random() * 360);
         this.name = null;
-        this.admin = false;
         this.screenWidth = null;
         this.screenHeight = null;
         this.config = config; // Store config for all settings

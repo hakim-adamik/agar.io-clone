@@ -46,6 +46,41 @@ A fully functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canvas
 - **Reconnection**: Currently, disconnected players are removed (future: allow reconnect)
 - **Exit Options**: ESC key or being eaten
 
+### Wallet & Entry Fee System
+- **Entry Fee**: Configurable in `config.js` (default: $1.00)
+- **Payment Timing**: Fee deducted when game starts (not in waiting room)
+- **Guest Play**: Free for non-authenticated users
+- **Escape Rewards**: Score added to wallet on successful escape
+- **Death Penalty**: Lose entry fee (no refund)
+- **Arena Segregation**: PAID arenas (authenticated) vs FREE arenas (guests/bots)
+
+### Socket & Payment Architecture
+
+#### Socket Lifecycle
+```
+Click Play → Socket connects (socket.id assigned) → "pass" event → "gotit" event →
+Enter waiting room → Game starts → Fee deducted → "respawn" event → "gotit" event AGAIN →
+Spawn in game → Play until death/escape → Disconnect
+```
+
+#### Important Socket.io Concepts
+- **Socket.id**: Created immediately on connection, persists throughout session
+- **"gotit" event**: Fires TWICE - once on initial connection, again after game starts
+- **"respawn" event**: Misleadingly named - used for initial spawn, not after death
+- **Death = Game Over**: No respawn after death in Agar.io, must pay again for new game
+
+#### Payment Tracking
+- **paidPlayers Set**: Tracks socket.ids that have paid for current game
+- **Balance Check**: Only for NEW connections, skipped for paid players
+- **Deduction Timing**: Only when transitioning from waiting room → active game
+- **Cleanup**: Payment tracking cleared on disconnect
+
+#### Why This Architecture?
+1. **Can't charge on socket creation**: Socket exists before entering waiting room
+2. **Can't charge in waiting room**: Players might leave without playing
+3. **Must track paid players**: "gotit" fires multiple times, would cause double-charging
+4. **Socket.id is perfect key**: Unique per session, cleared on disconnect
+
 ---
 
 ## 🚀 Quick Start
@@ -69,7 +104,9 @@ npm test
 // config.js key settings
 minPlayersToStart: 2,    // Waiting room minimum
 maxPlayersPerArena: 10,   // Arena capacity
-maxTotalArenas: 50,       // Total arena limit
+maxFreeArenas: 5,        // Max FREE arenas (guests/bots)
+maxPaidArenas: 5,        // Max PAID arenas (authenticated)
+entryFee: 1.0,           // Entry fee in dollars (0 = free to play)
 // No maxHeartbeatInterval - inactivity kicking removed
 ```
 
@@ -127,12 +164,17 @@ const SPLIT_CELL_SPEED = 20;  // Split velocity
 ### Known Issues
 - Session tracking temporarily disabled (causes disconnects)
 - Disconnected players removed immediately (no reconnection)
+- Arena capacity not enforced when all arenas full (players can join beyond 10-player limit)
 
 ### Next Priorities
 1. Fix session tracking disconnect issue
 2. Real-time stats during gameplay
 3. Leaderboard persistence
 4. Wallet earnings from gameplay
+5. **Arena Capacity Enforcement** (when high usage):
+   - Currently: When all arenas of a type are full, players still join overcrowded arenas
+   - Needed: Proper "servers full" message when at capacity
+   - Enforce hard limit of 10 players per arena
 
 ---
 

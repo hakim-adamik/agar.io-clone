@@ -20,7 +20,6 @@ module.exports = {
     },
     gameWidth: 5000,
     gameHeight: 5000,
-    adminPass: "DEFAULT",
     gameMass: 20000,
     maxFood: 1000,
     maxVirus: 50,
@@ -33,8 +32,15 @@ module.exports = {
     multiArenaEnabled: true, // Enable multi-arena system
     maxPlayersPerArena: 10, // Player capacity per arena
     arenaCleanupTimeout: 60000, // Milliseconds before cleaning empty arenas (60 seconds)
-    // FIXME Single arena for now to prevent performance issues
-    maxTotalArenas: 1, // Maximum concurrent arenas (resource limit)
+    maxFreeArenas: 5, // Maximum FREE arenas (for guests/bots)
+    maxPaidArenas: 5, // Maximum PAID arenas (for authenticated users)
+
+    // Waiting room configuration
+    minPlayersToStart: 2, // Minimum players required to start an arena
+    waitingRoomCountdown: 3000, // Countdown duration when minimum players reached (3 seconds)
+
+    // Game economy configuration
+    entryFee: 1.0, // Entry fee in dollars to join a game (0 = free to play)
 
     // Waiting room configuration
     minPlayersToStart: 2, // Minimum players required to start an arena

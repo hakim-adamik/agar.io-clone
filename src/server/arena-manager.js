@@ -20,84 +20,130 @@ class ArenaManager {
         // Read from centralized config.js (always defined)
         this.maxPlayersPerArena = config.maxPlayersPerArena;
         this.arenaCleanupInterval = config.arenaCleanupTimeout;
-        this.maxTotalArenas = config.maxTotalArenas;
+        this.maxFreeArenas = config.maxFreeArenas || 5;
+        this.maxPaidArenas = config.maxPaidArenas || 5;
         this.multiArenaEnabled = config.multiArenaEnabled;
 
         console.log("[ARENA MANAGER] Initialized with config:");
         console.log(`  - Max players per arena: ${this.maxPlayersPerArena}`);
         console.log(`  - Cleanup timeout: ${this.arenaCleanupInterval}ms`);
-        console.log(`  - Max total arenas: ${this.maxTotalArenas}`);
+        console.log(`  - Max FREE arenas: ${this.maxFreeArenas}`);
+        console.log(`  - Max PAID arenas: ${this.maxPaidArenas}`);
         console.log(`  - Multi-arena enabled: ${this.multiArenaEnabled}`);
+    }
+
+    /**
+     * Determine if a socket represents a paid player
+     * @param {Socket} socket - Socket to check
+     * @returns {boolean} True if this is a paid (authenticated) player
+     */
+    isPaidPlayer(socket) {
+        // Player must have BOTH userId and privyId to be considered paid
+        return !!(socket.userId && socket.privyId);
     }
 
     /**
      * Find or create an arena with available slots
      * @param {string} preferredArenaId - Try to rejoin this arena if available
+     * @param {Socket} socket - Socket to determine player type
      * @returns {Arena} Arena instance with available slots
      */
-    findAvailableArena(preferredArenaId = null) {
-        // 1. Try preferred arena first (for respawns)
+    findAvailableArena(preferredArenaId = null, socket = null) {
+        // Determine arena type based on player authentication
+        const isPaid = socket && this.isPaidPlayer(socket);
+        const requiredType = isPaid ? 'PAID' : 'FREE';
+
+        console.log(`[ARENA MANAGER] Player type check - userId: ${socket?.userId}, privyId: ${socket?.privyId}, isPaid: ${isPaid}, requiredType: ${requiredType}`);
+
+        // 1. Try preferred arena first (for respawns) - but only if it matches type
         if (preferredArenaId && this.arenas.has(preferredArenaId)) {
             const arena = this.arenas.get(preferredArenaId);
-            if (!arena.isFull()) {
+            if (!arena.isFull() && arena.arenaType === requiredType) {
                 console.log(
-                    `[ARENA MANAGER] Assigning to preferred arena ${preferredArenaId} (state: ${arena.state})`
+                    `[ARENA MANAGER] Assigning to preferred ${requiredType} arena ${preferredArenaId} (state: ${arena.state})`
                 );
                 return arena;
             }
             console.log(
-                `[ARENA MANAGER] Preferred arena ${preferredArenaId} is full`
+                `[ARENA MANAGER] Preferred arena ${preferredArenaId} is full or wrong type (${arena.arenaType} vs ${requiredType})`
             );
         }
 
-        // 2. Prioritize WAITING arenas that need more players
+        // 2. Prioritize WAITING arenas that need more players (of matching type)
         for (const [id, arena] of this.arenas) {
-            if (arena.state === 'WAITING' && !arena.isFull()) {
+            if (arena.state === 'WAITING' && !arena.isFull() && arena.arenaType === requiredType) {
                 console.log(
-                    `[ARENA MANAGER] Assigning to WAITING arena ${id} (${arena.getWaitingPlayerCount()}/${arena.config.minPlayersToStart} players)`
+                    `[ARENA MANAGER] Assigning to WAITING ${requiredType} arena ${id} (${arena.getWaitingPlayerCount()}/${arena.config.minPlayersToStart} players)`
                 );
                 return arena;
             }
         }
 
-        // 3. Find any ACTIVE non-full arena
+        // 3. Find any ACTIVE non-full arena (of matching type)
         for (const [id, arena] of this.arenas) {
-            if (arena.state === 'ACTIVE' && !arena.isFull()) {
+            if (arena.state === 'ACTIVE' && !arena.isFull() && arena.arenaType === requiredType) {
                 console.log(
-                    `[ARENA MANAGER] Assigning to ACTIVE arena ${id}`
+                    `[ARENA MANAGER] Assigning to ACTIVE ${requiredType} arena ${id}`
                 );
                 return arena;
             }
         }
 
         // 4. Create new arena if all are full or no suitable arena found
-        console.log("[ARENA MANAGER] No suitable arena found, creating new WAITING arena");
-        return this.createArena();
+        console.log(`[ARENA MANAGER] No suitable ${requiredType} arena found, creating new WAITING ${requiredType} arena`);
+        return this.createArena(requiredType);
     }
 
     /**
      * Create a new arena
+     * @param {string} arenaType - Type of arena to create ('PAID' or 'FREE')
      * @returns {Arena} New arena instance
      */
-    createArena() {
-        // Check max arena limit
-        if (this.arenas.size >= this.maxTotalArenas) {
+    createArena(arenaType = 'FREE') {
+        // Count existing arenas by type
+        let freeCount = 0;
+        let paidCount = 0;
+        for (const [id, arena] of this.arenas) {
+            if (arena.arenaType === 'FREE') freeCount++;
+            else if (arena.arenaType === 'PAID') paidCount++;
+        }
+
+        // Check type-specific limit
+        const maxForType = arenaType === 'FREE' ? this.maxFreeArenas : this.maxPaidArenas;
+        const currentCount = arenaType === 'FREE' ? freeCount : paidCount;
+
+        if (currentCount >= maxForType) {
             console.error(
-                `[ARENA MANAGER] Max arenas reached (${this.maxTotalArenas})`
+                `[ARENA MANAGER] Max ${arenaType} arenas reached (${currentCount}/${maxForType})`
             );
-            // Return any available arena as fallback
+            // Return any available arena of the same type as fallback
+            for (const [id, arena] of this.arenas) {
+                if (arena.arenaType === arenaType && !arena.isFull()) {
+                    console.log(`[ARENA MANAGER] Reusing existing ${arenaType} arena ${id}`);
+                    return arena;
+                }
+            }
+            // All arenas of this type are full, return first one anyway
+            for (const [id, arena] of this.arenas) {
+                if (arena.arenaType === arenaType) {
+                    console.log(`[ARENA MANAGER] All ${arenaType} arenas full, returning ${id}`);
+                    return arena;
+                }
+            }
+            // This shouldn't happen but handle it
+            console.error(`[ARENA MANAGER] No ${arenaType} arena found!`);
             return this.arenas.values().next().value;
         }
 
         const arenaId = `arena_${this.nextArenaId++}`;
-        const arena = new Arena(arenaId, this.config, this.io);
+        const arena = new Arena(arenaId, this.config, this.io, arenaType);
 
         // Don't start game loops yet - arena is in WAITING state
         // Game loops will start when minimum players join
 
         this.arenas.set(arenaId, arena);
         console.log(
-            `[ARENA MANAGER] Created ${arenaId} in WAITING state. Total arenas: ${this.arenas.size}`
+            `[ARENA MANAGER] Created ${arenaType} ${arenaId} in WAITING state. Total arenas: ${this.arenas.size}`
         );
 
         return arena;

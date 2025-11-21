@@ -212,6 +212,11 @@ function syncSettingsCheckboxes() {
 }
 
 function startGame(type) {
+    // Reset waiting room state when starting a new game
+    // This ensures clean state for each game attempt
+    window.inWaitingRoom = false;
+    window.countdownActive = false;
+
     // Auto-generate guest name if empty
     if (!playerNameInput.value) {
         playerNameInput.value = generateGuestName();
@@ -318,6 +323,7 @@ function startGame(type) {
             type: type,
             arenaId: global.arenaId || null,
             userId: userData?.dbUserId || null,
+            privyId: userData?.id || null,  // Privy ID is stored as 'id' in userData
             playerName:
                 playerNameInput.value ||
                 userData?.username ||
@@ -458,8 +464,8 @@ function leaveWaitingRoom() {
         socket.emit('leaveWaitingRoom');
     }
 
-    // Reset waiting room state
-    window.inWaitingRoom = false;
+    // Don't reset inWaitingRoom flag here - let the server events control it
+    // This prevents music from playing if user quickly re-enters waiting room
     window.countdownActive = false;
 
     // Hide UI
@@ -468,6 +474,10 @@ function leaveWaitingRoom() {
 
     // Return to landing page
     cleanupGame();
+
+    // Now reset the waiting room flag after cleanup
+    window.inWaitingRoom = false;
+
     returnToLanding("You left the waiting room");
 }
 
@@ -945,6 +955,31 @@ function setupSocket(socket) {
         }
     });
 
+    // Handle wallet updates
+    socket.on("walletUpdate", function(data) {
+        console.log("Wallet update received:", data);
+
+        // Show wallet update notification
+        showWalletNotification(data);
+
+        // Update wallet balance display if user is logged in
+        if (window.loadWalletBalance) {
+            window.loadWalletBalance();
+        }
+    });
+
+    // Handle insufficient funds
+    socket.on("insufficientFunds", function(data) {
+        console.log("Insufficient funds:", data);
+
+        // Stop the game immediately to prevent broken state
+        global.gameStart = false;
+        global.disconnectReason = "insufficient_funds";
+
+        // Return to landing page with modal
+        window.returnToLandingWithInsufficientFunds(data);
+    });
+
     socket.on("reconnect", function(attemptNumber) {
         // Reconnected after attempts
         // Optionally show success message briefly
@@ -1006,9 +1041,13 @@ function setupSocket(socket) {
         socket.emit("gotit", player);
         global.gameStart = true;
 
-        // Store arena ID for multi-arena support
+        // Store arena info for multi-arena support
         if (gameSizes.arenaId) {
             global.arenaId = gameSizes.arenaId;
+            // Set flag if this is a PAID arena for wallet calculation
+            if (gameSizes.arenaType === 'PAID') {
+                localStorage.setItem("wasInPaidArena", "true");
+            }
             // Joined arena
         }
 
@@ -1982,6 +2021,90 @@ function returnToLanding(exitReason, exitMessage) {
 }
 
 /**
+ * Return to landing page with insufficient funds modal
+ */
+window.returnToLandingWithInsufficientFunds = function(data) {
+    // First cleanup and return to landing
+    cleanupGame();
+
+    // Clear game state
+    global.gameStart = false;
+    player = null;
+    users = [];
+    leaderboard = [];
+    target = {
+        x: global.playerX,
+        y: global.playerY
+    };
+    foods = [];
+    viruses = [];
+    fireFood = [];
+    global.arenaId = null;
+
+    var landingView = document.getElementById("landingView");
+    var gameView = document.getElementById("gameView");
+
+    if (landingView && gameView) {
+        // Hide game view
+        gameView.style.display = "none";
+        document.getElementById("gameAreaWrapper").style.opacity = 0;
+
+        // Show landing view
+        landingView.style.display = "block";
+
+        // Reset player name input if needed
+        playerNameInput.value = "";
+
+        // Show the insufficient funds modal
+        showInsufficientFundsModal(data);
+    }
+};
+
+/**
+ * Show insufficient funds modal
+ */
+function showInsufficientFundsModal(data) {
+    // Create modal content
+    const modalHTML = `
+        <div class="modal show" id="insufficientFundsModal" style="z-index: 10000;">
+            <div class="modal-content">
+                <h2 style="color: #ff4444; margin-bottom: 20px;">💰 Insufficient Funds</h2>
+                <div style="margin: 20px 0; font-size: 18px; line-height: 1.6;">
+                    <p style="margin-bottom: 15px;">You need <strong>$${data.required.toFixed(2)}</strong> to enter the arena.</p>
+                    <p style="color: #888; margin-bottom: 20px;">Each game requires a $${data.required.toFixed(2)} entry fee. Win by escaping to earn your score as profit!</p>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 30px;">
+                    <button class="modal-button" onclick="
+                        document.getElementById('insufficientFundsModal').remove();
+                        // Open profile modal to add funds
+                        document.querySelector('[data-section=\\'profile\\']').click();
+                    " style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        Add Funds
+                    </button>
+                    <button class="modal-button secondary" onclick="
+                        document.getElementById('insufficientFundsModal').remove();
+                    " style="background: #444;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Add modal to page
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHTML;
+    document.body.appendChild(modalContainer.firstElementChild);
+
+    // Play error sound if available
+    try {
+        playErrorSound();
+    } catch(e) {
+        // Sound might not be available
+    }
+}
+
+/**
  * Display exit reason message on the landing page
  */
 function displayExitMessage(reason, message) {
@@ -2067,6 +2190,77 @@ function requestMobileFullscreen() {
     }
 }
 
+
+function displaySimpleWalletResult(netProfit, entryFee, lastScoreBox, lastScoreValue, isDeath) {
+    try {
+        if (isDeath) {
+            // Player died - they lost their entry fee
+            lastScoreValue.style.display = "none";
+
+            const lastScoreLabel = lastScoreBox.querySelector('span:first-child');
+            if (lastScoreLabel) {
+                lastScoreLabel.textContent = `You lost $${entryFee.toFixed(2)}! Try again!`;
+                lastScoreLabel.style.color = "#ff4757"; // Red for loss
+                lastScoreLabel.style.fontSize = "1.1rem";
+                lastScoreLabel.style.fontWeight = "bold";
+            }
+        } else {
+            // Player escaped - show wallet profit/loss
+            const lastScoreLabel = lastScoreBox.querySelector('span:first-child');
+
+            if (netProfit > 0) {
+                // Profit
+                lastScoreValue.textContent = `+$${netProfit.toFixed(2)}`;
+                lastScoreValue.style.color = "#27ae60"; // Green
+                if (lastScoreLabel) {
+                    lastScoreLabel.textContent = "Wallet Profit";
+                    lastScoreLabel.style.color = "#27ae60";
+                }
+            } else if (netProfit < 0) {
+                // Loss
+                lastScoreValue.textContent = `-$${Math.abs(netProfit).toFixed(2)}`;
+                lastScoreValue.style.color = "#ff4757"; // Red
+                if (lastScoreLabel) {
+                    lastScoreLabel.textContent = "Wallet Loss";
+                    lastScoreLabel.style.color = "#ff4757";
+                }
+            } else {
+                // Break even
+                lastScoreValue.textContent = "$0.00";
+                lastScoreValue.style.color = "#888";
+                if (lastScoreLabel) {
+                    lastScoreLabel.textContent = "Broke Even";
+                    lastScoreLabel.style.color = "#888";
+                }
+            }
+
+            // Reset styling
+            lastScoreValue.style.display = "";
+            if (lastScoreLabel) {
+                lastScoreLabel.style.fontSize = "";
+                lastScoreLabel.style.fontWeight = "";
+            }
+        }
+
+        // Remove any encouraging messages
+        const encourageMsg = lastScoreBox.querySelector('.encourage-message');
+        if (encourageMsg) {
+            encourageMsg.remove();
+        }
+
+        lastScoreBox.style.display = "flex";
+
+        console.log("Simple wallet result displayed:", {
+            netProfit: netProfit,
+            entryFee: entryFee,
+            isDeath: isDeath
+        });
+
+    } catch (e) {
+        console.log("Could not display simple wallet result:", e);
+    }
+}
+
 // Save last score to localStorage
 function saveLastScore(score) {
     try {
@@ -2086,7 +2280,20 @@ function displayLastScore(isDeath = false) {
         var lastScoreValue = document.getElementById("lastScoreValue");
 
         if (lastScoreValue && lastScoreBox) {
-            if (lastScore) {
+            // Check if this was a PAID game for authenticated user
+            var privyUser = JSON.parse(localStorage.getItem("privy_user") || "{}");
+            var wasInPaidArena = localStorage.getItem("wasInPaidArena") === "true";
+
+            if (lastScore && privyUser && privyUser.dbUserId && wasInPaidArena) {
+                // Show wallet profit/loss: Last Score - Entry Fee
+                var score = parseFloat(lastScore);
+                var entryFee = 1.0; // From config.js
+                var netProfit = score - entryFee;
+
+                displaySimpleWalletResult(netProfit, entryFee, lastScoreBox, lastScoreValue, isDeath);
+                // Clear the flag
+                localStorage.removeItem("wasInPaidArena");
+            } else if (lastScore) {
                 if (isDeath) {
                     // Death: Show encouraging message without amount
                     lastScoreValue.style.display = "none"; // Hide the score value
@@ -2277,6 +2484,89 @@ if (document.readyState === "loading") {
         }
     }
 })();
+
+/**
+ * Show wallet update notification
+ */
+function showWalletNotification(data) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: linear-gradient(135deg, #0f1922, #1a2332);
+        border: 2px solid ${data.amount > 0 ? '#4acfa0' : '#ff6b6b'};
+        border-radius: 10px;
+        padding: 15px 20px;
+        color: white;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: 16px;
+        z-index: 10000;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        animation: slideInRight 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    `;
+
+    // Add animation keyframes if not already present
+    if (!document.getElementById('walletAnimations')) {
+        const style = document.createElement('style');
+        style.id = 'walletAnimations';
+        style.textContent = `
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Create icon based on type
+    const icon = document.createElement('span');
+    icon.style.fontSize = '24px';
+    if (data.type === 'entry_fee') {
+        icon.textContent = '💰';
+    } else if (data.type === 'escape_reward') {
+        icon.textContent = '🏆';
+    } else {
+        icon.textContent = data.amount > 0 ? '📈' : '📉';
+    }
+
+    // Create text content
+    const text = document.createElement('div');
+    const amountColor = data.amount > 0 ? '#4acfa0' : '#ff6b6b';
+    const amountPrefix = data.amount > 0 ? '+' : '';
+    text.innerHTML = `
+        <div style="font-weight: bold; margin-bottom: 5px;">Wallet Update</div>
+        <div style="color: ${amountColor}; font-size: 20px; font-weight: bold;">
+            ${amountPrefix}$${Math.abs(data.amount).toFixed(2)}
+        </div>
+        <div style="font-size: 12px; opacity: 0.8; margin-top: 3px;">
+            ${data.description || ''}
+        </div>
+    `;
+
+    notification.appendChild(icon);
+    notification.appendChild(text);
+    document.body.appendChild(notification);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        notification.style.transition = 'opacity 0.3s ease';
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 5000);
+}
 
 // Export functions to global scope for landing page integration
 window.startGame = startGame;

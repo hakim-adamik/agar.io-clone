@@ -19,17 +19,21 @@ const SessionRepository = require("./repositories/session-repository");
 const Vector = SAT.Vector;
 
 class Arena {
-    constructor(arenaId, config, io) {
+    constructor(arenaId, config, io, arenaType = 'FREE') {
         this.id = arenaId;
         this.config = config;
         this.io = io;  // Store io instance for room broadcasting
+        this.arenaType = arenaType; // 'PAID' for authenticated users, 'FREE' for guests/bots
         this.createdAt = Date.now();
         this.lastActivityAt = Date.now();
+
+        console.log(`[ARENA ${this.id}] Created as ${arenaType} arena`);
 
         // Arena state management
         this.state = 'WAITING'; // WAITING, STARTING, ACTIVE, CLOSING
         this.waitingPlayers = new Map(); // socketId -> {socket, player, ready}
         this.countdownTimer = null; // Timer for countdown when starting
+        this.paidPlayers = new Set(); // Track socketIds who have paid for current game
 
         // Game state (isolated per arena)
         this.map = new mapUtils.Map(config);
@@ -133,7 +137,7 @@ class Arena {
     addPlayer(socket) {
         const currentPlayer = new mapUtils.playerUtils.Player(socket.id, this.config);
 
-        socket.on("gotit", (clientPlayerData) => {
+        socket.on("gotit", async (clientPlayerData) => {
             console.log(
                 `[ARENA ${this.id}] Player ${clientPlayerData.name} connecting! Arena state: ${this.state}`
             );
@@ -151,6 +155,26 @@ class Arena {
             clientPlayerData.name = sanitizedName;
             currentPlayer.clientProvidedData(clientPlayerData);
 
+            // Only check balance in PAID arenas for authenticated users
+            // Skip check if player already paid (they're respawning after gameStart)
+            if (this.arenaType === 'PAID' && socket.userId && !this.paidPlayers.has(socket.id)) {
+                const canAfford = await this.canAffordEntry(socket);
+
+                if (!canAfford) {
+                    // User can't afford entry - send insufficient funds event and return
+                    console.log(`[ARENA ${this.id}] User ${socket.userId} cannot afford entry fee in PAID arena`);
+
+                    socket.emit('insufficientFunds', {
+                        required: this.config.entryFee,
+                        message: `You need $${this.config.entryFee.toFixed(2)} to enter the paid arena. You can add funds from your profile.`
+                    });
+
+                    // Important: Don't add them to any game state
+                    return;
+                }
+            }
+
+            // User can afford entry - proceed with joining
             // If arena is WAITING, add player to waiting room
             if (this.state === 'WAITING') {
                 this.addPlayerToWaitingRoom(socket, currentPlayer);
@@ -174,6 +198,78 @@ class Arena {
         });
 
         this.setupPlayerEvents(socket, currentPlayer);
+    }
+
+    /**
+     * Check if user has sufficient balance to enter the game
+     * @param {Object} socket - The socket object with userId
+     * @returns {Promise<boolean>} - true if user can afford entry, false otherwise
+     */
+    async canAffordEntry(socket) {
+        // Guest users can always enter
+        if (!socket.userId) {
+            return true;
+        }
+
+        const WalletRepository = require('./repositories/wallet-repository');
+        const entryFee = this.config.entryFee;
+
+        try {
+            const wallet = await WalletRepository.getWalletByUserId(socket.userId);
+            if (!wallet) {
+                console.log(`[ARENA ${this.id}] No wallet found for user ${socket.userId}`);
+                return false;
+            }
+            const balance = parseFloat(wallet.balance);
+            console.log(`[ARENA ${this.id}] User ${socket.userId} has balance $${balance.toFixed(2)}`);
+            return balance >= entryFee;
+        } catch (error) {
+            console.error(`[ARENA ${this.id}] Failed to check balance:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Centralized function to deduct entry fee from a user's wallet
+     * @param {Object} socket - The socket object with userId
+     * @returns {Promise<boolean>} - true if fee was successfully deducted, false otherwise
+     */
+    async deductEntryFee(socket) {
+        // Only charge in PAID arenas for logged-in users
+        if (this.arenaType !== 'PAID' || !socket.userId) {
+            return true; // FREE arena or guest users play for free
+        }
+
+        const WalletRepository = require('./repositories/wallet-repository');
+        const entryFee = this.config.entryFee;
+
+        try {
+            await WalletRepository.subtractBalance(socket.userId, entryFee);
+
+            // Mark this socket as having paid for this game
+            this.paidPlayers.add(socket.id);
+
+            console.log(`[ARENA ${this.id}] Deducted $${entryFee.toFixed(2)} entry fee from user ${socket.userId}`);
+
+            // Notify client of balance change
+            socket.emit('walletUpdate', {
+                type: 'entry_fee',
+                amount: -entryFee,
+                description: 'Arena entry fee'
+            });
+
+            return true;
+        } catch (error) {
+            console.error(`[ARENA ${this.id}] Failed to deduct entry fee:`, error);
+
+            // Send a specific event for insufficient funds modal
+            socket.emit('insufficientFunds', {
+                required: entryFee,
+                message: `You need $${entryFee.toFixed(2)} to enter the arena. You can add funds from your profile.`
+            });
+
+            return false;
+        }
     }
 
     /**
@@ -213,14 +309,22 @@ class Arena {
     /**
      * Add player to active game
      */
-    addPlayerToActiveGame(socket, player) {
+    async addPlayerToActiveGame(socket, player) {
+        // Only deduct fee if player is joining DIRECTLY to active game
+        // NOT if they're transitioning from waiting room (already paid)
+        if (!this.paidPlayers.has(socket.id)) {
+            const feeDeducted = await this.deductEntryFee(socket);
+
+            if (!feeDeducted && socket.userId) {
+                console.log(`[ARENA ${this.id}] User ${socket.userId} cannot join active game - fee deduction failed`);
+                return;
+            }
+        }
+
         player.init(
             this.generateSpawnpoint(),
             this.config.defaultPlayerMass
         );
-
-        // Reset heartbeat after init
-        player.setLastHeartbeat();
 
         if (this.map.players.findIndexByID(socket.id) > -1) {
             console.log(
@@ -316,25 +420,47 @@ class Arena {
     /**
      * Start the game for all waiting players
      */
-    startGame() {
+    async startGame() {
         console.log(`[ARENA ${this.id}] Starting game with ${this.waitingPlayers.size} players`);
 
         // Start game loops
         this.start();
 
-        // Spawn all waiting players
+        // Process each waiting player
+        const playersToSpawn = [];
+
         for (const [socketId, waitingPlayer] of this.waitingPlayers) {
             const { socket, player } = waitingPlayer;
+
+            // Deduct entry fee when game actually starts
+            const feeDeducted = await this.deductEntryFee(socket);
+
+            if (!feeDeducted && socket.userId) {
+                // Logged-in user couldn't pay - don't let them enter
+                console.log(`[ARENA ${this.id}] User ${socket.userId} cannot enter game - insufficient funds`);
+
+                // Notify them they couldn't enter
+                socket.emit('serverMSG', '❌ Game started but you have insufficient funds to enter. Spectating instead.');
+
+                // Skip this player - they won't spawn
+                continue;
+            }
+
+            // Player can enter - add them to spawn list
+            playersToSpawn.push({ socket, player });
+        }
+
+        // Now spawn all players who successfully paid
+        for (const { socket, player } of playersToSpawn) {
 
             // Initialize player position and state
             player.init(
                 this.generateSpawnpoint(),
                 this.config.defaultPlayerMass
             );
-            player.setLastHeartbeat();
 
             // Add to active game
-            this.sockets[socketId] = socket;
+            this.sockets[socket.id] = socket;
             this.map.players.pushNew(player);
 
             // Send game start signal to player
@@ -406,6 +532,7 @@ class Arena {
                 width: this.config.gameWidth,
                 height: this.config.gameHeight,
                 arenaId: this.id,
+                arenaType: this.arenaType,
             });
 
             console.log(
@@ -416,6 +543,9 @@ class Arena {
 
         // Disconnect handler
         socket.on("disconnect", async () => {
+            // Clean up paid player tracking when they disconnect
+            this.paidPlayers.delete(socket.id);
+
             // Check if player is in waiting room
             if (this.waitingPlayers.has(socket.id)) {
                 this.waitingPlayers.delete(socket.id);
@@ -560,86 +690,6 @@ class Arena {
             this.handleEscapeRequest(socket, currentPlayer);
         });
 
-        // Admin commands
-        this.setupAdminEvents(socket, currentPlayer);
-    }
-
-
-    /**
-     * Setup admin command handlers
-     */
-    setupAdminEvents(socket, currentPlayer) {
-        socket.on("pass", async (data) => {
-            const password = data[0];
-            if (password === this.config.adminPass) {
-                console.log(
-                    `[ARENA ${this.id}] ${currentPlayer.name} logged in as admin`
-                );
-                socket.emit("serverMSG", "Welcome back " + currentPlayer.name);
-                this.broadcastToArena(
-                    "serverMSG",
-                    currentPlayer.name + " just logged in as an admin."
-                );
-                currentPlayer.admin = true;
-            } else {
-                console.log(
-                    `[ARENA ${this.id}] ${currentPlayer.name} failed admin login`
-                );
-                socket.emit("serverMSG", "Password incorrect, attempt logged.");
-
-                loggingRepository
-                    .logFailedLoginAttempt(
-                        currentPlayer.name,
-                        currentPlayer.ipAddress
-                    )
-                    .catch((err) =>
-                        console.error("Error logging failed login", err)
-                    );
-            }
-        });
-
-        socket.on("kick", (data) => {
-            if (!currentPlayer.admin) {
-                socket.emit(
-                    "serverMSG",
-                    "You are not permitted to use this command."
-                );
-                return;
-            }
-
-            var reason = "";
-            var worked = false;
-            for (let playerIndex in this.map.players.data) {
-                let player = this.map.players.data[playerIndex];
-                if (player.name === data[0] && !player.admin && !worked) {
-                    if (data.length > 1) {
-                        for (var f = 1; f < data.length; f++) {
-                            reason +=
-                                f === data.length ? data[f] : data[f] + " ";
-                        }
-                    }
-                    console.log(
-                        `[ARENA ${this.id}] ${player.name} kicked by ${
-                            currentPlayer.name
-                        }${reason ? " for " + reason : ""}`
-                    );
-                    socket.emit(
-                        "serverMSG",
-                        `User ${player.name} was kicked by ${currentPlayer.name}`
-                    );
-                    this.sockets[player.id].emit("kick", reason);
-                    this.sockets[player.id].disconnect();
-                    this.map.players.removePlayerByIndex(playerIndex);
-                    worked = true;
-                }
-            }
-            if (!worked) {
-                socket.emit(
-                    "serverMSG",
-                    "Could not locate user or user is an admin."
-                );
-            }
-        });
     }
 
     /**
@@ -698,13 +748,38 @@ class Arena {
                 // Send countdown update to client
                 socket.emit("escapeUpdate", { countdown });
             } else {
-                // Countdown complete, disconnect player
+                // Countdown complete, handle escape rewards
                 this.clearEscapeTimer(player.id);
+
+                // Credit wallet ONLY in PAID arenas for logged-in users
+                if (this.arenaType === 'PAID' && socket.userId) {
+                    const WalletRepository = require('./repositories/wallet-repository');
+
+                    // Calculate score to add to wallet
+                    const scoreToAdd = player.getScore() || 0;
+
+                    if (scoreToAdd > 0) {
+                        WalletRepository.addBalance(socket.userId, scoreToAdd)
+                            .then(updatedWallet => {
+                                console.log(`[ARENA ${this.id}] Added $${scoreToAdd.toFixed(2)} to user ${socket.userId} wallet (escape reward)`);
+
+                                // Notify client of balance change
+                                socket.emit('walletUpdate', {
+                                    type: 'escape_reward',
+                                    amount: scoreToAdd,
+                                    description: `Escape reward: $${scoreToAdd.toFixed(2)}`
+                                });
+                            })
+                            .catch(error => {
+                                console.error(`[ARENA ${this.id}] Failed to add escape reward:`, error);
+                            });
+                    }
+                }
 
                 // Notify client that escape is complete
                 socket.emit("escapeComplete");
 
-                console.log(`[ARENA ${this.id}] Player ${player.name} escaped successfully`);
+                console.log(`[ARENA ${this.id}] Player ${player.name} escaped successfully with score ${player.getScore()}`);
 
                 // Give client a moment to receive the message before disconnecting
                 setTimeout(() => {
