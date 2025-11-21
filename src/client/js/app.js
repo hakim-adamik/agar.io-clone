@@ -19,10 +19,12 @@ var debug = function (args) {
 function updateDebugStats(stats) {
     var foodReserveEl = document.getElementById('foodReserve');
     var foodOnMapEl = document.getElementById('foodOnMap');
+    var foodCountEl = document.getElementById('foodCount');
     var totalMassEl = document.getElementById('totalMass');
 
     if (foodReserveEl) foodReserveEl.textContent = stats.foodReserve.toLocaleString();
     if (foodOnMapEl) foodOnMapEl.textContent = stats.foodMassOnMap.toLocaleString();
+    if (foodCountEl) foodCountEl.textContent = stats.foodCount.toLocaleString();
     if (totalMassEl) totalMassEl.textContent = stats.totalMassWithPlayers.toLocaleString();
 }
 

@@ -743,11 +743,13 @@ class Arena {
             ) => {
                 // Calculate debug stats
                 const foodMassOnMap = this.map.food.data.reduce((sum, food) => sum + food.tier.mass * this.config.massUnit, 0);
+                const massFoodOnMap = this.map.massFood.data.reduce((sum, massFood) => sum + massFood.mass, 0);
                 const playerTotalMass = this.map.players.getTotalMass();
                 const debugStats = {
                     foodReserve: Math.round(this.map.foodReserve),
-                    foodMassOnMap: Math.round(foodMassOnMap),
-                    totalMassWithPlayers: Math.round(foodMassOnMap + playerTotalMass)
+                    foodMassOnMap: Math.round(foodMassOnMap + massFoodOnMap),
+                    foodCount: this.map.food.data.length,
+                    totalMassWithPlayers: Math.round(foodMassOnMap + massFoodOnMap + playerTotalMass)
                 };
 
                 this.sockets[playerData.id].emit(

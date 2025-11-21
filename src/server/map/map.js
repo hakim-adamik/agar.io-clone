@@ -40,8 +40,6 @@ exports.Map = class {
                 const currentFoodCount = this.food.data.length;
                 const useLargestFirst = currentFoodCount >= this.foodTarget;
 
-                console.log(`[MAP] Food generation: count=${currentFoodCount}, target=${this.foodTarget}, useLargestFirst=${useLargestFirst}, massToGenerate=${massToGenerate}`);
-
                 // addNew now takes mass amount and tier order preference
                 const actualMassGenerated = this.food.addNew(massToGenerate, useLargestFirst);
                 this.foodReserve -= actualMassGenerated;
