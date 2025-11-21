@@ -125,6 +125,15 @@ function applyUserPreferences(prefs) {
     // Apply show FPS
     if (prefs.showFps !== undefined) {
         global.showFpsCounter = prefs.showFps === true;
+        // Update DOM elements to match the setting
+        var fpsCounter = document.getElementById("fpsCounter");
+        if (fpsCounter) {
+            fpsCounter.style.display = prefs.showFps ? "block" : "none";
+        }
+        var debugStats = document.getElementById("debugStats");
+        if (debugStats) {
+            debugStats.style.display = prefs.showFps ? "block" : "none";
+        }
     }
 
     // Apply round food
@@ -185,6 +194,15 @@ function applyConfigDefaults(settings) {
 
     if (defaults.showFps !== undefined) {
         global.showFpsCounter = defaults.showFps;
+        // Update DOM elements to match the setting
+        var fpsCounter = document.getElementById("fpsCounter");
+        if (fpsCounter) {
+            fpsCounter.style.display = defaults.showFps ? "block" : "none";
+        }
+        var debugStats = document.getElementById("debugStats");
+        if (debugStats) {
+            debugStats.style.display = defaults.showFps ? "block" : "none";
+        }
     }
 
     if (defaults.soundEnabled !== undefined) {
@@ -659,6 +677,10 @@ function toggleFpsDisplay() {
     global.showFpsCounter = !global.showFpsCounter;
     if (global.fpsCounter) {
         global.fpsCounter.style.display = global.showFpsCounter ? "block" : "none";
+    }
+    var debugStats = document.getElementById("debugStats");
+    if (debugStats) {
+        debugStats.style.display = global.showFpsCounter ? "block" : "none";
     }
     var showFpsCheckbox = document.getElementById("showFps");
     if (showFpsCheckbox) {
@@ -1555,7 +1577,7 @@ var predictionSystem = new PredictionSystem();
 
 
 
-// Initialize FPS counter visibility from localStorage
+// Initialize FPS counter and debug stats visibility from localStorage
 (function () {
     global.fpsCounter = fpsCounter;
     try {
@@ -1567,6 +1589,11 @@ var predictionSystem = new PredictionSystem();
         var showFpsCheckbox = document.getElementById("showFps");
         if (showFpsCheckbox) {
             showFpsCheckbox.checked = global.showFpsCounter;
+        }
+        // Also update debug stats visibility to match FPS counter setting
+        var debugStats = document.getElementById("debugStats");
+        if (debugStats) {
+            debugStats.style.display = global.showFpsCounter ? "block" : "none";
         }
     } catch (e) {
         // Ignore localStorage errors

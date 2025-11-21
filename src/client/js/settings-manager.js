@@ -134,6 +134,12 @@ function applyPreferences(prefs) {
         if (fpsCounter) {
             fpsCounter.style.display = prefs.showFps ? "block" : "none";
         }
+
+        // Toggle debug stats visibility
+        const debugStats = document.getElementById("debugStats");
+        if (debugStats) {
+            debugStats.style.display = prefs.showFps ? "block" : "none";
+        }
     }
 
     if (prefs.roundFood !== undefined) {
@@ -197,6 +203,10 @@ exports.toggleSetting = function(settingName, value) {
             const fpsCounter = document.getElementById("fpsCounter");
             if (fpsCounter) {
                 fpsCounter.style.display = value ? "block" : "none";
+            }
+            const debugStats = document.getElementById("debugStats");
+            if (debugStats) {
+                debugStats.style.display = value ? "block" : "none";
             }
             break;
         case 'roundFood':
