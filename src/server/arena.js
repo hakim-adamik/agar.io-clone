@@ -287,6 +287,7 @@ class Arena {
         // Send waiting room status to player
         socket.emit('waitingRoom', {
             arenaId: this.id,
+            arenaType: this.arenaType,  // Include arena type for UI display
             playersWaiting: this.waitingPlayers.size,
             minPlayers: this.config.minPlayersToStart
         });

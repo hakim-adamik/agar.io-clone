@@ -19,7 +19,10 @@ A fully functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canvas
 
 ### User System
 - **Authentication**: Privy SDK (Google, Discord, Twitter, Email)
-- **Guest Play**: Auto-generated names for instant play
+- **Two-Arena System**:
+  - **PRACTICE MODE** (Free to Play): No authentication required, no earnings/progress saved
+  - **PLAY TO EARN** ($1 Entry Fee): Requires authentication, earn rewards, track stats
+- **Guest Play**: Auto-generated names for instant practice mode
 - **User Profiles**: Persistent stats and preferences (PostgreSQL)
 - **Virtual Wallet**: $1 default balance for authenticated users
 - **Preferences**: Dark mode, mass display, borders, etc.
@@ -47,12 +50,13 @@ A fully functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canvas
 - **Exit Options**: ESC key or being eaten
 
 ### Wallet & Entry Fee System
-- **Entry Fee**: Configurable in `config.js` (default: $1.00)
+- **Entry Fee**: $1.00 for PLAY TO EARN arena (configurable in `config.js`)
 - **Payment Timing**: Fee deducted when game starts (not in waiting room)
-- **Guest Play**: Free for non-authenticated users
-- **Escape Rewards**: Score added to wallet on successful escape
-- **Death Penalty**: Lose entry fee (no refund)
-- **Arena Segregation**: PAID arenas (authenticated) vs FREE arenas (guests/bots)
+- **Practice Mode**: Always free, no authentication required
+- **Play to Earn Mode**: Requires authentication and $1 entry fee
+- **Escape Rewards**: Score added to wallet on successful escape (PLAY TO EARN only)
+- **Death Penalty**: Lose entry fee in PLAY TO EARN mode (no refund)
+- **Arena Segregation**: PRACTICE MODE (free, no rewards) vs PLAY TO EARN (paid, with rewards)
 
 ### Socket & Payment Architecture
 
@@ -104,9 +108,9 @@ npm test
 // config.js key settings
 minPlayersToStart: 2,    // Waiting room minimum
 maxPlayersPerArena: 10,   // Arena capacity
-maxFreeArenas: 5,        // Max FREE arenas (guests/bots)
-maxPaidArenas: 5,        // Max PAID arenas (authenticated)
-entryFee: 1.0,           // Entry fee in dollars (0 = free to play)
+maxFreeArenas: 5,        // Max PRACTICE MODE arenas
+maxPaidArenas: 5,        // Max PLAY TO EARN arenas
+entryFee: 1.0,           // Entry fee for PLAY TO EARN mode
 // No maxHeartbeatInterval - inactivity kicking removed
 ```
 
@@ -154,6 +158,7 @@ const SPLIT_CELL_SPEED = 20;  // Split velocity
 ## 🔧 Current Status
 
 ### Working Features
+- ✅ Two-arena system (PRACTICE MODE & PLAY TO EARN)
 - ✅ Multi-arena gameplay
 - ✅ Waiting room with countdown
 - ✅ Authentication & profiles
@@ -165,6 +170,7 @@ const SPLIT_CELL_SPEED = 20;  // Split velocity
 - Session tracking temporarily disabled (causes disconnects)
 - Disconnected players removed immediately (no reconnection)
 - Arena capacity not enforced when all arenas full (players can join beyond 10-player limit)
+- Last score display on landing page not functional (needs re-implementation)
 
 ### Next Priorities
 1. Fix session tracking disconnect issue
@@ -227,6 +233,8 @@ node bot-players.js --bots 20  # Custom count
 
 ## 📊 Recent Updates (November 2024)
 
+- **Two-Arena System**: New PRACTICE MODE (free) and PLAY TO EARN ($1 fee) arenas
+- **Improved Landing Page**: Clear arena selection with distinct benefits
 - **Waiting Room**: Players wait for minimum 2 to start
 - **No Inactivity Kicks**: Players stay until eaten/exit
 - **PostgreSQL Migration**: From SQLite to Neon cloud
@@ -243,4 +251,4 @@ node bot-players.js --bots 20  # Custom count
 
 ---
 
-_Last Updated: November 2024 - Waiting room feature and inactivity removal complete_
+_Last Updated: November 2024 - Two-arena system (PRACTICE MODE & PLAY TO EARN) implemented_

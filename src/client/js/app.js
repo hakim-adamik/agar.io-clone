@@ -350,9 +350,13 @@ function startGame(type) {
             console.error("[Socket] Failed to parse user data:", e);
         }
 
-        // Build query params including user data
+        // Get selected arena type from session storage (set by landing page)
+        const selectedArenaType = sessionStorage.getItem('selectedArenaType') || 'FREE';
+
+        // Build query params including user data and arena type
         const queryParams = {
             type: type,
+            arenaType: selectedArenaType,  // FREE or PAID
             arenaId: global.arenaId || null,
             userId: userData?.dbUserId || null,
             privyId: userData?.id || null,  // Privy ID is stored as 'id' in userData

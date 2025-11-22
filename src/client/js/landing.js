@@ -142,7 +142,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Cached DOM elements
     const elements = {
-        playBtn: document.getElementById('playBtn'),
+        playBtn: document.getElementById('playBtn'), // Keep for backward compatibility
+        freeArenaBtn: document.getElementById('freeArenaBtn'),
+        paidArenaBtn: document.getElementById('paidArenaBtn'),
         howToPlayBtn: document.getElementById('howToPlayBtn'),
         startFromTutorial: document.getElementById('startFromTutorial'),
         tutorialModal: document.getElementById('tutorialModal'),
@@ -645,8 +647,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const modal = document.getElementById('sectionModal');
         if (modal) closeModal(modal);
 
-        // Start the game immediately as guest
-        redirectToGame();
+        // Start the game immediately as guest in FREE arena
+        const playerNameInput = document.getElementById("playerNameInput");
+        if (playerNameInput) {
+            playerNameInput.value = "Guest_" + Math.floor(Math.random() * 10000);
+        }
+        redirectToGame('FREE');
     };
 
     window.signUpToPlay = function() {
@@ -679,7 +685,72 @@ document.addEventListener('DOMContentLoaded', function() {
         showModal('sectionModal');
     }
 
-    function redirectToGame() {
+    function showPaidArenaSignupPrompt() {
+        let modal = document.getElementById('sectionModal');
+        if (!modal) {
+            modal = createModal('sectionModal', '<div id="modalContent"></div>');
+        }
+
+        const modalContent = document.getElementById('modalContent');
+        modalContent.innerHTML = `
+            <h2 style="color: #ffd700; margin-bottom: 1.5rem;">
+                <i class="fas fa-crown" style="margin-right: 0.75rem;"></i>
+                Paid Arena Access
+            </h2>
+            <div style="text-align: center;">
+                <p style="font-size: 1.1rem; color: rgba(255, 255, 255, 0.9); margin-bottom: 1.5rem; line-height: 1.6;">
+                    Sign in to enter the paid arena, save your stats, climb the leaderboard and enjoy exclusive rewards.
+                </p>
+                <div style="background: rgba(74, 207, 160, 0.1); border: 1px solid rgba(74, 207, 160, 0.3); border-radius: 10px; padding: 1rem; margin-bottom: 2rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; text-align: left;">
+                        <div style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">
+                            <i class="fas fa-check-circle" style="color: #4acfa0; margin-right: 0.5rem;"></i>
+                            Earn virtual currency for every win
+                        </div>
+                        <div style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">
+                            <i class="fas fa-check-circle" style="color: #4acfa0; margin-right: 0.5rem;"></i>
+                            Track your progress and stats
+                        </div>
+                        <div style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">
+                            <i class="fas fa-check-circle" style="color: #4acfa0; margin-right: 0.5rem;"></i>
+                            Compete on the global leaderboard
+                        </div>
+                        <div style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">
+                            <i class="fas fa-check-circle" style="color: #4acfa0; margin-right: 0.5rem;"></i>
+                            Customize your profile and avatar
+                        </div>
+                    </div>
+                </div>
+                <button onclick="window.signUpToPlay()" style="
+                    background: linear-gradient(135deg, #4a90e2, #50e3c2);
+                    color: white;
+                    border: none;
+                    padding: 1rem 2.5rem;
+                    font-size: 1.1rem;
+                    font-weight: 600;
+                    border-radius: 30px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+                    margin-bottom: 1rem;
+                    width: 100%;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(74, 144, 226, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(74, 144, 226, 0.3)'">
+                    <i class="fas fa-user-plus" style="margin-right: 0.5rem;"></i>
+                    Sign Up to Play
+                </button>
+                <div style="color: rgba(255, 255, 255, 0.6); font-size: 0.85rem;">
+                    Already have an account? Sign in to continue.
+                </div>
+            </div>
+        `;
+
+        showModal('sectionModal');
+    }
+
+    function redirectToGame(arenaType = 'PAID') {
+        // Store the arena type for the server to know
+        sessionStorage.setItem('selectedArenaType', arenaType);
+
         // Set the username for logged-in users
         const playerNameInput = document.getElementById("playerNameInput");
         if (playerNameInput) {
@@ -754,17 +825,49 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Event listeners
-    elements.playBtn?.addEventListener('click', () => {
-        playMenuSelectionSound(); // Play menu selection sound for Play button
+    // FREE ARENA button - accessible to everyone
+    elements.freeArenaBtn?.addEventListener('click', () => {
+        playMenuSelectionSound();
 
         // Check if user is authenticated
         const isAuthenticated = window.PrivyAuth && window.PrivyAuth.isAuthenticated();
 
         if (isAuthenticated) {
-            // User is logged in, go directly to game
-            redirectToGame();
+            // Logged-in user playing free arena with their username
+            redirectToGame('FREE');
         } else {
-            // User is not logged in, show the play choice modal
+            // Guest playing free arena
+            const playerNameInput = document.getElementById("playerNameInput");
+            if (playerNameInput) {
+                playerNameInput.value = "Guest_" + Math.floor(Math.random() * 10000);
+            }
+            redirectToGame('FREE');
+        }
+    });
+
+    // PAID ARENA button - requires authentication
+    elements.paidArenaBtn?.addEventListener('click', () => {
+        playMenuSelectionSound();
+
+        // Check if user is authenticated
+        const isAuthenticated = window.PrivyAuth && window.PrivyAuth.isAuthenticated();
+
+        if (isAuthenticated) {
+            // User is logged in, enter paid arena directly
+            redirectToGame('PAID');
+        } else {
+            // User is not logged in, show a simpler signup prompt
+            showPaidArenaSignupPrompt();
+        }
+    });
+
+    // Legacy play button support (if it still exists)
+    elements.playBtn?.addEventListener('click', () => {
+        playMenuSelectionSound();
+        const isAuthenticated = window.PrivyAuth && window.PrivyAuth.isAuthenticated();
+        if (isAuthenticated) {
+            redirectToGame('PAID');
+        } else {
             showPlayChoiceModal();
         }
     });

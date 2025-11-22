@@ -65,10 +65,22 @@ function showWaitingRoomUI(data) {
         ">
             <h2 style="
                 color: #4acfa0;
-                margin-bottom: 2rem;
+                margin-bottom: 1rem;
                 font-size: 2rem;
                 text-shadow: 0 2px 10px rgba(74, 207, 160, 0.5);
             ">Waiting Room</h2>
+
+            <div style="
+                display: inline-block;
+                padding: 0.5rem 1.5rem;
+                margin-bottom: 1.5rem;
+                background: ${data.arenaType === 'PAID' ? 'linear-gradient(135deg, #4a90e2, #50e3c2)' : 'linear-gradient(135deg, #6c757d, #495057)'};
+                border-radius: 20px;
+                color: white;
+                font-weight: bold;
+                font-size: 1rem;
+                letter-spacing: 1px;
+            ">${data.arenaType || 'FREE'} ARENA</div>
 
             <div style="
                 background: rgba(74, 207, 160, 0.1);

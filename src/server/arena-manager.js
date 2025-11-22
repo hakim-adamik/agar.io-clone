@@ -49,9 +49,23 @@ class ArenaManager {
      * @returns {Arena} Arena instance with available slots
      */
     findAvailableArena(preferredArenaId = null, socket = null) {
-        // Determine arena type based on player authentication
+        // Check if client explicitly requested an arena type
+        let requiredType = socket?.handshake?.query?.arenaType || null;
+
+        // Determine if player is authenticated (paid)
         const isPaid = socket && this.isPaidPlayer(socket);
-        const requiredType = isPaid ? 'PAID' : 'FREE';
+
+        // If FREE arena requested, allow it regardless of auth status
+        // If PAID arena requested, require authentication
+        if (requiredType === 'PAID' && !isPaid) {
+            console.log('[ARENA MANAGER] PAID arena requested but player not authenticated, defaulting to FREE');
+            requiredType = 'FREE';
+        }
+
+        // If no explicit type requested, determine based on authentication
+        if (!requiredType) {
+            requiredType = isPaid ? 'PAID' : 'FREE';
+        }
 
         console.log(`[ARENA MANAGER] Player type check - userId: ${socket?.userId}, privyId: ${socket?.privyId}, isPaid: ${isPaid}, requiredType: ${requiredType}`);
 

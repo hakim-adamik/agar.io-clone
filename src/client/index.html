@@ -133,9 +133,32 @@
                                 <i class="fas fa-gamepad"></i>
                                 <span>HOW TO PLAY</span>
                             </button>
-                            <button class="play-btn" id="playBtn">
-                                <span>Play</span>
-                            </button>
+
+                            <!-- Two Arena Buttons -->
+                            <div class="arena-buttons">
+                                <button class="arena-btn free-arena-btn" id="freeArenaBtn">
+                                    <div class="arena-icon">
+                                        <i class="fas fa-user-secret"></i>
+                                    </div>
+                                    <span class="arena-label">PRACTICE MODE</span>
+                                    <span class="arena-subtitle">Free to Play</span>
+                                    <div class="arena-description">
+                                        <p>Jump in immediately and improve your skills</p>
+                                        <p class="arena-note">No earnings or progress saved</p>
+                                    </div>
+                                </button>
+                                <button class="arena-btn paid-arena-btn" id="paidArenaBtn">
+                                    <div class="arena-icon">
+                                        <i class="fas fa-crown"></i>
+                                    </div>
+                                    <span class="arena-label">PLAY TO EARN</span>
+                                    <span class="arena-subtitle">$1 Entry Fee</span>
+                                    <div class="arena-description">
+                                        <p>Experience the thrill and multiply your gains</p>
+                                        <p class="arena-note">Available to registered users</p>
+                                    </div>
+                                </button>
+                            </div>
 
                             <!-- Exit Message Display (shows why game ended) -->
                             <div class="exit-message" id="exitMessage" style="display: none;"></div>
