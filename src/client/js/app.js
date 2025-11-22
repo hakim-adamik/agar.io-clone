@@ -505,7 +505,8 @@ function leaveWaitingRoom() {
     WaitingRoom.hideCountdownUI();
 
     // Return to landing page
-    cleanupGame();
+    // Pass skipScoreSave=true since we never actually played
+    cleanupGame(true);
 
     // Now reset the waiting room flag after cleanup
     window.inWaitingRoom = false;
@@ -552,6 +553,14 @@ function setupLeaderboardToggle() {
 
 window.onload = function () {
     // Landing page is handled by landing.js
+
+    // Score cleanup on page load
+    // Clear scores from previous browser sessions to prevent stale data
+    if (!sessionStorage.getItem('sessionActive')) {
+        // This is a new browser session (not a refresh)
+        localStorage.removeItem('lastScore');
+        sessionStorage.setItem('sessionActive', 'true');
+    }
 
     // Set up leaderboard click handler for mobile
     setupLeaderboardToggle();
@@ -1474,6 +1483,11 @@ function setupSocket(socket) {
         window.inWaitingRoom = true;
         window.waitingRoomData = data;
 
+        // Clear score when entering waiting room
+        // Ensures no stale score shows if player leaves without playing
+        localStorage.removeItem("lastScore");
+        sessionStorage.removeItem("hasPlayedThisSession");
+
         // Show waiting room UI
         WaitingRoom.showWaitingRoomUI(data);
     });
@@ -1977,9 +1991,9 @@ function exitGame() {
     // Escape request sent to server
 }
 
-function cleanupGame() {
-    // Save last score before cleanup
-    if (player && player.score !== undefined) {
+function cleanupGame(skipScoreSave) {
+    // Save last score before cleanup (unless explicitly skipped, e.g., when leaving waiting room)
+    if (!skipScoreSave && player && player.score !== undefined) {
         saveLastScore(player.score);
     }
 
@@ -2086,8 +2100,11 @@ function returnToLanding(exitReason, exitMessage) {
         // Show landing view
         landingView.style.display = "block";
 
-        // Display last score on landing page
-        displayLastScore();
+        // Display score only if player actually played the game
+        // skipScoreSave=true when leaving from waiting room without playing
+        if (!skipScoreSave && sessionStorage.getItem("hasPlayedThisSession")) {
+            displayLastScore();
+        }
 
         // Display exit message if provided
         if (exitMessage) {
@@ -2340,12 +2357,27 @@ function displaySimpleWalletResult(netProfit, entryFee, lastScoreBox, lastScoreV
     }
 }
 
+/**
+ * Score Management System
+ * Handles saving and displaying player scores across sessions
+ *
+ * Score Lifecycle:
+ * 1. New browser session → Clear old scores
+ * 2. Enter waiting room → Clear score (prevents stale display)
+ * 3. Play game → Score accumulates
+ * 4. Death/Escape → Save score to localStorage
+ * 5. Return to landing → Display last score
+ * 6. Leave waiting room without playing → No score display
+ */
+
 // Save last score to localStorage
 function saveLastScore(score) {
     try {
         // Round to 4 decimals for display consistency
         var preciseScore = Math.round(score * 10000) / 10000;
         localStorage.setItem("lastScore", preciseScore);
+        // Mark that we have a valid score from this session
+        sessionStorage.setItem("hasPlayedThisSession", "true");
     } catch (e) {
         console.log("Could not save last score:", e);
     }
@@ -2456,30 +2488,8 @@ window.addEventListener('beforeunload', function() {
     sessionStorage.setItem('pageRefreshing', 'true');
 });
 
-// Display last score when DOM is ready, but not on page refresh
-(function() {
-if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function() {
-            // Check if this is a page refresh
-            const isRefresh = sessionStorage.getItem('pageRefreshing') === 'true';
-            if (isRefresh) {
-                // Clear the refresh flag and don't show last score
-                sessionStorage.removeItem('pageRefreshing');
-} else {
-    displayLastScore();
-}
-        });
-    } else {
-        // Check if this is a page refresh
-        const isRefresh = sessionStorage.getItem('pageRefreshing') === 'true';
-        if (isRefresh) {
-            // Clear the refresh flag and don't show last score
-            sessionStorage.removeItem('pageRefreshing');
-        } else {
-            displayLastScore();
-        }
-    }
-})();
+// Note: Score display on page load is handled in window.onload
+// to ensure proper session management and avoid duplicate displays
 
 // Fullscreen toggle button handler
 (function() {
