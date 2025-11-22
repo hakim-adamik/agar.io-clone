@@ -512,6 +512,26 @@ html, body {
     height: 300px;
 }
 
+/* USDC Rotating Logo */
+.usdc-rotating-logo {
+    width: 50px;
+    height: 50px;
+    animation: flip3D 4s ease-in-out infinite;
+    transform-style: preserve-3d;
+}
+
+@keyframes flip3D {
+    0% {
+        transform: perspective(400px) rotateY(0deg);
+    }
+    50% {
+        transform: perspective(400px) rotateY(180deg);
+    }
+    100% {
+        transform: perspective(400px) rotateY(360deg);
+    }
+}
+
 /* Arena Buttons Container */
 .arena-buttons {
     display: flex;
@@ -650,7 +670,7 @@ html, body {
 }
 
 .paid-arena-btn .arena-icon {
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    background: transparent;
 }
 
 .paid-arena-btn:hover {
@@ -1292,8 +1312,8 @@ html, body {
 @media (max-width: 480px) {
     .game-subtitle { font-size: 0.75rem; letter-spacing: 2px; }
     .game-title { font-size: 2rem; letter-spacing: 1px; }
-    .game-branding { margin-bottom: 2rem; }
-    .action-area { margin-top: 2rem; }
+    .game-branding { margin-bottom: 0.75rem; }
+    .action-area { margin-top: 0.75rem; }
     .how-to-play-btn {
         padding: 0.5rem 1.25rem;
         font-size: 0.75rem;
@@ -1376,10 +1396,10 @@ html, body {
         padding-bottom: 60px; /* Space for fixed bottom nav in landscape */
     }
     .main-content { padding: 1rem; }
-    .game-branding { margin-bottom: 1rem; }
+    .game-branding { margin-bottom: 0.5rem; }
     .game-subtitle { font-size: 0.8rem; margin-bottom: 0.5rem; }
     .game-title { font-size: 1.75rem; }
-    .action-area { margin-top: 1.5rem; }
+    .action-area { margin-top: 0.5rem; }
     .action-buttons { gap: 1rem; }
     .how-to-play-btn { padding: 0.5rem 1.25rem; font-size: 0.75rem; }
     .play-btn { padding: 0.75rem 2rem; font-size: 1rem; }
