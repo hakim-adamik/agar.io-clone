@@ -593,8 +593,15 @@ window.onload = function () {
 
     if (btn) {
         btn.onclick = function () {
-            // Auto-play for hidden button
-            playerNameInput.value = generateGuestName();
+            // Auto-play for hidden button - check for logged-in user first
+            if (!playerNameInput.value) {
+                const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+                if (userData && userData.username) {
+                    playerNameInput.value = userData.username;
+                } else {
+                    playerNameInput.value = generateGuestName();
+                }
+            }
             startGame("player");
         };
     }
@@ -619,7 +626,15 @@ window.onload = function () {
         var key = e.which || e.keyCode;
 
         if (key === global.KEY_ENTER) {
-            playerNameInput.value = generateGuestName();
+            // Don't overwrite the username if already set
+            if (!playerNameInput.value) {
+                const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+                if (userData && userData.username) {
+                    playerNameInput.value = userData.username;
+                } else {
+                    playerNameInput.value = generateGuestName();
+                }
+            }
             startGame("player");
         }
     });
@@ -2559,7 +2574,7 @@ function showWalletNotification(data) {
     const notification = document.createElement('div');
     notification.style.cssText = `
         position: fixed;
-        top: 80px;
+        bottom: 20px;
         right: 20px;
         background: linear-gradient(135deg, #0f1922, #1a2332);
         border: 2px solid ${data.amount > 0 ? '#4acfa0' : '#ff6b6b'};
@@ -2570,7 +2585,7 @@ function showWalletNotification(data) {
         font-size: 16px;
         z-index: 10000;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        animation: slideInRight 0.3s ease;
+        animation: slideInUp 0.3s ease;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -2581,13 +2596,13 @@ function showWalletNotification(data) {
         const style = document.createElement('style');
         style.id = 'walletAnimations';
         style.textContent = `
-            @keyframes slideInRight {
+            @keyframes slideInUp {
                 from {
-                    transform: translateX(100%);
+                    transform: translateY(100%);
                     opacity: 0;
                 }
                 to {
-                    transform: translateX(0);
+                    transform: translateY(0);
                     opacity: 1;
                 }
             }

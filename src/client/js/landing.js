@@ -619,11 +619,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const modal = document.getElementById('sectionModal');
         if (modal) closeModal(modal);
 
-        // Start the game immediately as guest in FREE arena
-        const playerNameInput = document.getElementById("playerNameInput");
-        if (playerNameInput) {
-            playerNameInput.value = "Guest_" + Math.floor(Math.random() * 10000);
-        }
+        // redirectToGame will handle setting the username appropriately
         redirectToGame('FREE');
     };
 
@@ -790,21 +786,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // FREE ARENA button - accessible to everyone
     elements.freeArenaBtn?.addEventListener('click', () => {
         playMenuSelectionSound();
-
-        // Check if user is authenticated
-        const isAuthenticated = window.PrivyAuth && window.PrivyAuth.isAuthenticated();
-
-        if (isAuthenticated) {
-            // Logged-in user playing free arena with their username
-            redirectToGame('FREE');
-        } else {
-            // Guest playing free arena
-            const playerNameInput = document.getElementById("playerNameInput");
-            if (playerNameInput) {
-                playerNameInput.value = "Guest_" + Math.floor(Math.random() * 10000);
-            }
-            redirectToGame('FREE');
-        }
+        // redirectToGame will handle setting the username appropriately
+        redirectToGame('FREE');
     });
 
     // PAID ARENA button - requires authentication
