@@ -27,6 +27,25 @@ A fully functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canvas
 - **Virtual Wallet**: $1 default balance for authenticated users
 - **Preferences**: Dark mode, mass display, borders, etc.
 
+### Arena Selection Logic
+
+| Landing Page Button | User State | Arena Type | Entry Fee | Notes |
+|-------------------|------------|------------|-----------|-------|
+| **FREE ARENA** | Logged in | PRACTICE MODE | $0 | Uses username |
+| **FREE ARENA** | Not logged in | PRACTICE MODE | $0 | Uses Guest_XXXX name |
+| **PAID ARENA** | Logged in | PLAY TO EARN | $1 | Deducted when game starts |
+| **PAID ARENA** | Not logged in | Shows signup prompt | N/A | Must authenticate first |
+
+**Post-Game Modal Re-join Logic:**
+- **From PRACTICE MODE**: Always rejoins PRACTICE MODE (free)
+- **From PLAY TO EARN**:
+  - If still logged in → Rejoins PLAY TO EARN (new $1 fee)
+  - If not logged in → Shows signup prompt
+
+The client sends `'FREE'` or `'PAID'` as arena type, which the server interprets as:
+- `'FREE'` → PRACTICE MODE (no fees, no rewards)
+- `'PAID'` → PLAY TO EARN (requires auth, $1 entry fee, can earn rewards)
+
 ### Technical
 - **Performance**: Viewport culling, grid caching, 60Hz updates
 - **Architecture**: Socket.io rooms, per-arena game loops

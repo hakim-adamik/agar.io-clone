@@ -49,7 +49,13 @@ function generateGuestName() {
 window.startSeamlessGame = function () {
     var playerNameInput = document.getElementById("playerNameInput");
     if (!playerNameInput.value) {
-        playerNameInput.value = generateGuestName();
+        // Check if user is logged in before generating guest name
+        const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+        if (userData && userData.username) {
+            playerNameInput.value = userData.username;
+        } else {
+            playerNameInput.value = generateGuestName();
+        }
     }
 
     // Apply default game settings from config
@@ -249,9 +255,14 @@ function startGame(type) {
     window.inWaitingRoom = false;
     window.countdownActive = false;
 
-    // Auto-generate guest name if empty
+    // Auto-generate guest name if empty (but check for logged-in user first)
     if (!playerNameInput.value) {
-        playerNameInput.value = generateGuestName();
+        const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+        if (userData && userData.username) {
+            playerNameInput.value = userData.username;
+        } else {
+            playerNameInput.value = generateGuestName();
+        }
     }
 
     global.playerName = playerNameInput.value
@@ -2080,8 +2091,7 @@ function returnToLanding(exitReason, exitMessage) {
             displayExitMessage(exitReason, exitMessage);
         }
 
-        // Reset player name input if needed
-        playerNameInput.value = "";
+        // Don't reset player name input - preserve logged-in username
     }
 }
 
@@ -2117,8 +2127,7 @@ window.returnToLandingWithInsufficientFunds = function(data) {
         // Show landing view
         landingView.style.display = "block";
 
-        // Reset player name input if needed
-        playerNameInput.value = "";
+        // Don't reset player name input - preserve logged-in username
 
         // Show the insufficient funds modal
         showInsufficientFundsModal(data);

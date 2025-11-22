@@ -54,8 +54,10 @@
             modal.classList.add('modal-active');
         });
 
-        // Trigger confetti for wins
-        if (gameData.isWin) {
+        // Trigger confetti for wins (except unprofitable escapes in PLAY TO EARN)
+        const isUnprofitableEscape = gameData.isWin && gameData.arenaType === 'PLAY TO EARN' &&
+                                      gameData.walletChange !== null && gameData.walletChange < 0;
+        if (gameData.isWin && !isUnprofitableEscape) {
             triggerConfetti();
         }
     }
@@ -206,8 +208,12 @@
 
         // Determine compact header based on performance
         let headerContent;
-        if (isWin) {
-            // Different messages based on score levels - more compact
+
+        // For PLAY TO EARN: if player escaped but with net loss, treat it as a loss
+        const isUnprofitableEscape = isWin && arenaType === 'PLAY TO EARN' && walletChange !== null && walletChange < 0;
+
+        if (isWin && !isUnprofitableEscape) {
+            // Profitable escape or practice mode escape (or break even)
             if (score >= 100) {
                 headerContent = `
                     <i class="fas fa-crown post-game-icon winner" style="font-size: 3rem;"></i>
@@ -226,10 +232,11 @@
             } else {
                 headerContent = `
                     <i class="fas fa-rocket post-game-icon winner" style="font-size: 3rem;"></i>
-                    <h2 class="post-game-title winner" style="font-size: 1.75rem; margin: 0.5rem 0;">Escaped!</h2>
+                    <h2 class="post-game-title winner" style="font-size: 1.75rem; margin: 0.5rem 0;">Successfully Escaped!</h2>
                 `;
             }
         } else {
+            // Death or unprofitable escape in PLAY TO EARN
             headerContent = `
                 <i class="fas fa-skull-crossbones post-game-icon retry" style="font-size: 3rem;"></i>
                 <h2 class="post-game-title retry" style="font-size: 1.75rem; margin: 0.5rem 0;">Better Luck Next Time!</h2>
@@ -250,7 +257,7 @@
                             <div style="flex: 1;">
                                 <div style="font-size: 0.75rem; color: ${walletChange >= 0 ? '#4CAF50' : '#ff4757'}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
                                     <span style="font-size: 1rem;">${walletChange >= 0 ? '💰' : '💸'}</span>
-                                    <span>${walletChange >= 0 ? 'Earnings' : 'Entry Fee'}</span>
+                                    <span>${walletChange >= 0 ? 'Earnings' : 'Net Result'}</span>
                                 </div>
                                 <div style="font-size: 2.25rem; margin: 0; color: ${walletChange >= 0 ? '#4CAF50' : '#ff4757'}; font-weight: bold;">
                                     ${walletChange >= 0 ? '+' : '-'}$${Math.abs(walletChange).toFixed(2)}
