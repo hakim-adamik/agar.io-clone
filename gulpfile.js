@@ -55,7 +55,7 @@ function buildPrivyAuth() {
 }
 
 function copyClientJS() {
-    return gulp.src(['src/client/js/landing.js'])
+    return gulp.src(['src/client/js/landing.js', 'src/client/js/post-game-modal.js'])
         .pipe(gulp.dest('bin/client/js/'));
 }
 

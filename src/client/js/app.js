@@ -1353,9 +1353,6 @@ function setupSocket(socket) {
             console.log('Error stopping escape sound on death:', e);
         }
 
-        // Removed: render.drawErrorMessage("You died!", graph, global.screen);
-        // Now we go directly to landing page with notification
-
         // Play loss sound effect when player dies
         if (global.soundEnabled) {
             try {
@@ -1372,51 +1369,7 @@ function setupSocket(socket) {
             }
         }
 
-        // Immediately return to landing page instead of old menu
-            var landingView = document.getElementById("landingView");
-            var gameView = document.getElementById("gameView");
-
-            if (landingView && gameView) {
-                // Hide game view
-                gameView.style.display = "none";
-                document.getElementById("gameAreaWrapper").style.opacity = 0;
-
-                // Hide player score display
-                var playerScoreEl = document.getElementById("playerScore");
-                if (playerScoreEl) {
-                    playerScoreEl.style.display = "none";
-                }
-
-                // Show landing view
-                landingView.style.display = "block";
-
-                // Display last score with death styling
-                displayLastScore(true);
-
-
-                // Cleanup
-                if (global.animLoopHandle) {
-                    window.cancelAnimationFrame(global.animLoopHandle);
-                    global.animLoopHandle = undefined;
-                }
-
-                // Disconnect socket and clear all references
-                if (socket) {
-                    socket.disconnect();
-                    socket = null;
-                    window.canvas.socket = null;
-                    global.socket = null;
-                }
-            } else {
-                // Fallback to old menu if landing page not found
-                document.getElementById("gameAreaWrapper").style.opacity = 0;
-                document.getElementById("startMenuWrapper").style.maxHeight =
-                    "1000px";
-                if (global.animLoopHandle) {
-                    window.cancelAnimationFrame(global.animLoopHandle);
-                    global.animLoopHandle = undefined;
-                }
-            }
+        // All cleanup, return to landing, and post-game modal display is handled by handleGameExit above
     });
 
     socket.on("kick", function (reason) {
@@ -2071,6 +2024,9 @@ function handleGameExit(reason, message) {
         saveLastScore(player.score);
     }
 
+    // Store the exit reason for the post-game modal
+    sessionStorage.setItem('gameExitReason', reason);
+
     // Cleanup game
     cleanupGame();
 
@@ -2104,14 +2060,23 @@ function returnToLanding(exitReason, exitMessage) {
         // Show landing view
         landingView.style.display = "block";
 
-        // Display score only if player actually played the game
-        // skipScoreSave=true when leaving from waiting room without playing
-        if (!skipScoreSave && sessionStorage.getItem("hasPlayedThisSession")) {
-            displayLastScore();
+        // Trigger post-game modal if player actually played and has a score
+        // Check if we have a valid score saved (means player was in the game)
+        const hasScore = localStorage.getItem("lastScore") !== null &&
+                        localStorage.getItem("lastScore") !== undefined;
+
+        // Show modal for death or escape (not for kicks or waiting room exits)
+        if (hasScore && (exitReason === 'death' || exitReason === 'escape')) {
+            // Small delay to ensure smooth transition
+            setTimeout(function() {
+                if (window.PostGameModal) {
+                    window.PostGameModal.show();
+                }
+            }, 500);
         }
 
-        // Display exit message if provided
-        if (exitMessage) {
+        // Only display exit message for kicks/disconnects (not death/escape which use modal)
+        if (exitMessage && exitReason !== 'death' && exitReason !== 'escape') {
             displayExitMessage(exitReason, exitMessage);
         }
 

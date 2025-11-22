@@ -26,6 +26,7 @@
         />
         <link rel="stylesheet" href="css/main.css" />
         <link rel="stylesheet" href="css/landing.css" />
+        <link rel="stylesheet" href="css/post-game-modal.css" />
 
         <!-- Audio -->
         <audio id="split_cell" src="audio/new_split.mp3"></audio>
@@ -163,8 +164,8 @@
                             <!-- Exit Message Display (shows why game ended) -->
                             <div class="exit-message" id="exitMessage" style="display: none;"></div>
 
-                            <!-- Last Score Display -->
-                            <div class="last-score-box" id="lastScoreBox">
+                            <!-- Last Score Display - Hidden, replaced by post-game modal -->
+                            <div class="last-score-box" id="lastScoreBox" style="display: none;">
                                 <span class="last-score-label">Last score:</span>
                                 <span class="last-score-value" id="lastScoreValue">-</span>
                             </div>
@@ -382,11 +383,21 @@
             </div>
         </div>
 
+        <!-- Post-Game Summary Modal -->
+        <div class="modal" id="postGameModal">
+            <div class="modal-content post-game-content">
+                <div id="postGameContent">
+                    <!-- Content will be dynamically populated -->
+                </div>
+            </div>
+        </div>
+
         <!-- Privy Auth Container (hidden) -->
         <div id="privy-auth-container" style="display: none;"></div>
 
         <!-- JS -->
         <script src="../shared/default-preferences.js"></script>
+        <script src="js/post-game-modal.js"></script>
         <script src="js/landing.js"></script>
         <script src="js/app.js"></script>
         <script src="auth/privy-auth-bundle.js"></script>
