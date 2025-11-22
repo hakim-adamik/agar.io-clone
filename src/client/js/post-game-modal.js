@@ -26,10 +26,18 @@
      */
     function checkForPostGameTrigger() {
         const wasInGame = sessionStorage.getItem('wasInGame') === 'true';
-        if (wasInGame) {
+        const exitReason = sessionStorage.getItem('gameExitReason');
+
+        // Only show modal if we were in game AND have a valid exit reason
+        // This prevents showing on page refresh
+        if (wasInGame && exitReason) {
             sessionStorage.removeItem('wasInGame');
+            sessionStorage.removeItem('gameExitReason');
             // Small delay for smooth transition
             setTimeout(show, 500);
+        } else if (wasInGame && !exitReason) {
+            // Clear stale wasInGame flag from refresh/crash
+            sessionStorage.removeItem('wasInGame');
         }
     }
 
