@@ -354,7 +354,7 @@
                         <div class="stat-item" style="padding: 0.5rem;">
                             <div class="stat-label" style="font-size: 0.65rem;">Arena</div>
                             <div class="stat-value" style="font-size: 0.9rem;">
-                                ${arenaType === 'PRACTICE MODE' ? 'PRACTICE' : 'PAID'}
+                                ${arenaType === 'PRACTICE MODE' ? 'PRACTICE' : 'PLAY TO EARN'}
                             </div>
                         </div>
                         <div class="stat-item" style="padding: 0.5rem;">
