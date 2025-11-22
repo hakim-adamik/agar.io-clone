@@ -1186,6 +1186,62 @@ function setupSocket(socket) {
         var statusEl = document.getElementById("status");
         if (!statusEl) return;
 
+        // Check if mobile
+        var isMobile = window.innerWidth <= 768;
+
+        // Find player's rank
+        var playerRank = -1;
+        for (var i = 0; i < leaderboard.length; i++) {
+            if (leaderboard[i].id == player.id) {
+                playerRank = i + 1;
+                break;
+            }
+        }
+
+        // Mobile: Show compact rank display
+        if (isMobile) {
+            var statusParts = [];
+            statusParts.push('<div class="mobile-rank-display" style="');
+            statusParts.push('background: linear-gradient(135deg, rgba(15, 25, 34, 0.95), rgba(26, 35, 50, 0.95));');
+            statusParts.push('border: 2px solid rgba(74, 207, 160, 0.3);');
+            statusParts.push('border-radius: 25px;');
+            statusParts.push('padding: 8px 16px;');
+            statusParts.push('display: flex;');
+            statusParts.push('align-items: center;');
+            statusParts.push('justify-content: space-between;');
+            statusParts.push('font-size: 14px;');
+            statusParts.push('color: white;');
+            statusParts.push('font-weight: bold;');
+            statusParts.push('">');
+
+            // Rank icon
+            var rankIcon = '';
+            if (playerRank === 1) rankIcon = '🥇 ';
+            else if (playerRank === 2) rankIcon = '🥈 ';
+            else if (playerRank === 3) rankIcon = '🥉 ';
+            else rankIcon = '🏆 ';
+
+            statusParts.push('<span style="color: #4acfa0;">');
+            statusParts.push(rankIcon + 'Rank');
+            statusParts.push('</span>');
+
+            if (playerRank > 0) {
+                statusParts.push('<span style="font-size: 18px; color: #ffd700;">');
+                statusParts.push(playerRank + '/' + leaderboard.length);
+                statusParts.push('</span>');
+            } else {
+                // Spectator or not in leaderboard
+                statusParts.push('<span style="font-size: 16px; color: rgba(255, 255, 255, 0.6);">');
+                statusParts.push('-/' + leaderboard.length);
+                statusParts.push('</span>');
+            }
+
+            statusParts.push('</div>');
+            statusEl.innerHTML = statusParts.join('');
+            return;
+        }
+
+        // Desktop: Show full leaderboard
         var isExpanded = statusEl.classList.contains("expanded");
 
         // Use array join for better string concatenation performance
@@ -1934,6 +1990,11 @@ function resize() {
     // Check both socket and player exist before trying to resize
     if (!socket || !player) return;
 
+    // Re-render leaderboard when window resizes (mobile/desktop switch)
+    if (window.lastLeaderboardData) {
+        renderLeaderboard(window.lastLeaderboardData);
+    }
+
     player.screenWidth =
         c.width =
         global.screen.width =
@@ -2573,25 +2634,29 @@ window.addEventListener('beforeunload', function() {
  * Show wallet update notification
  */
 function showWalletNotification(data) {
+    // Check if mobile
+    const isMobile = window.innerWidth <= 768;
+
     // Create notification element
     const notification = document.createElement('div');
     notification.style.cssText = `
         position: fixed;
-        bottom: 20px;
-        right: 20px;
+        bottom: ${isMobile ? '10px' : '20px'};
+        right: ${isMobile ? '10px' : '20px'};
         background: linear-gradient(135deg, #0f1922, #1a2332);
         border: 2px solid ${data.amount > 0 ? '#4acfa0' : '#ff6b6b'};
-        border-radius: 10px;
-        padding: 15px 20px;
+        border-radius: ${isMobile ? '20px' : '10px'};
+        padding: ${isMobile ? '8px 12px' : '15px 20px'};
         color: white;
         font-family: 'Ubuntu', sans-serif;
-        font-size: 16px;
+        font-size: ${isMobile ? '14px' : '16px'};
         z-index: 10000;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
         animation: slideInUp 0.3s ease;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: ${isMobile ? '8px' : '10px'};
+        max-width: ${isMobile ? '150px' : 'none'};
     `;
 
     // Add animation keyframes if not already present
@@ -2613,9 +2678,9 @@ function showWalletNotification(data) {
         document.head.appendChild(style);
     }
 
-    // Create icon based on type
+    // Create icon based on type (smaller on mobile)
     const icon = document.createElement('span');
-    icon.style.fontSize = '24px';
+    icon.style.fontSize = isMobile ? '18px' : '24px';
     if (data.type === 'entry_fee') {
         icon.textContent = '💰';
     } else if (data.type === 'escape_reward') {
@@ -2624,19 +2689,27 @@ function showWalletNotification(data) {
         icon.textContent = data.amount > 0 ? '📈' : '📉';
     }
 
-    // Create text content
+    // Create text content (more compact on mobile)
     const text = document.createElement('div');
     const amountColor = data.amount > 0 ? '#4acfa0' : '#ff6b6b';
-    const amountPrefix = data.amount > 0 ? '+' : '';
-    text.innerHTML = `
-        <div style="font-weight: bold; margin-bottom: 5px;">Wallet Update</div>
-        <div style="color: ${amountColor}; font-size: 20px; font-weight: bold;">
-            ${amountPrefix}$${Math.abs(data.amount).toFixed(2)}
-        </div>
-        <div style="font-size: 12px; opacity: 0.8; margin-top: 3px;">
-            ${data.description || ''}
-        </div>
-    `;
+    const amountPrefix = data.amount > 0 ? '+' : '-';
+
+    if (isMobile) {
+        // Ultra compact for mobile
+        text.innerHTML = `
+            <div style="color: ${amountColor}; font-size: 16px; font-weight: bold;">
+                ${amountPrefix}$${Math.abs(data.amount).toFixed(2)}
+            </div>
+        `;
+    } else {
+        // Full version for desktop
+        text.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 5px;">Wallet Update</div>
+            <div style="color: ${amountColor}; font-size: 20px; font-weight: bold;">
+                ${amountPrefix}$${Math.abs(data.amount).toFixed(2)}
+            </div>
+        `;
+    }
 
     notification.appendChild(icon);
     notification.appendChild(text);
