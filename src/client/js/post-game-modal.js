@@ -17,6 +17,15 @@
         modal = document.getElementById('postGameModal');
         content = document.getElementById('postGameContent');
 
+        // Add click handler to close modal when clicking outside
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    hide();
+                }
+            });
+        }
+
         // Check if returning from game on page load
         checkForPostGameTrigger();
     }
@@ -61,6 +70,15 @@
         requestAnimationFrame(() => {
             modal.classList.add('modal-active');
         });
+
+        // Add ESC key listener
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                hide();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
 
         // Trigger confetti for wins (except unprofitable escapes in PLAY TO EARN)
         const isUnprofitableEscape = gameData.isWin && gameData.arenaType === 'PLAY TO EARN' &&
@@ -252,7 +270,28 @@
         }
 
         return `
-            <div class="post-game-container" style="padding: 1.5rem;">
+            <div class="post-game-container" style="padding: 1.5rem; position: relative;">
+                <!-- Close button -->
+                <span class="post-game-close" onclick="PostGameModal.hide()" style="
+                    position: absolute;
+                    right: 1rem;
+                    top: 1rem;
+                    font-size: 1.5rem;
+                    cursor: pointer;
+                    color: rgba(255, 255, 255, 0.6);
+                    transition: all 0.3s ease;
+                    width: 30px;
+                    height: 30px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    z-index: 10;
+                " onmouseover="this.style.color='rgba(255, 255, 255, 0.9)'; this.style.transform='rotate(90deg)'; this.style.background='rgba(255, 255, 255, 0.1)'"
+                  onmouseout="this.style.color='rgba(255, 255, 255, 0.6)'; this.style.transform='rotate(0)'; this.style.background='transparent'">
+                    &times;
+                </span>
+
                 <!-- Compact Header -->
                 <div class="post-game-header" style="margin-bottom: 1rem;">
                     ${headerContent}
