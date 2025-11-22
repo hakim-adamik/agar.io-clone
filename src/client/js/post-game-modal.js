@@ -36,16 +36,26 @@
     function checkForPostGameTrigger() {
         const wasInGame = sessionStorage.getItem('wasInGame') === 'true';
         const exitReason = sessionStorage.getItem('gameExitReason');
+        const gameActive = sessionStorage.getItem('gameActive') === 'true';
 
-        // Only show modal if we were in game AND have a valid exit reason
-        // This prevents showing on page refresh
         if (wasInGame && exitReason) {
+            // Normal game exit - show modal
             sessionStorage.removeItem('wasInGame');
             sessionStorage.removeItem('gameExitReason');
+            sessionStorage.removeItem('gameActive');
             // Small delay for smooth transition
             setTimeout(show, 500);
-        } else if (wasInGame && !exitReason) {
-            // Clear stale wasInGame flag from refresh/crash
+        } else if (wasInGame && gameActive) {
+            // Game was active but no exit reason = refresh/crash during gameplay
+            // Treat as death and show modal
+            sessionStorage.setItem('gameExitReason', 'death');
+            sessionStorage.removeItem('wasInGame');
+            sessionStorage.removeItem('gameActive');
+            // Small delay for smooth transition
+            setTimeout(show, 500);
+        } else if (wasInGame && !exitReason && !gameActive) {
+            // Was in game but not active and no exit reason = refresh on landing after proper exit
+            // Just clear the stale flag
             sessionStorage.removeItem('wasInGame');
         }
     }
@@ -436,6 +446,8 @@
         sessionStorage.setItem('lastArenaType',
             arenaType === 'FREE' ? 'PRACTICE MODE' : 'PLAY TO EARN'
         );
+        // Mark that game is actually active (will be set to false on proper exit)
+        sessionStorage.setItem('gameActive', 'true');
     }
 
     // Expose public API

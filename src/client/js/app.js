@@ -2053,6 +2053,9 @@ function handleGameExit(reason, message) {
     // Store the exit reason for the post-game modal
     sessionStorage.setItem('gameExitReason', reason);
 
+    // Mark that game has properly exited (not a refresh/crash)
+    sessionStorage.setItem('gameActive', 'false');
+
     // Cleanup game
     cleanupGame();
 
