@@ -359,34 +359,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
 
-                        <div style="margin: 1.5rem 0;">
-                            <h3 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px;">
-                                <i class="fas fa-chart-line" style="margin-right: 0.5rem;"></i>Performance Stats
-                            </h3>
-                            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
-                                <div style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
-                                    <i class="fas fa-crown" style="color: #4CAF50; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
-                                    <div style="font-size: 1.75rem; font-weight: bold; color: #4CAF50; line-height: 1;">${(stats.highScore || 0).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</div>
-                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Best Score</div>
-                                </div>
-                                <div style="background: linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
-                                    <i class="fas fa-crosshairs" style="color: #2196F3; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
-                                    <div style="font-size: 1.75rem; font-weight: bold; color: #2196F3; line-height: 1;">${stats.totalPlayersEaten || 0}</div>
-                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Players Eaten</div>
-                                </div>
-                                <div style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.2), rgba(255, 152, 0, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
-                                    <i class="fas fa-cookie-bite" style="color: #FF9800; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
-                                    <div style="font-size: 1.75rem; font-weight: bold; color: #FF9800; line-height: 1;">${Math.floor((stats.totalMassEaten || 0) / 1000)}K</div>
-                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Mass Eaten</div>
-                                </div>
-                                <div style="background: linear-gradient(135deg, rgba(156, 39, 176, 0.2), rgba(156, 39, 176, 0.1)); border-radius: 12px; padding: 1.25rem; text-align: center; transition: transform 0.2s;">
-                                    <i class="fas fa-clock" style="color: #9C27B0; font-size: 1.25rem; margin-bottom: 0.5rem;"></i>
-                                    <div style="font-size: 1.75rem; font-weight: bold; color: #9C27B0; line-height: 1;">${Math.floor((stats.totalTimePlayed || 0) / 60)}h</div>
-                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-transform: uppercase;">Play Time</div>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Preferences Section for Logged-in Users -->
                         <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
                             <h3 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px;">
@@ -714,10 +686,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">
                             <i class="fas fa-check-circle" style="color: #4acfa0; margin-right: 0.5rem;"></i>
                             Compete on the global leaderboard
-                        </div>
-                        <div style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">
-                            <i class="fas fa-check-circle" style="color: #4acfa0; margin-right: 0.5rem;"></i>
-                            Customize your profile and avatar
                         </div>
                     </div>
                 </div>
