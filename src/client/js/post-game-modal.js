@@ -242,6 +242,13 @@
     function buildModalContent(data) {
         const { score, arenaType, isWin, isAuthenticated, timePlayed, enemiesEaten, walletChange } = data;
 
+        // Check if mobile for responsive sizing
+        const isMobile = window.innerWidth <= 768;
+        const iconSize = isMobile ? '2.5rem' : '3rem';
+        const titleSize = isMobile ? '1.25rem' : '1.75rem';
+        const containerPadding = isMobile ? '1rem' : '1.5rem';
+        const headerMargin = isMobile ? '0.5rem' : '1rem';
+
         // Determine compact header based on performance
         let headerContent;
 
@@ -252,46 +259,46 @@
             // Profitable escape or practice mode escape (or break even)
             if (score >= 100) {
                 headerContent = `
-                    <i class="fas fa-crown post-game-icon winner" style="font-size: 3rem;"></i>
-                    <h2 class="post-game-title winner" style="font-size: 1.75rem; margin: 0.5rem 0;">LEGENDARY!</h2>
+                    <i class="fas fa-crown post-game-icon winner" style="font-size: ${iconSize};"></i>
+                    <h2 class="post-game-title winner" style="font-size: ${titleSize}; margin: 0.25rem 0;">LEGENDARY!</h2>
                 `;
             } else if (score >= 50) {
                 headerContent = `
-                    <i class="fas fa-trophy post-game-icon winner" style="font-size: 3rem;"></i>
-                    <h2 class="post-game-title winner" style="font-size: 1.75rem; margin: 0.5rem 0;">EPIC WIN!</h2>
+                    <i class="fas fa-trophy post-game-icon winner" style="font-size: ${iconSize};"></i>
+                    <h2 class="post-game-title winner" style="font-size: ${titleSize}; margin: 0.25rem 0;">EPIC WIN!</h2>
                 `;
             } else if (score >= 10) {
                 headerContent = `
-                    <i class="fas fa-rocket post-game-icon winner" style="font-size: 3rem;"></i>
-                    <h2 class="post-game-title winner" style="font-size: 1.75rem; margin: 0.5rem 0;">TO THE MOON!</h2>
+                    <i class="fas fa-rocket post-game-icon winner" style="font-size: ${iconSize};"></i>
+                    <h2 class="post-game-title winner" style="font-size: ${titleSize}; margin: 0.25rem 0;">TO THE MOON!</h2>
                 `;
             } else {
                 headerContent = `
-                    <i class="fas fa-rocket post-game-icon winner" style="font-size: 3rem;"></i>
-                    <h2 class="post-game-title winner" style="font-size: 1.75rem; margin: 0.5rem 0;">Successfully Escaped!</h2>
+                    <i class="fas fa-rocket post-game-icon winner" style="font-size: ${iconSize};"></i>
+                    <h2 class="post-game-title winner" style="font-size: ${titleSize}; margin: 0.25rem 0;">Successfully Escaped!</h2>
                 `;
             }
         } else {
             // Death or unprofitable escape in PLAY TO EARN
             headerContent = `
-                <i class="fas fa-skull-crossbones post-game-icon retry" style="font-size: 3rem;"></i>
-                <h2 class="post-game-title retry" style="font-size: 1.75rem; margin: 0.5rem 0;">Better Luck Next Time!</h2>
+                <i class="fas fa-skull-crossbones post-game-icon retry" style="font-size: ${iconSize};"></i>
+                <h2 class="post-game-title retry" style="font-size: ${titleSize}; margin: 0.25rem 0;">Better Luck Next Time!</h2>
             `;
         }
 
         return `
-            <div class="post-game-container" style="padding: 1.5rem; position: relative;">
+            <div class="post-game-container" style="padding: ${containerPadding}; position: relative;">
                 <!-- Close button -->
                 <span class="post-game-close" onclick="PostGameModal.hide()" style="
                     position: absolute;
-                    right: 1rem;
-                    top: 1rem;
-                    font-size: 1.5rem;
+                    right: ${isMobile ? '0.5rem' : '1rem'};
+                    top: ${isMobile ? '0.5rem' : '1rem'};
+                    font-size: ${isMobile ? '1.25rem' : '1.5rem'};
                     cursor: pointer;
                     color: rgba(255, 255, 255, 0.6);
                     transition: all 0.3s ease;
-                    width: 30px;
-                    height: 30px;
+                    width: ${isMobile ? '25px' : '30px'};
+                    height: ${isMobile ? '25px' : '30px'};
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -303,20 +310,20 @@
                 </span>
 
                 <!-- Compact Header -->
-                <div class="post-game-header" style="margin-bottom: 1rem;">
+                <div class="post-game-header" style="margin-bottom: ${headerMargin};">
                     ${headerContent}
                 </div>
 
                 ${walletChange !== null ? `
                     <!-- Wallet Change Section (Redesigned for PLAY TO EARN) -->
-                    <div style="padding: 1rem; margin-bottom: 1rem; background: ${walletChange >= 0 ? 'linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(46, 125, 50, 0.1))' : 'linear-gradient(135deg, rgba(244, 67, 54, 0.15), rgba(198, 40, 40, 0.1))'}; border: 1px solid ${walletChange >= 0 ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'}; border-radius: 15px;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                    <div style="padding: ${isMobile ? '0.75rem' : '1rem'}; margin-bottom: ${isMobile ? '0.75rem' : '1rem'}; background: ${walletChange >= 0 ? 'linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(46, 125, 50, 0.1))' : 'linear-gradient(135deg, rgba(244, 67, 54, 0.15), rgba(198, 40, 40, 0.1))'}; border: 1px solid ${walletChange >= 0 ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'}; border-radius: 15px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: ${isMobile ? '0.5rem' : '1rem'};">
                             <div style="flex: 1;">
-                                <div style="font-size: 0.75rem; color: ${walletChange >= 0 ? '#4CAF50' : '#ff4757'}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                                    <span style="font-size: 1rem;">${walletChange >= 0 ? '💰' : '💸'}</span>
+                                <div style="font-size: ${isMobile ? '0.65rem' : '0.75rem'}; color: ${walletChange >= 0 ? '#4CAF50' : '#ff4757'}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: ${isMobile ? '0.25rem' : '0.5rem'}; display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="font-size: ${isMobile ? '0.9rem' : '1rem'};">${walletChange >= 0 ? '💰' : '💸'}</span>
                                     <span>${walletChange >= 0 ? 'Earnings' : 'Net Result'}</span>
                                 </div>
-                                <div style="font-size: 2.25rem; margin: 0; color: ${walletChange >= 0 ? '#4CAF50' : '#ff4757'}; font-weight: bold;">
+                                <div style="font-size: ${isMobile ? '1.75rem' : '2.25rem'}; margin: 0; color: ${walletChange >= 0 ? '#4CAF50' : '#ff4757'}; font-weight: bold;">
                                     ${walletChange >= 0 ? '+' : '-'}$${Math.abs(walletChange).toFixed(2)}
                                 </div>
                             </div>
@@ -343,29 +350,29 @@
                 ` : ''}
 
                 <!-- Compact Stats Grid -->
-                <div class="post-game-stats" style="padding: 1rem; margin-bottom: 1rem;">
-                    <div class="stats-grid" style="gap: 0.75rem;">
-                        <div class="stat-item" style="padding: 0.5rem;">
-                            <div class="stat-label" style="font-size: 0.65rem;">Score</div>
-                            <div class="stat-value ${isWin ? 'highlight' : ''}" style="font-size: 1.1rem;">
+                <div class="post-game-stats" style="padding: ${isMobile ? '0.75rem' : '1rem'}; margin-bottom: ${isMobile ? '0.75rem' : '1rem'};">
+                    <div class="stats-grid" style="gap: ${isMobile ? '0.5rem' : '0.75rem'};">
+                        <div class="stat-item" style="padding: ${isMobile ? '0.4rem' : '0.5rem'};">
+                            <div class="stat-label" style="font-size: ${isMobile ? '0.6rem' : '0.65rem'};">Score</div>
+                            <div class="stat-value ${isWin ? 'highlight' : ''}" style="font-size: ${isMobile ? '0.9rem' : '1.1rem'};">
                                 ${score.toFixed(4)}
                             </div>
                         </div>
-                        <div class="stat-item" style="padding: 0.5rem;">
-                            <div class="stat-label" style="font-size: 0.65rem;">Arena</div>
-                            <div class="stat-value" style="font-size: 0.9rem;">
+                        <div class="stat-item" style="padding: ${isMobile ? '0.4rem' : '0.5rem'};">
+                            <div class="stat-label" style="font-size: ${isMobile ? '0.6rem' : '0.65rem'};">Arena</div>
+                            <div class="stat-value" style="font-size: ${isMobile ? '0.75rem' : '0.9rem'};">
                                 ${arenaType === 'PRACTICE MODE' ? 'PRACTICE' : 'PLAY TO EARN'}
                             </div>
                         </div>
-                        <div class="stat-item" style="padding: 0.5rem;">
-                            <div class="stat-label" style="font-size: 0.65rem;">Time</div>
-                            <div class="stat-value" style="font-size: 1rem;">
+                        <div class="stat-item" style="padding: ${isMobile ? '0.4rem' : '0.5rem'};">
+                            <div class="stat-label" style="font-size: ${isMobile ? '0.6rem' : '0.65rem'};">Time</div>
+                            <div class="stat-value" style="font-size: ${isMobile ? '0.85rem' : '1rem'};">
                                 ${timePlayed}
                             </div>
                         </div>
-                        <div class="stat-item" style="padding: 0.5rem;">
-                            <div class="stat-label" style="font-size: 0.65rem;">Enemies</div>
-                            <div class="stat-value" style="font-size: 1rem;">
+                        <div class="stat-item" style="padding: ${isMobile ? '0.4rem' : '0.5rem'};">
+                            <div class="stat-label" style="font-size: ${isMobile ? '0.6rem' : '0.65rem'};">Enemies</div>
+                            <div class="stat-value" style="font-size: ${isMobile ? '0.85rem' : '1rem'};">
                                 ${enemiesEaten}
                             </div>
                         </div>
