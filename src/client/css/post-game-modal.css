@@ -1,0 +1,401 @@
+/**
+ * Post-Game Modal Styles
+ * Responsive design for mobile and desktop
+ */
+
+/* Modal Container */
+#postGameModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#postGameModal.modal-active {
+    opacity: 1;
+}
+
+/* Modal Content */
+.post-game-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 100%);
+    border-radius: 20px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    border: 2px solid rgba(74, 207, 160, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Container */
+.post-game-container {
+    padding: 1.5rem;
+}
+
+/* Header Section */
+.post-game-header {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.post-game-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    display: block;
+    animation: iconBounce 0.5s ease;
+}
+
+.post-game-icon.winner {
+    color: #ffd700;
+    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
+}
+
+.post-game-icon.retry {
+    color: #4acfa0;
+    filter: drop-shadow(0 0 20px rgba(74, 207, 160, 0.5));
+}
+
+@keyframes iconBounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.post-game-title {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.post-game-title.winner {
+    color: #ffd700;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.post-game-title.retry {
+    color: #4acfa0;
+    text-shadow: 0 0 20px rgba(74, 207, 160, 0.3);
+}
+
+.post-game-message {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1rem;
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* Stats Section */
+.post-game-stats {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    backdrop-filter: blur(10px);
+}
+
+.stats-title {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin: 0 0 1rem 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    transition: transform 0.2s ease;
+}
+
+.stat-item:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.stat-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    color: #ffffff;
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+
+.stat-value.highlight {
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+/* Wallet Change Section */
+.wallet-change {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+}
+
+.wallet-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-top: 0.25rem;
+}
+
+.wallet-value.profit {
+    color: #4acfa0;
+    text-shadow: 0 0 10px rgba(74, 207, 160, 0.3);
+}
+
+.wallet-value.loss {
+    color: #ff4757;
+    text-shadow: 0 0 10px rgba(255, 71, 87, 0.3);
+}
+
+/* Action Buttons */
+.post-game-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-rejoin,
+.btn-another-arena {
+    padding: 0.875rem 1.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 140px;
+    border: none;
+    outline: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-rejoin {
+    background: linear-gradient(135deg, #4acfa0, #50e3c2);
+    color: white;
+    box-shadow: 0 4px 15px rgba(74, 207, 160, 0.3);
+}
+
+.btn-rejoin:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(74, 207, 160, 0.4);
+}
+
+.btn-rejoin i {
+    margin-right: 0.5rem;
+}
+
+.btn-another-arena {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-another-arena:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .post-game-container {
+        padding: 1.5rem;
+    }
+
+    .post-game-icon {
+        font-size: 3rem;
+    }
+
+    .post-game-title {
+        font-size: 1.5rem;
+    }
+
+    .post-game-message {
+        font-size: 1rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .stat-item {
+        padding: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.7rem;
+    }
+
+    .stat-value {
+        font-size: 1rem;
+    }
+
+    .wallet-value {
+        font-size: 1.25rem;
+    }
+
+    .post-game-actions {
+        flex-direction: column;
+    }
+
+    .btn-rejoin,
+    .btn-another-arena {
+        width: 100%;
+        padding: 1rem;
+    }
+}
+
+/* Small Mobile */
+@media (max-width: 380px) {
+    .post-game-container {
+        padding: 1rem;
+    }
+
+    .post-game-icon {
+        font-size: 2.5rem;
+    }
+
+    .post-game-title {
+        font-size: 1.25rem;
+        letter-spacing: 1px;
+    }
+
+    .post-game-message {
+        font-size: 0.9rem;
+    }
+
+    .stats-title {
+        font-size: 0.8rem;
+    }
+
+    .stat-label {
+        font-size: 0.65rem;
+    }
+
+    .stat-value {
+        font-size: 0.9rem;
+    }
+
+    .btn-rejoin,
+    .btn-another-arena {
+        font-size: 0.9rem;
+        padding: 0.875rem;
+    }
+}
+
+/* Landscape Mode Adjustments */
+@media (max-height: 600px) and (orientation: landscape) {
+    .post-game-content {
+        max-height: 95vh;
+    }
+
+    .post-game-container {
+        padding: 1rem;
+    }
+
+    .post-game-header {
+        margin-bottom: 1rem;
+    }
+
+    .post-game-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .post-game-title {
+        font-size: 1.25rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .post-game-message {
+        font-size: 0.9rem;
+    }
+
+    .post-game-stats {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .stats-grid {
+        gap: 0.5rem;
+    }
+
+    .stat-item {
+        padding: 0.5rem;
+    }
+
+    .post-game-actions {
+        gap: 0.75rem;
+    }
+
+    .btn-rejoin,
+    .btn-another-arena {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Scrollbar Styling */
+.post-game-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.post-game-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.post-game-content::-webkit-scrollbar-thumb {
+    background: rgba(74, 207, 160, 0.3);
+    border-radius: 10px;
+}
+
+.post-game-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(74, 207, 160, 0.5);
+}
+
+/* Dark mode adjustments (if needed) */
+@media (prefers-color-scheme: light) {
+    /* Add light mode overrides if needed */
+}

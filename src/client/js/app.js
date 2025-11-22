@@ -49,7 +49,13 @@ function generateGuestName() {
 window.startSeamlessGame = function () {
     var playerNameInput = document.getElementById("playerNameInput");
     if (!playerNameInput.value) {
-        playerNameInput.value = generateGuestName();
+        // Check if user is logged in before generating guest name
+        const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+        if (userData && userData.username) {
+            playerNameInput.value = userData.username;
+        } else {
+            playerNameInput.value = generateGuestName();
+        }
     }
 
     // Apply default game settings from config
@@ -249,9 +255,14 @@ function startGame(type) {
     window.inWaitingRoom = false;
     window.countdownActive = false;
 
-    // Auto-generate guest name if empty
+    // Auto-generate guest name if empty (but check for logged-in user first)
     if (!playerNameInput.value) {
-        playerNameInput.value = generateGuestName();
+        const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+        if (userData && userData.username) {
+            playerNameInput.value = userData.username;
+        } else {
+            playerNameInput.value = generateGuestName();
+        }
     }
 
     global.playerName = playerNameInput.value
@@ -350,9 +361,13 @@ function startGame(type) {
             console.error("[Socket] Failed to parse user data:", e);
         }
 
-        // Build query params including user data
+        // Get selected arena type from session storage (set by landing page)
+        const selectedArenaType = sessionStorage.getItem('selectedArenaType') || 'FREE';
+
+        // Build query params including user data and arena type
         const queryParams = {
             type: type,
+            arenaType: selectedArenaType,  // FREE or PAID
             arenaId: global.arenaId || null,
             userId: userData?.dbUserId || null,
             privyId: userData?.id || null,  // Privy ID is stored as 'id' in userData
@@ -505,7 +520,8 @@ function leaveWaitingRoom() {
     WaitingRoom.hideCountdownUI();
 
     // Return to landing page
-    cleanupGame();
+    // Pass skipScoreSave=true since we never actually played
+    cleanupGame(true);
 
     // Now reset the waiting room flag after cleanup
     window.inWaitingRoom = false;
@@ -553,6 +569,14 @@ function setupLeaderboardToggle() {
 window.onload = function () {
     // Landing page is handled by landing.js
 
+    // Score cleanup on page load
+    // Clear scores from previous browser sessions to prevent stale data
+    if (!sessionStorage.getItem('sessionActive')) {
+        // This is a new browser session (not a refresh)
+        localStorage.removeItem('lastScore');
+        sessionStorage.setItem('sessionActive', 'true');
+    }
+
     // Set up leaderboard click handler for mobile
     setupLeaderboardToggle();
 
@@ -569,8 +593,15 @@ window.onload = function () {
 
     if (btn) {
         btn.onclick = function () {
-            // Auto-play for hidden button
-            playerNameInput.value = generateGuestName();
+            // Auto-play for hidden button - check for logged-in user first
+            if (!playerNameInput.value) {
+                const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+                if (userData && userData.username) {
+                    playerNameInput.value = userData.username;
+                } else {
+                    playerNameInput.value = generateGuestName();
+                }
+            }
             startGame("player");
         };
     }
@@ -595,7 +626,15 @@ window.onload = function () {
         var key = e.which || e.keyCode;
 
         if (key === global.KEY_ENTER) {
-            playerNameInput.value = generateGuestName();
+            // Don't overwrite the username if already set
+            if (!playerNameInput.value) {
+                const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+                if (userData && userData.username) {
+                    playerNameInput.value = userData.username;
+                } else {
+                    playerNameInput.value = generateGuestName();
+                }
+            }
             startGame("player");
         }
     });
@@ -1147,6 +1186,62 @@ function setupSocket(socket) {
         var statusEl = document.getElementById("status");
         if (!statusEl) return;
 
+        // Check if mobile
+        var isMobile = window.innerWidth <= 768;
+
+        // Find player's rank
+        var playerRank = -1;
+        for (var i = 0; i < leaderboard.length; i++) {
+            if (leaderboard[i].id == player.id) {
+                playerRank = i + 1;
+                break;
+            }
+        }
+
+        // Mobile: Show compact rank display
+        if (isMobile) {
+            var statusParts = [];
+            statusParts.push('<div class="mobile-rank-display" style="');
+            statusParts.push('background: linear-gradient(135deg, rgba(15, 25, 34, 0.95), rgba(26, 35, 50, 0.95));');
+            statusParts.push('border: 2px solid rgba(74, 207, 160, 0.3);');
+            statusParts.push('border-radius: 25px;');
+            statusParts.push('padding: 8px 16px;');
+            statusParts.push('display: flex;');
+            statusParts.push('align-items: center;');
+            statusParts.push('justify-content: space-between;');
+            statusParts.push('font-size: 14px;');
+            statusParts.push('color: white;');
+            statusParts.push('font-weight: bold;');
+            statusParts.push('">');
+
+            // Rank icon
+            var rankIcon = '';
+            if (playerRank === 1) rankIcon = '🥇 ';
+            else if (playerRank === 2) rankIcon = '🥈 ';
+            else if (playerRank === 3) rankIcon = '🥉 ';
+            else rankIcon = '🏆 ';
+
+            statusParts.push('<span style="color: #4acfa0;">');
+            statusParts.push(rankIcon + 'Rank');
+            statusParts.push('</span>');
+
+            if (playerRank > 0) {
+                statusParts.push('<span style="font-size: 18px; color: #ffd700;">');
+                statusParts.push(playerRank + '/' + leaderboard.length);
+                statusParts.push('</span>');
+            } else {
+                // Spectator or not in leaderboard
+                statusParts.push('<span style="font-size: 16px; color: rgba(255, 255, 255, 0.6);">');
+                statusParts.push('-/' + leaderboard.length);
+                statusParts.push('</span>');
+            }
+
+            statusParts.push('</div>');
+            statusEl.innerHTML = statusParts.join('');
+            return;
+        }
+
+        // Desktop: Show full leaderboard
         var isExpanded = statusEl.classList.contains("expanded");
 
         // Use array join for better string concatenation performance
@@ -1340,9 +1435,6 @@ function setupSocket(socket) {
             console.log('Error stopping escape sound on death:', e);
         }
 
-        // Removed: render.drawErrorMessage("You died!", graph, global.screen);
-        // Now we go directly to landing page with notification
-
         // Play loss sound effect when player dies
         if (global.soundEnabled) {
             try {
@@ -1359,51 +1451,7 @@ function setupSocket(socket) {
             }
         }
 
-        // Immediately return to landing page instead of old menu
-            var landingView = document.getElementById("landingView");
-            var gameView = document.getElementById("gameView");
-
-            if (landingView && gameView) {
-                // Hide game view
-                gameView.style.display = "none";
-                document.getElementById("gameAreaWrapper").style.opacity = 0;
-
-                // Hide player score display
-                var playerScoreEl = document.getElementById("playerScore");
-                if (playerScoreEl) {
-                    playerScoreEl.style.display = "none";
-                }
-
-                // Show landing view
-                landingView.style.display = "block";
-
-                // Display last score with death styling
-                displayLastScore(true);
-
-
-                // Cleanup
-                if (global.animLoopHandle) {
-                    window.cancelAnimationFrame(global.animLoopHandle);
-                    global.animLoopHandle = undefined;
-                }
-
-                // Disconnect socket and clear all references
-                if (socket) {
-                    socket.disconnect();
-                    socket = null;
-                    window.canvas.socket = null;
-                    global.socket = null;
-                }
-            } else {
-                // Fallback to old menu if landing page not found
-                document.getElementById("gameAreaWrapper").style.opacity = 0;
-                document.getElementById("startMenuWrapper").style.maxHeight =
-                    "1000px";
-                if (global.animLoopHandle) {
-                    window.cancelAnimationFrame(global.animLoopHandle);
-                    global.animLoopHandle = undefined;
-                }
-            }
+        // All cleanup, return to landing, and post-game modal display is handled by handleGameExit above
     });
 
     socket.on("kick", function (reason) {
@@ -1473,6 +1521,11 @@ function setupSocket(socket) {
         // Entered waiting room
         window.inWaitingRoom = true;
         window.waitingRoomData = data;
+
+        // Clear score when entering waiting room
+        // Ensures no stale score shows if player leaves without playing
+        localStorage.removeItem("lastScore");
+        sessionStorage.removeItem("hasPlayedThisSession");
 
         // Show waiting room UI
         WaitingRoom.showWaitingRoomUI(data);
@@ -1937,6 +1990,11 @@ function resize() {
     // Check both socket and player exist before trying to resize
     if (!socket || !player) return;
 
+    // Re-render leaderboard when window resizes (mobile/desktop switch)
+    if (window.lastLeaderboardData) {
+        renderLeaderboard(window.lastLeaderboardData);
+    }
+
     player.screenWidth =
         c.width =
         global.screen.width =
@@ -1977,9 +2035,9 @@ function exitGame() {
     // Escape request sent to server
 }
 
-function cleanupGame() {
-    // Save last score before cleanup
-    if (player && player.score !== undefined) {
+function cleanupGame(skipScoreSave) {
+    // Save last score before cleanup (unless explicitly skipped, e.g., when leaving waiting room)
+    if (!skipScoreSave && player && player.score !== undefined) {
         saveLastScore(player.score);
     }
 
@@ -2053,6 +2111,12 @@ function handleGameExit(reason, message) {
         saveLastScore(player.score);
     }
 
+    // Store the exit reason for the post-game modal
+    sessionStorage.setItem('gameExitReason', reason);
+
+    // Mark that game has properly exited (not a refresh/crash)
+    sessionStorage.setItem('gameActive', 'false');
+
     // Cleanup game
     cleanupGame();
 
@@ -2086,16 +2150,27 @@ function returnToLanding(exitReason, exitMessage) {
         // Show landing view
         landingView.style.display = "block";
 
-        // Display last score on landing page
-        displayLastScore();
+        // Trigger post-game modal if player actually played and has a score
+        // Check if we have a valid score saved (means player was in the game)
+        const hasScore = localStorage.getItem("lastScore") !== null &&
+                        localStorage.getItem("lastScore") !== undefined;
 
-        // Display exit message if provided
-        if (exitMessage) {
+        // Show modal for death or escape (not for kicks or waiting room exits)
+        if (hasScore && (exitReason === 'death' || exitReason === 'escape')) {
+            // Small delay to ensure smooth transition
+            setTimeout(function() {
+                if (window.PostGameModal) {
+                    window.PostGameModal.show();
+                }
+            }, 500);
+        }
+
+        // Only display exit message for kicks/disconnects (not death/escape which use modal)
+        if (exitMessage && exitReason !== 'death' && exitReason !== 'escape') {
             displayExitMessage(exitReason, exitMessage);
         }
 
-        // Reset player name input if needed
-        playerNameInput.value = "";
+        // Don't reset player name input - preserve logged-in username
     }
 }
 
@@ -2131,8 +2206,7 @@ window.returnToLandingWithInsufficientFunds = function(data) {
         // Show landing view
         landingView.style.display = "block";
 
-        // Reset player name input if needed
-        playerNameInput.value = "";
+        // Don't reset player name input - preserve logged-in username
 
         // Show the insufficient funds modal
         showInsufficientFundsModal(data);
@@ -2340,12 +2414,27 @@ function displaySimpleWalletResult(netProfit, entryFee, lastScoreBox, lastScoreV
     }
 }
 
+/**
+ * Score Management System
+ * Handles saving and displaying player scores across sessions
+ *
+ * Score Lifecycle:
+ * 1. New browser session → Clear old scores
+ * 2. Enter waiting room → Clear score (prevents stale display)
+ * 3. Play game → Score accumulates
+ * 4. Death/Escape → Save score to localStorage
+ * 5. Return to landing → Display last score
+ * 6. Leave waiting room without playing → No score display
+ */
+
 // Save last score to localStorage
 function saveLastScore(score) {
     try {
         // Round to 4 decimals for display consistency
         var preciseScore = Math.round(score * 10000) / 10000;
         localStorage.setItem("lastScore", preciseScore);
+        // Mark that we have a valid score from this session
+        sessionStorage.setItem("hasPlayedThisSession", "true");
     } catch (e) {
         console.log("Could not save last score:", e);
     }
@@ -2456,30 +2545,8 @@ window.addEventListener('beforeunload', function() {
     sessionStorage.setItem('pageRefreshing', 'true');
 });
 
-// Display last score when DOM is ready, but not on page refresh
-(function() {
-if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function() {
-            // Check if this is a page refresh
-            const isRefresh = sessionStorage.getItem('pageRefreshing') === 'true';
-            if (isRefresh) {
-                // Clear the refresh flag and don't show last score
-                sessionStorage.removeItem('pageRefreshing');
-} else {
-    displayLastScore();
-}
-        });
-    } else {
-        // Check if this is a page refresh
-        const isRefresh = sessionStorage.getItem('pageRefreshing') === 'true';
-        if (isRefresh) {
-            // Clear the refresh flag and don't show last score
-            sessionStorage.removeItem('pageRefreshing');
-        } else {
-            displayLastScore();
-        }
-    }
-})();
+// Note: Score display on page load is handled in window.onload
+// to ensure proper session management and avoid duplicate displays
 
 // Fullscreen toggle button handler
 (function() {
@@ -2567,25 +2634,29 @@ if (document.readyState === "loading") {
  * Show wallet update notification
  */
 function showWalletNotification(data) {
+    // Check if mobile
+    const isMobile = window.innerWidth <= 768;
+
     // Create notification element
     const notification = document.createElement('div');
     notification.style.cssText = `
         position: fixed;
-        top: 80px;
-        right: 20px;
+        bottom: ${isMobile ? '10px' : '20px'};
+        right: ${isMobile ? '10px' : '20px'};
         background: linear-gradient(135deg, #0f1922, #1a2332);
         border: 2px solid ${data.amount > 0 ? '#4acfa0' : '#ff6b6b'};
-        border-radius: 10px;
-        padding: 15px 20px;
+        border-radius: ${isMobile ? '20px' : '10px'};
+        padding: ${isMobile ? '8px 12px' : '15px 20px'};
         color: white;
         font-family: 'Ubuntu', sans-serif;
-        font-size: 16px;
+        font-size: ${isMobile ? '14px' : '16px'};
         z-index: 10000;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        animation: slideInRight 0.3s ease;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        animation: slideInUp 0.3s ease;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: ${isMobile ? '8px' : '10px'};
+        max-width: ${isMobile ? '150px' : 'none'};
     `;
 
     // Add animation keyframes if not already present
@@ -2593,13 +2664,13 @@ function showWalletNotification(data) {
         const style = document.createElement('style');
         style.id = 'walletAnimations';
         style.textContent = `
-            @keyframes slideInRight {
+            @keyframes slideInUp {
                 from {
-                    transform: translateX(100%);
+                    transform: translateY(100%);
                     opacity: 0;
                 }
                 to {
-                    transform: translateX(0);
+                    transform: translateY(0);
                     opacity: 1;
                 }
             }
@@ -2607,9 +2678,9 @@ function showWalletNotification(data) {
         document.head.appendChild(style);
     }
 
-    // Create icon based on type
+    // Create icon based on type (smaller on mobile)
     const icon = document.createElement('span');
-    icon.style.fontSize = '24px';
+    icon.style.fontSize = isMobile ? '18px' : '24px';
     if (data.type === 'entry_fee') {
         icon.textContent = '💰';
     } else if (data.type === 'escape_reward') {
@@ -2618,19 +2689,27 @@ function showWalletNotification(data) {
         icon.textContent = data.amount > 0 ? '📈' : '📉';
     }
 
-    // Create text content
+    // Create text content (more compact on mobile)
     const text = document.createElement('div');
     const amountColor = data.amount > 0 ? '#4acfa0' : '#ff6b6b';
-    const amountPrefix = data.amount > 0 ? '+' : '';
-    text.innerHTML = `
-        <div style="font-weight: bold; margin-bottom: 5px;">Wallet Update</div>
-        <div style="color: ${amountColor}; font-size: 20px; font-weight: bold;">
-            ${amountPrefix}$${Math.abs(data.amount).toFixed(2)}
-        </div>
-        <div style="font-size: 12px; opacity: 0.8; margin-top: 3px;">
-            ${data.description || ''}
-        </div>
-    `;
+    const amountPrefix = data.amount > 0 ? '+' : '-';
+
+    if (isMobile) {
+        // Ultra compact for mobile
+        text.innerHTML = `
+            <div style="color: ${amountColor}; font-size: 16px; font-weight: bold;">
+                ${amountPrefix}$${Math.abs(data.amount).toFixed(2)}
+            </div>
+        `;
+    } else {
+        // Full version for desktop
+        text.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 5px;">Wallet Update</div>
+            <div style="color: ${amountColor}; font-size: 20px; font-weight: bold;">
+                ${amountPrefix}$${Math.abs(data.amount).toFixed(2)}
+            </div>
+        `;
+    }
 
     notification.appendChild(icon);
     notification.appendChild(text);

@@ -619,7 +619,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const modal = document.getElementById('sectionModal');
         if (modal) closeModal(modal);
 
-        // redirectToGame will handle setting the username appropriately
+        // Start the game immediately as guest in FREE arena
+        const playerNameInput = document.getElementById("playerNameInput");
+        if (playerNameInput) {
+            playerNameInput.value = "Guest_" + Math.floor(Math.random() * 10000);
+        }
         redirectToGame('FREE');
     };
 
@@ -748,6 +752,216 @@ document.addEventListener('DOMContentLoaded', function() {
     window.redirectToGame = redirectToGame;
     window.showPaidArenaSignupPrompt = showPaidArenaSignupPrompt;
 
+    /* Old showPostGameModal function - removed, see post-game-modal.js
+    function showPostGameModal() {
+        const modal = document.getElementById('postGameModal');
+        const content = document.getElementById('postGameContent');
+
+        if (!modal || !content) return;
+
+        // Get game data from sessionStorage/localStorage
+        const lastScore = parseFloat(localStorage.getItem('lastScore') || '0');
+        const lastArenaType = sessionStorage.getItem('lastArenaType') || 'PRACTICE MODE';
+        const isWin = lastScore > 0; // Simple win/loss logic based on score
+        const isAuthenticated = window.PrivyAuth && window.PrivyAuth.isAuthenticated();
+
+        // Placeholder stats - will be implemented later
+        const timePlayed = "0:00"; // Placeholder
+        const enemiesEaten = 0; // Placeholder
+        const walletChange = lastArenaType === 'PLAY TO EARN' && isAuthenticated ?
+            (lastScore - 1.0) : 0; // Entry fee is $1
+
+        // Build modal content with positive messaging
+        const modalHTML = `
+            <div style="text-align: center; padding: 1rem;">
+                ${isWin ? `
+                    <div style="margin-bottom: 1.5rem;">
+                        <i class="fas fa-trophy" style="font-size: 4rem; color: #ffd700; margin-bottom: 1rem; display: block;"></i>
+                        <h2 style="color: #ffd700; font-size: 2rem; margin-bottom: 0.5rem;">Victory!</h2>
+                        <p style="color: rgba(255, 255, 255, 0.8); font-size: 1.1rem;">
+                            Excellent performance! You dominated the arena!
+                        </p>
+                    </div>
+                ` : `
+                    <div style="margin-bottom: 1.5rem;">
+                        <i class="fas fa-redo" style="font-size: 3.5rem; color: #4acfa0; margin-bottom: 1rem; display: block;"></i>
+                        <h2 style="color: #4acfa0; font-size: 2rem; margin-bottom: 0.5rem;">Good Try!</h2>
+                        <p style="color: rgba(255, 255, 255, 0.8); font-size: 1.1rem;">
+                            Every game makes you stronger. Jump back in!
+                        </p>
+                    </div>
+                `}
+
+                <!-- Game Stats -->
+                <div style="background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <h3 style="color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; margin-bottom: 1rem; text-transform: uppercase;">
+                        Game Summary
+                    </h3>
+
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                        <div style="text-align: center;">
+                            <div style="color: rgba(255, 255, 255, 0.6); font-size: 0.8rem; margin-bottom: 0.25rem;">Score</div>
+                            <div style="color: ${isWin ? '#ffd700' : '#fff'}; font-size: 1.5rem; font-weight: bold;">
+                                ${lastScore.toFixed(4)}
+                            </div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: rgba(255, 255, 255, 0.6); font-size: 0.8rem; margin-bottom: 0.25rem;">Arena</div>
+                            <div style="color: #fff; font-size: 1rem; font-weight: bold;">
+                                ${lastArenaType}
+                            </div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: rgba(255, 255, 255, 0.6); font-size: 0.8rem; margin-bottom: 0.25rem;">Time Played</div>
+                            <div style="color: #fff; font-size: 1rem;">
+                                ${timePlayed}
+                            </div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: rgba(255, 255, 255, 0.6); font-size: 0.8rem; margin-bottom: 0.25rem;">Enemies Eaten</div>
+                            <div style="color: #fff; font-size: 1rem;">
+                                ${enemiesEaten}
+                            </div>
+                        </div>
+                    </div>
+
+                    ${lastArenaType === 'PLAY TO EARN' && isAuthenticated ? `
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                            <div style="color: rgba(255, 255, 255, 0.6); font-size: 0.8rem; margin-bottom: 0.25rem;">Wallet Change</div>
+                            <div style="color: ${walletChange >= 0 ? '#4acfa0' : '#ff4757'}; font-size: 1.5rem; font-weight: bold;">
+                                ${walletChange >= 0 ? '+' : ''}$${Math.abs(walletChange).toFixed(2)}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                    <button onclick="window.rejoinGame()" style="
+                        background: linear-gradient(135deg, #4acfa0, #50e3c2);
+                        color: white;
+                        border: none;
+                        padding: 1rem 2rem;
+                        font-size: 1.1rem;
+                        font-weight: 600;
+                        border-radius: 30px;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 4px 15px rgba(74, 207, 160, 0.3);
+                        min-width: 150px;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(74, 207, 160, 0.4)'"
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(74, 207, 160, 0.3)'">
+                        <i class="fas fa-play" style="margin-right: 0.5rem;"></i>
+                        Re-join
+                    </button>
+                    <button onclick="window.closePostGameModal()" style="
+                        background: rgba(255, 255, 255, 0.1);
+                        color: white;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        padding: 1rem 1.5rem;
+                        font-size: 1rem;
+                        font-weight: 500;
+                        border-radius: 30px;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        min-width: 150px;
+                    " onmouseover="this.style.background='rgba(255, 255, 255, 0.15)'"
+                       onmouseout="this.style.background='rgba(255, 255, 255, 0.1)'">
+                        Select Another Arena
+                    </button>
+                </div>
+            </div>
+        `;
+
+        content.innerHTML = modalHTML;
+        modal.style.display = 'flex';
+    }
+
+    // Global functions for post-game modal
+    window.rejoinGame = function() {
+        playMenuSelectionSound();
+        const lastArenaType = sessionStorage.getItem('lastArenaType');
+        const modal = document.getElementById('postGameModal');
+        if (modal) modal.style.display = 'none';
+
+        // Re-join the same arena type
+        if (lastArenaType === 'PLAY TO EARN') {
+            const isAuthenticated = window.PrivyAuth && window.PrivyAuth.isAuthenticated();
+            if (isAuthenticated) {
+                redirectToGame('PAID');
+            } else {
+                showPaidArenaSignupPrompt();
+            }
+        } else {
+            redirectToGame('FREE');
+        }
+    };
+
+    window.closePostGameModal = function() {
+        playClickSound();
+        const modal = document.getElementById('postGameModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Check if we should show post-game modal
+    function checkPostGameModal() {
+        // Check if returning from game
+        const wasInGame = sessionStorage.getItem('wasInGame') === 'true';
+        if (wasInGame) {
+            sessionStorage.removeItem('wasInGame');
+            setTimeout(() => {
+                showPostGameModal();
+            }, 500); // Small delay for smooth transition
+        }
+    }
+
+    function redirectToGame(arenaType = 'PAID') {
+        // Store the arena type for the server to know
+        sessionStorage.setItem('selectedArenaType', arenaType);
+        // Store for post-game modal
+        sessionStorage.setItem('lastArenaType', arenaType === 'FREE' ? 'PRACTICE MODE' : 'PLAY TO EARN');
+        // Mark that we're entering a game
+        sessionStorage.setItem('wasInGame', 'true');
+
+        // Set the username for logged-in users
+        const playerNameInput = document.getElementById("playerNameInput");
+        if (playerNameInput) {
+            // Check if user is logged in
+            const userData = JSON.parse(localStorage.getItem('privy_user') || '{}');
+            if (userData && userData.username) {
+                // Use the logged-in user's username
+                playerNameInput.value = userData.username;
+            } else if (!playerNameInput.value) {
+                // Only set guest name if not logged in and no name entered
+                playerNameInput.value = "Guest_" + Math.floor(Math.random() * 10000);
+            }
+        }
+
+        // Instead of redirecting, trigger seamless game start
+        if (typeof window.startSeamlessGame === 'function') {
+            window.startSeamlessGame();
+        } else {
+            // Fallback: manually start the game
+
+            // Hide landing view and show game view
+            const landingView = document.getElementById("landingView");
+            const gameView = document.getElementById("gameView");
+
+            if (landingView && gameView) {
+                landingView.style.display = "none";
+                gameView.style.display = "block";
+                setTimeout(() => {
+                    const gameArea = document.getElementById("gameAreaWrapper");
+                    if (gameArea) gameArea.style.opacity = 1;
+                }, 50);
+            }
+
+            // Initialize game if startGame function is available
+            if (typeof window.startGame === 'function') {
+                window.startGame("player");
+            }
+        }
+    }
 
     function showModal(modalId) {
         const modal = document.getElementById(modalId);
@@ -786,8 +1000,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // FREE ARENA button - accessible to everyone
     elements.freeArenaBtn?.addEventListener('click', () => {
         playMenuSelectionSound();
-        // redirectToGame will handle setting the username appropriately
-        redirectToGame('FREE');
+
+        // Check if user is authenticated
+        const isAuthenticated = window.PrivyAuth && window.PrivyAuth.isAuthenticated();
+
+        if (isAuthenticated) {
+            // Logged-in user playing free arena with their username
+            redirectToGame('FREE');
+        } else {
+            // Guest playing free arena
+            const playerNameInput = document.getElementById("playerNameInput");
+            if (playerNameInput) {
+                playerNameInput.value = "Guest_" + Math.floor(Math.random() * 10000);
+            }
+            redirectToGame('FREE');
+        }
     });
 
     // PAID ARENA button - requires authentication
@@ -953,15 +1180,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (logoutBtn) {
                     logoutBtn.addEventListener('click', () => {
                         playClickSound(); // Play click sound for logout button
-
-                        // Clear post-game modal session flags before logout
-                        sessionStorage.removeItem('wasInGame');
-                        sessionStorage.removeItem('gameActive');
-                        sessionStorage.removeItem('gameExitReason');
-                        sessionStorage.removeItem('lastArenaType');
-                        sessionStorage.removeItem('gameTimePlayed');
-                        sessionStorage.removeItem('gameEnemiesEaten');
-
                         // Trigger logout through Privy
                         if (window.PrivyAuth && typeof window.PrivyAuth.logout === 'function') {
                             // Use Privy's logout if available

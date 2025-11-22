@@ -19,10 +19,63 @@ A fully functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canvas
 
 ### User System
 - **Authentication**: Privy SDK (Google, Discord, Twitter, Email)
-- **Guest Play**: Auto-generated names for instant play
+- **Two-Arena System**:
+  - **PRACTICE MODE** (Free to Play): No authentication required, no earnings/progress saved
+  - **PLAY TO EARN** ($1 Entry Fee): Requires authentication, earn rewards, track stats
+- **Guest Play**: Auto-generated names for instant practice mode
 - **User Profiles**: Persistent stats and preferences (PostgreSQL)
 - **Virtual Wallet**: $1 default balance for authenticated users
 - **Preferences**: Dark mode, mass display, borders, etc.
+
+### Arena Selection Logic
+
+| Landing Page Button | User State | Arena Type | Entry Fee | Notes |
+|-------------------|------------|------------|-----------|-------|
+| **FREE ARENA** | Logged in | PRACTICE MODE | $0 | Uses username |
+| **FREE ARENA** | Not logged in | PRACTICE MODE | $0 | Uses Guest_XXXX name |
+| **PAID ARENA** | Logged in | PLAY TO EARN | $1 | Deducted when game starts |
+| **PAID ARENA** | Not logged in | Shows signup prompt | N/A | Must authenticate first |
+
+**Post-Game Modal Re-join Logic:**
+- **From PRACTICE MODE**: Always rejoins PRACTICE MODE (free)
+- **From PLAY TO EARN**:
+  - If still logged in → Rejoins PLAY TO EARN (new $1 fee)
+  - If not logged in → Shows signup prompt
+
+The client sends `'FREE'` or `'PAID'` as arena type, which the server interprets as:
+- `'FREE'` → PRACTICE MODE (no fees, no rewards)
+- `'PAID'` → PLAY TO EARN (requires auth, $1 entry fee, can earn rewards)
+
+### Post-Game Modal System
+
+#### Trigger Logic (Smart Detection)
+```javascript
+// Three session storage flags track game state:
+// 1. wasInGame: Set when entering any game
+// 2. gameActive: Set to 'true' when game starts, 'false' on proper exit
+// 3. gameExitReason: Set only on proper game exit ('death' or 'escape')
+
+// Modal shows ONLY when:
+if (wasInGame && exitReason) {
+    // Normal game exit (death/escape) - show modal
+} else if (wasInGame && gameActive) {
+    // Refresh during gameplay - treat as disconnection/death
+} else {
+    // Refresh on landing page - don't show modal
+}
+```
+
+#### Display Logic
+- **Victory conditions**: Different messages based on score thresholds
+- **PLAY TO EARN wallet display**: Shows net profit/loss prominently
+- **Confetti animation**: Triggers for profitable wins only
+- **Mobile optimization**: Responsive sizing to fit single screen
+- **Re-join options**: Smart routing back to same arena type
+
+#### Key Files
+- `src/client/js/post-game-modal.js`: Core modal logic
+- `src/client/css/post-game-modal.css`: Responsive styling
+- `src/client/index.html`: Modal HTML structure
 
 ### Technical
 - **Performance**: Viewport culling, grid caching, 60Hz updates
@@ -47,12 +100,13 @@ A fully functional Agar.io clone built with Node.js, Socket.io, and HTML5 Canvas
 - **Exit Options**: ESC key or being eaten
 
 ### Wallet & Entry Fee System
-- **Entry Fee**: Configurable in `config.js` (default: $1.00)
+- **Entry Fee**: $1.00 for PLAY TO EARN arena (configurable in `config.js`)
 - **Payment Timing**: Fee deducted when game starts (not in waiting room)
-- **Guest Play**: Free for non-authenticated users
-- **Escape Rewards**: Score added to wallet on successful escape
-- **Death Penalty**: Lose entry fee (no refund)
-- **Arena Segregation**: PAID arenas (authenticated) vs FREE arenas (guests/bots)
+- **Practice Mode**: Always free, no authentication required
+- **Play to Earn Mode**: Requires authentication and $1 entry fee
+- **Escape Rewards**: Score added to wallet on successful escape (PLAY TO EARN only)
+- **Death Penalty**: Lose entry fee in PLAY TO EARN mode (no refund)
+- **Arena Segregation**: PRACTICE MODE (free, no rewards) vs PLAY TO EARN (paid, with rewards)
 
 ### Socket & Payment Architecture
 
@@ -104,9 +158,9 @@ npm test
 // config.js key settings
 minPlayersToStart: 2,    // Waiting room minimum
 maxPlayersPerArena: 10,   // Arena capacity
-maxFreeArenas: 5,        // Max FREE arenas (guests/bots)
-maxPaidArenas: 5,        // Max PAID arenas (authenticated)
-entryFee: 1.0,           // Entry fee in dollars (0 = free to play)
+maxFreeArenas: 5,        // Max PRACTICE MODE arenas
+maxPaidArenas: 5,        // Max PLAY TO EARN arenas
+entryFee: 1.0,           // Entry fee for PLAY TO EARN mode
 // No maxHeartbeatInterval - inactivity kicking removed
 ```
 
@@ -154,12 +208,24 @@ const SPLIT_CELL_SPEED = 20;  // Split velocity
 ## 🔧 Current Status
 
 ### Working Features
+- ✅ Two-arena system (PRACTICE MODE & PLAY TO EARN)
 - ✅ Multi-arena gameplay
 - ✅ Waiting room with countdown
 - ✅ Authentication & profiles
 - ✅ No inactivity kicks
 - ✅ Mobile support
 - ✅ Virtual wallet system
+- ✅ **Post-game modal system** (November 2024)
+  - Comprehensive game statistics display
+  - Wallet change tracking for PLAY TO EARN
+  - Victory animations with confetti
+  - Mobile-responsive design
+  - Smart trigger logic (prevents false showing on refresh)
+- ✅ **Mobile UX improvements** (November 2024)
+  - Compact wallet notifications
+  - Rank display (1/7 format) instead of full leaderboard
+  - Responsive post-game modal
+  - 3D rotating USDC logo in PLAY TO EARN button
 
 ### Known Issues
 - Session tracking temporarily disabled (causes disconnects)
@@ -168,10 +234,9 @@ const SPLIT_CELL_SPEED = 20;  // Split velocity
 
 ### Next Priorities
 1. Fix session tracking disconnect issue
-2. Real-time stats during gameplay
+2. Real-time stats during gameplay (time played, enemies eaten)
 3. Leaderboard persistence
-4. Wallet earnings from gameplay
-5. **Arena Capacity Enforcement** (when high usage):
+4. **Arena Capacity Enforcement** (when high usage):
    - Currently: When all arenas of a type are full, players still join overcrowded arenas
    - Needed: Proper "servers full" message when at capacity
    - Enforce hard limit of 10 players per arena
@@ -227,6 +292,8 @@ node bot-players.js --bots 20  # Custom count
 
 ## 📊 Recent Updates (November 2024)
 
+- **Two-Arena System**: New PRACTICE MODE (free) and PLAY TO EARN ($1 fee) arenas
+- **Improved Landing Page**: Clear arena selection with distinct benefits
 - **Waiting Room**: Players wait for minimum 2 to start
 - **No Inactivity Kicks**: Players stay until eaten/exit
 - **PostgreSQL Migration**: From SQLite to Neon cloud
@@ -243,4 +310,4 @@ node bot-players.js --bots 20  # Custom count
 
 ---
 
-_Last Updated: November 2024 - Waiting room feature and inactivity removal complete_
+_Last Updated: November 2024 - Two-arena system (PRACTICE MODE & PLAY TO EARN) implemented_
