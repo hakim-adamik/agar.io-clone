@@ -46,6 +46,37 @@ The client sends `'FREE'` or `'PAID'` as arena type, which the server interprets
 - `'FREE'` → PRACTICE MODE (no fees, no rewards)
 - `'PAID'` → PLAY TO EARN (requires auth, $1 entry fee, can earn rewards)
 
+### Post-Game Modal System
+
+#### Trigger Logic (Smart Detection)
+```javascript
+// Three session storage flags track game state:
+// 1. wasInGame: Set when entering any game
+// 2. gameActive: Set to 'true' when game starts, 'false' on proper exit
+// 3. gameExitReason: Set only on proper game exit ('death' or 'escape')
+
+// Modal shows ONLY when:
+if (wasInGame && exitReason) {
+    // Normal game exit (death/escape) - show modal
+} else if (wasInGame && gameActive) {
+    // Refresh during gameplay - treat as disconnection/death
+} else {
+    // Refresh on landing page - don't show modal
+}
+```
+
+#### Display Logic
+- **Victory conditions**: Different messages based on score thresholds
+- **PLAY TO EARN wallet display**: Shows net profit/loss prominently
+- **Confetti animation**: Triggers for profitable wins only
+- **Mobile optimization**: Responsive sizing to fit single screen
+- **Re-join options**: Smart routing back to same arena type
+
+#### Key Files
+- `src/client/js/post-game-modal.js`: Core modal logic
+- `src/client/css/post-game-modal.css`: Responsive styling
+- `src/client/index.html`: Modal HTML structure
+
 ### Technical
 - **Performance**: Viewport culling, grid caching, 60Hz updates
 - **Architecture**: Socket.io rooms, per-arena game loops
@@ -184,19 +215,28 @@ const SPLIT_CELL_SPEED = 20;  // Split velocity
 - ✅ No inactivity kicks
 - ✅ Mobile support
 - ✅ Virtual wallet system
+- ✅ **Post-game modal system** (November 2024)
+  - Comprehensive game statistics display
+  - Wallet change tracking for PLAY TO EARN
+  - Victory animations with confetti
+  - Mobile-responsive design
+  - Smart trigger logic (prevents false showing on refresh)
+- ✅ **Mobile UX improvements** (November 2024)
+  - Compact wallet notifications
+  - Rank display (1/7 format) instead of full leaderboard
+  - Responsive post-game modal
+  - 3D rotating USDC logo in PLAY TO EARN button
 
 ### Known Issues
 - Session tracking temporarily disabled (causes disconnects)
 - Disconnected players removed immediately (no reconnection)
 - Arena capacity not enforced when all arenas full (players can join beyond 10-player limit)
-- Last score display on landing page not functional (needs re-implementation)
 
 ### Next Priorities
 1. Fix session tracking disconnect issue
-2. Real-time stats during gameplay
+2. Real-time stats during gameplay (time played, enemies eaten)
 3. Leaderboard persistence
-4. Wallet earnings from gameplay
-5. **Arena Capacity Enforcement** (when high usage):
+4. **Arena Capacity Enforcement** (when high usage):
    - Currently: When all arenas of a type are full, players still join overcrowded arenas
    - Needed: Proper "servers full" message when at capacity
    - Enforce hard limit of 10 players per arena
