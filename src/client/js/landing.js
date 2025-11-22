@@ -953,6 +953,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (logoutBtn) {
                     logoutBtn.addEventListener('click', () => {
                         playClickSound(); // Play click sound for logout button
+
+                        // Clear post-game modal session flags before logout
+                        sessionStorage.removeItem('wasInGame');
+                        sessionStorage.removeItem('gameActive');
+                        sessionStorage.removeItem('gameExitReason');
+                        sessionStorage.removeItem('lastArenaType');
+                        sessionStorage.removeItem('gameTimePlayed');
+                        sessionStorage.removeItem('gameEnemiesEaten');
+
                         // Trigger logout through Privy
                         if (window.PrivyAuth && typeof window.PrivyAuth.logout === 'function') {
                             // Use Privy's logout if available
